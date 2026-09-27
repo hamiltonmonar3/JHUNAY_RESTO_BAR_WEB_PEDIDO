@@ -1,0 +1,68 @@
+<section class="admin-page">
+  <header class="module-heading">
+    <div><p class="eyebrow">ADMINISTRACIÓN · ACCESOS</p><h1>Personal</h1><p>Gestiona perfiles, roles y estado de acceso.</p></div>
+    <button class="quiet-button" type="button" (click)="loadStaff()" [disabled]="loading()" aria-label="Actualizar personal" title="Actualizar personal">↻</button>
+  </header>
+  @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
+
+  <div class="admin-tabs" role="tablist" aria-label="Personal y roles">
+    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'people'" [class.active]="activeTab() === 'people'" (click)="activeTab.set('people')">Empleados <span>{{ people().length }}</span></button>
+    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'roles'" [class.active]="activeTab() === 'roles'" (click)="activeTab.set('roles')">Roles <span>{{ roles().length }}</span></button>
+  </div>
+
+  @if (activeTab() === 'people') {
+    <section class="admin-section">
+      <div class="admin-toolbar"><span>{{ people().length }} perfiles</span><button class="primary-button" type="button" (click)="openPersonForm()">+ Agregar empleado</button></div>
+      @if (loading()) { <div class="empty-state">Cargando personal…</div> }
+      @else {
+        <div class="table-scroll"><table><thead><tr><th>Empleado</th><th>Usuario</th><th>Rol</th><th>Auth</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+          @for (person of people(); track person.id) {
+            <tr><td><strong>{{ person.full_name }}</strong><small class="cell-description">{{ person.email }}</small></td><td>{{ person.username }}</td><td>{{ roleNameFor(person.role_id) }}</td><td><span class="auth-link-status" [class.pending-auth]="!person.auth_user_id">{{ person.auth_user_id ? 'Vinculada' : 'Pendiente' }}</span></td><td>{{ person.is_active ? 'Activo' : 'Inactivo' }}</td><td class="admin-actions"><button class="detail-button" type="button" (click)="openPersonForm(person)">Editar</button><button class="detail-button" type="button" (click)="toggleActive(person)">{{ person.is_active ? 'Desactivar' : 'Activar' }}</button></td></tr>
+          } @empty { <tr><td colspan="6" class="empty-cell">Aún no hay empleados.</td></tr> }
+        </tbody></table></div>
+      }
+    </section>
+  } @else {
+    <section class="admin-section">
+      <div class="admin-toolbar"><span>{{ roles().length }} roles</span><button class="primary-button" type="button" (click)="openRoleForm()">+ Agregar rol</button></div>
+      @if (loading()) { <div class="empty-state">Cargando roles…</div> }
+      @else {
+        <div class="table-scroll"><table><thead><tr><th>Rol</th><th>Descripción</th><th>Acciones</th></tr></thead><tbody>
+          @for (role of roles(); track role.id) {
+            <tr><td><strong>{{ role.name }}</strong></td><td>{{ role.description || '—' }}</td><td class="admin-actions"><button class="detail-button" type="button" (click)="openRoleForm(role)">Editar</button><button class="detail-button danger-action" type="button" (click)="deleteRole(role)">Eliminar</button></td></tr>
+          }
+        </tbody></table></div>
+      }
+    </section>
+  }
+</section>
+
+@if (showPersonForm()) {
+  <div class="modal-backdrop admin-backdrop" (click)="closeForms()">
+    <section class="admin-modal staff-modal" role="dialog" aria-modal="true" aria-labelledby="staff-form-title" (click)="$event.stopPropagation()">
+      <header class="modal-heading"><div><p class="eyebrow">PERSONAL</p><h2 id="staff-form-title">{{ personId ? 'Editar perfil' : 'Nuevo perfil' }}</h2></div><button class="quiet-button" type="button" (click)="closeForms()" aria-label="Cerrar">×</button></header>
+      <p class="staff-auth-note">El PIN se administra en Supabase Auth. Crea allí una cuenta confirmada con el mismo correo para vincularla a este perfil.</p>
+      <form class="admin-form" (ngSubmit)="savePerson()">
+        <label>Nombre completo<input name="fullName" required maxlength="150" [(ngModel)]="personName" /></label>
+        <label>Correo electrónico<input name="email" type="email" required maxlength="150" [(ngModel)]="personEmail" /></label>
+        <label>Usuario<input name="username" required maxlength="50" [(ngModel)]="personUsername" /></label>
+        <label>Rol<select name="role" required [(ngModel)]="personRoleId"><option value="" disabled>Seleccionar rol</option>@for (role of roles(); track role.id) { <option [value]="role.id">{{ role.name }}</option> }</select></label>
+        <label class="admin-check"><input name="isActive" type="checkbox" [(ngModel)]="personActive" /> Perfil activo</label>
+        <footer class="modal-footer"><button class="secondary-button" type="button" (click)="closeForms()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar perfil' }}</button></footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (showRoleForm()) {
+  <div class="modal-backdrop admin-backdrop" (click)="closeForms()">
+    <section class="admin-modal role-modal" role="dialog" aria-modal="true" aria-labelledby="role-form-title" (click)="$event.stopPropagation()">
+      <header class="modal-heading"><div><p class="eyebrow">PERSONAL</p><h2 id="role-form-title">{{ roleId ? 'Editar rol' : 'Nuevo rol' }}</h2></div><button class="quiet-button" type="button" (click)="closeForms()" aria-label="Cerrar">×</button></header>
+      <form class="admin-form" (ngSubmit)="saveRole()">
+        <label>Nombre<input name="roleName" required maxlength="50" [(ngModel)]="roleName" /></label>
+        <label>Descripción<textarea name="roleDescription" rows="3" [(ngModel)]="roleDescription"></textarea></label>
+        <footer class="modal-footer"><button class="secondary-button" type="button" (click)="closeForms()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar rol' }}</button></footer>
+      </form>
+    </section>
+  </div>
+}

@@ -1,0 +1,30 @@
+.inventory-page { display: grid; gap: 18px; }
+.inventory-metrics { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.inventory-metrics article { display: grid; min-height: 92px; align-content: space-between; padding: 14px 16px; border: 1px solid var(--line); background: var(--paper); }
+.inventory-metrics span { color: var(--muted); font-size: 11px; }
+.inventory-metrics strong { font-family: 'Manrope',sans-serif; font-size: 23px; }
+.inventory-metrics .stock-warning { border-color: #70421d; background: #21170f; }
+.inventory-section { min-width: 0; border: 1px solid var(--line); background: var(--paper); }
+.inventory-section-heading { display: flex; min-height: 60px; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 15px; border-bottom: 1px solid var(--line); }
+.inventory-section-heading h2 { margin: 0; font-family: 'Manrope',sans-serif; font-size: 15px; }
+.inventory-section-heading .eyebrow { margin-bottom: 4px; }
+.inventory-section .admin-actions { display: flex; gap: 12px; }
+.inventory-section .table-scroll { overflow-x: auto; }
+.inventory-section table { width: 100%; border-collapse: collapse; text-align: left; }
+.inventory-section th { height: 36px; padding: 0 13px; background: #211a16; color: var(--muted); font-size: 10px; white-space: nowrap; }
+.inventory-section td { height: 46px; padding: 6px 13px; border-top: 1px solid #302720; color: #d5c8bd; font-size: 11px; white-space: nowrap; }
+.inventory-section .numeric { text-align: right; }
+.stock-pill { padding: 4px 7px; border-radius: 2px; background: #30200f; color: #ffbd70; font-size: 10px; }
+.stock-pill.stock-low { background: #472114; color: #ff9674; }
+.inventory-section .detail-button { padding: 4px 0; border: 0; background: transparent; color: #ffad74; font: inherit; font-size: 11px; cursor: pointer; }
+.inventory-section .detail-button:hover { text-decoration: underline; }
+.result-count { color: var(--muted); font-size: 10px; }
+.inventory-modal .admin-form { display: grid; gap: 13px; }
+.inventory-modal .admin-form label { display: grid; gap: 6px; color: #d5c8bd; font-size: 11px; font-weight: 600; }
+.inventory-modal .admin-form input, .inventory-modal .admin-form select { width: 100%; height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 3px; background: #211a16; color: var(--ink); font: inherit; font-size: 12px; }
+.inventory-modal .modal-footer { justify-content: end; padding-top: 8px; }
+
+@media (max-width: 700px) {
+  .inventory-metrics { grid-template-columns: 1fr; }
+  .inventory-section .table-scroll table { min-width: 700px; }
+}

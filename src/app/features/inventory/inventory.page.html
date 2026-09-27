@@ -1,0 +1,55 @@
+<section class="inventory-page">
+  <header class="module-heading">
+    <div><p class="eyebrow">ADMINISTRACIÓN · CONTROL DE STOCK</p><h1>Inventario</h1><p>Registra entradas, salidas y ajustes con historial de auditoría.</p></div>
+    <button class="primary-button" type="button" (click)="openMovement()">+ Registrar movimiento</button>
+  </header>
+
+  @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
+
+  <div class="inventory-metrics">
+    <article><span>Productos con control</span><strong>{{ products().length }}</strong></article>
+    <article class="stock-warning"><span>En mínimo o bajo</span><strong>{{ lowStockProducts().length }}</strong></article>
+  </div>
+
+  <section class="inventory-section">
+    <header class="inventory-section-heading"><div><p class="eyebrow">EXISTENCIAS</p><h2>Stock actual</h2></div></header>
+    @if (loading()) { <div class="empty-state">Cargando existencias…</div> }
+    @else if (products().length === 0) { <div class="empty-state">Activa “Controlar existencia” en un producto del menú para comenzar.</div> }
+    @else {
+      <div class="table-scroll"><table><thead><tr><th>Producto</th><th class="numeric">Existencia</th><th class="numeric">Mínimo</th><th>Estado</th><th>Acción</th></tr></thead><tbody>
+        @for (product of products(); track product.id) {
+          <tr><td><strong>{{ product.name }}</strong></td><td class="numeric amount">{{ product.current_stock }}</td><td class="numeric">{{ product.min_stock }}</td><td><span class="stock-pill" [class.stock-low]="product.current_stock <= product.min_stock">{{ product.current_stock <= product.min_stock ? 'Reponer' : 'En stock' }}</span></td><td><button class="detail-button" type="button" (click)="openMovement(product)">Movimiento</button></td></tr>
+        }
+      </tbody></table></div>
+    }
+  </section>
+
+  <section class="inventory-section movement-section">
+    <header class="inventory-section-heading"><div><p class="eyebrow">AUDITORÍA</p><h2>Movimientos recientes</h2></div><span class="result-count">Últimos 100</span></header>
+    @if (loading()) { <div class="empty-state">Cargando movimientos…</div> }
+    @else if (movements().length === 0) { <div class="empty-state">Aún no hay movimientos registrados.</div> }
+    @else {
+      <div class="table-scroll"><table><thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th class="numeric">Cantidad</th><th>Motivo</th><th>Usuario</th></tr></thead><tbody>
+        @for (movement of movements(); track movement.id) {
+          <tr><td>{{ formatDate(movement.created_at) }}</td><td>{{ movementProductName(movement) }}</td><td>{{ movementLabel(movement.movement_type) }}</td><td class="numeric">{{ movement.quantity }}</td><td>{{ movement.reason || '—' }}</td><td>{{ movementUserName(movement) }}</td></tr>
+        }
+      </tbody></table></div>
+    }
+  </section>
+</section>
+
+@if (showForm()) {
+  <div class="modal-backdrop admin-backdrop" (click)="closeForm()">
+    <section class="admin-modal inventory-modal" role="dialog" aria-modal="true" aria-labelledby="movement-title" (click)="$event.stopPropagation()">
+      <header class="modal-heading"><div><p class="eyebrow">INVENTARIO</p><h2 id="movement-title">Registrar movimiento</h2></div><button class="quiet-button" type="button" (click)="closeForm()" aria-label="Cerrar">×</button></header>
+      @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
+      <form class="admin-form" (ngSubmit)="saveMovement()">
+        <label>Producto<select name="product" required [(ngModel)]="productId"><option value="" disabled>Seleccionar producto</option>@for (product of products(); track product.id) { <option [value]="product.id">{{ product.name }} · {{ product.current_stock }} en stock</option> }</select></label>
+        <label>Tipo<select name="movementType" [(ngModel)]="movementType"><option value="entrada">Entrada</option><option value="salida">Salida</option><option value="ajuste">Ajuste a existencia final</option></select></label>
+        <label>{{ movementType === 'ajuste' ? 'Nueva existencia' : 'Cantidad' }}<input name="quantity" type="number" [min]="movementType === 'ajuste' ? 0 : 1" step="1" required [(ngModel)]="quantity" /></label>
+        <label>Motivo<input name="reason" type="text" maxlength="200" [(ngModel)]="reason" placeholder="Compra, merma, conteo físico…" /></label>
+        <footer class="modal-footer"><button class="secondary-button" type="button" (click)="closeForm()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Registrar' }}</button></footer>
+      </form>
+    </section>
+  </div>
+}

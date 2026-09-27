@@ -1,0 +1,35 @@
+<div class="app-frame">
+  <aside class="sidebar">
+    <a class="brand" routerLink="/dashboard" aria-label="Jhunay, ir al resumen">
+      <span class="brand-mark" aria-hidden="true">J</span>
+      <span class="brand-copy"><strong>JHUNAY</strong><small>RESTO BAR</small></span>
+    </a>
+
+    <div class="nav-label">OPERACIÓN</div>
+    <nav class="primary-nav" aria-label="Navegación principal">
+      @for (item of visibleNavigation(); track item.path) {
+        <a [routerLink]="item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          <span class="nav-dot" aria-hidden="true"></span>{{ item.label }}
+        </a>
+      }
+    </nav>
+
+    <div class="sidebar-footer">
+      <span class="status-indicator" [class.is-configured]="supabaseConfigured" aria-hidden="true"></span>
+      <span>
+        <strong>{{ supabaseConfigured ? 'Supabase configurado' : 'Modo de configuración' }}</strong>
+        <small>{{ supabaseConfigured ? 'Pedidos y ventas requieren sesión' : 'Conexión pendiente' }}</small>
+      </span>
+    </div>
+  </aside>
+
+  <div class="workspace">
+    <header class="topbar">
+      <div class="topbar-brand"><strong class="topbar-wordmark">JHUNAY</strong><span class="breadcrumb-divider">/</span><span class="topbar-section">OPERACIÓN</span></div>
+      <div class="topbar-user"><span class="user-avatar">{{ userInitials() }}</span><span class="user-identity"><strong>{{ displayName() }}</strong><small>{{ displayRole() }}</small></span></div>
+    </header>
+    <main class="main-content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

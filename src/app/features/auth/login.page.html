@@ -1,0 +1,32 @@
+<main class="login-screen">
+  <section class="login-content">
+    <section class="login-panel" aria-label="Acceso de personal">
+      <div class="login-brand-lockup">
+        <img src="/assets/images/logo.jpeg" alt="Jhunay Resto Bar" />
+        <div class="login-brand-copy">
+          <p>PORTAL DEL EQUIPO</p>
+          <strong>JHUNAY RESTO BAR</strong>
+        </div>
+      </div>
+      <p class="login-tagline">Pedidos, servicio y caja en un solo lugar.</p>
+
+      @if (setupMessage) {
+        <div class="login-message" role="status">{{ setupMessage }}</div>
+      }
+      @if (errorMessage()) {
+        <div class="login-error" role="alert">{{ errorMessage() }}</div>
+      }
+
+      <form (ngSubmit)="submit()">
+        <label for="username">Usuario</label>
+        <input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" [(ngModel)]="username" required />
+        <label for="pin">PIN</label>
+        <input id="pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]{6,12}" minlength="6" maxlength="12" autocomplete="current-password" [(ngModel)]="pin" required />
+        <p class="pin-hint">PIN numérico de 6 a 12 dígitos.</p>
+        <button class="login-button" type="submit" [disabled]="pending() || !username || pin.length < 6">
+          {{ pending() ? 'Validando…' : 'Ingresar' }}
+        </button>
+      </form>
+    </section>
+  </section>
+</main>

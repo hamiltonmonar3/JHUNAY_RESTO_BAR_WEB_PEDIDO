@@ -1,0 +1,94 @@
+<section class="admin-page">
+  <header class="module-heading">
+    <div><p class="eyebrow">ADMINISTRACIÓN · CATÁLOGO</p><h1>Menú</h1><p>Administra categorías, productos, precios y existencias.</p></div>
+    <button class="quiet-button" type="button" (click)="loadMenu()" [disabled]="loading()" aria-label="Actualizar menú" title="Actualizar menú">↻</button>
+  </header>
+
+  @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
+
+  <div class="admin-tabs" role="tablist" aria-label="Secciones del menú">
+    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'products'" [class.active]="activeTab() === 'products'" (click)="activeTab.set('products')">Productos <span>{{ products().length }}</span></button>
+    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'categories'" [class.active]="activeTab() === 'categories'" (click)="activeTab.set('categories')">Categorías <span>{{ categories().length }}</span></button>
+  </div>
+
+  @if (activeTab() === 'products') {
+    <section class="admin-section" aria-label="Productos del menú">
+      <div class="admin-toolbar">
+        <input type="search" aria-label="Buscar productos" placeholder="Buscar producto" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+        <select aria-label="Filtrar por categoría" [ngModel]="categoryFilter()" (ngModelChange)="categoryFilter.set($event)">
+          <option value="">Todas las categorías</option>
+          @for (category of categories(); track category.id) { <option [value]="category.id">{{ category.name }}</option> }
+        </select>
+        <button class="primary-button" type="button" (click)="openProductForm()">+ Agregar producto</button>
+      </div>
+
+      @if (loading()) { <div class="empty-state">Cargando menú…</div> }
+      @else if (filteredProducts().length === 0) { <div class="empty-state">No se encontraron productos.</div> }
+      @else {
+        <div class="table-scroll"><table>
+          <thead><tr><th>Producto</th><th>Categoría</th><th class="numeric">Precio</th><th>Disponible</th><th>Existencia</th><th>Acciones</th></tr></thead>
+          <tbody>
+            @for (product of filteredProducts(); track product.id) {
+              <tr>
+                <td><strong>{{ product.name }}</strong><small class="cell-description">{{ product.description || 'Sin descripción' }}</small></td>
+                <td>{{ categoryNameFor(product.category_id) }}</td>
+                <td class="numeric amount">{{ formatCurrency(product.price) }}</td>
+                <td><span class="availability" [class.unavailable]="!product.is_available">{{ product.is_available ? 'Sí' : 'No' }}</span></td>
+                <td>{{ product.track_stock ? product.current_stock : 'Sin control' }}</td>
+                <td class="admin-actions"><button class="detail-button" type="button" (click)="openProductForm(product)">Editar</button><button class="detail-button danger-action" type="button" (click)="deleteProduct(product)">Eliminar</button></td>
+              </tr>
+            }
+          </tbody>
+        </table></div>
+      }
+    </section>
+  } @else {
+    <section class="admin-section" aria-label="Categorías">
+      <div class="admin-toolbar"><span>{{ categories().length }} categorías</span><button class="primary-button" type="button" (click)="openCategoryForm()">+ Agregar categoría</button></div>
+      @if (loading()) { <div class="empty-state">Cargando categorías…</div> }
+      @else {
+        <div class="table-scroll"><table>
+          <thead><tr><th>Categoría</th><th>Descripción</th><th>Acciones</th></tr></thead>
+          <tbody>
+            @for (category of categories(); track category.id) {
+              <tr><td><strong>{{ category.name }}</strong></td><td>{{ category.description || '—' }}</td><td class="admin-actions"><button class="detail-button" type="button" (click)="openCategoryForm(category)">Editar</button><button class="detail-button danger-action" type="button" (click)="deleteCategory(category)">Eliminar</button></td></tr>
+            } @empty { <tr><td colspan="3" class="empty-cell">Aún no hay categorías.</td></tr> }
+          </tbody>
+        </table></div>
+      }
+    </section>
+  }
+</section>
+
+@if (showProductForm()) {
+  <div class="modal-backdrop admin-backdrop" (click)="closeForms()">
+    <section class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="product-form-title" (click)="$event.stopPropagation()">
+      <header class="modal-heading"><div><p class="eyebrow">MENÚ</p><h2 id="product-form-title">{{ productId ? 'Editar producto' : 'Nuevo producto' }}</h2></div><button class="quiet-button" type="button" (click)="closeForms()" aria-label="Cerrar">×</button></header>
+      @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
+      <form class="admin-form" (ngSubmit)="saveProduct()">
+        <label>Nombre<input name="productName" required maxlength="150" [(ngModel)]="productName" /></label>
+        <label>Categoría<select name="productCategory" [(ngModel)]="productCategoryId"><option value="">Sin categoría</option>@for (category of categories(); track category.id) { <option [value]="category.id">{{ category.name }}</option> }</select></label>
+        <label>Descripción<textarea name="productDescription" rows="3" [(ngModel)]="productDescription"></textarea></label>
+        <div class="admin-form-grid"><label>Precio<input name="productPrice" type="number" min="0.01" step="0.01" required [(ngModel)]="productPrice" /></label><label>URL de imagen<input name="productImage" type="url" [(ngModel)]="productImage" /></label></div>
+        <label class="admin-check"><input name="productAvailable" type="checkbox" [(ngModel)]="productAvailable" /> Disponible para pedidos</label>
+        <label class="admin-check"><input name="productTracksStock" type="checkbox" [(ngModel)]="productTracksStock" /> Controlar existencia</label>
+        @if (productTracksStock) { <div class="admin-form-grid"><label>Existencia actual<input name="productStock" type="number" min="0" step="1" [(ngModel)]="productStock" /></label><label>Mínimo de alerta<input name="productMinStock" type="number" min="0" step="1" [(ngModel)]="productMinStock" /></label></div> }
+        <footer class="modal-footer"><button class="secondary-button" type="button" (click)="closeForms()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar producto' }}</button></footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (showCategoryForm()) {
+  <div class="modal-backdrop admin-backdrop" (click)="closeForms()">
+    <section class="admin-modal category-modal" role="dialog" aria-modal="true" aria-labelledby="category-form-title" (click)="$event.stopPropagation()">
+      <header class="modal-heading"><div><p class="eyebrow">MENÚ</p><h2 id="category-form-title">{{ categoryId ? 'Editar categoría' : 'Nueva categoría' }}</h2></div><button class="quiet-button" type="button" (click)="closeForms()" aria-label="Cerrar">×</button></header>
+      @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
+      <form class="admin-form" (ngSubmit)="saveCategory()">
+        <label>Nombre<input name="categoryName" required maxlength="100" [(ngModel)]="categoryName" /></label>
+        <label>Descripción<textarea name="categoryDescription" rows="3" [(ngModel)]="categoryDescription"></textarea></label>
+        <footer class="modal-footer"><button class="secondary-button" type="button" (click)="closeForms()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar categoría' }}</button></footer>
+      </form>
+    </section>
+  </div>
+}

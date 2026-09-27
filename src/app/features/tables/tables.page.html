@@ -1,0 +1,36 @@
+<section class="admin-page">
+  <header class="module-heading">
+    <div><p class="eyebrow">ADMINISTRACIÓN · SALÓN</p><h1>Mesas</h1><p>Organiza la capacidad y disponibilidad del salón.</p></div>
+    <div class="heading-actions"><button class="quiet-button" type="button" (click)="loadTables()" [disabled]="loading()" aria-label="Actualizar mesas" title="Actualizar mesas">↻</button><button class="primary-button" type="button" (click)="openForm()">+ Agregar mesa</button></div>
+  </header>
+
+  @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
+  <section class="admin-section" aria-label="Mesas registradas">
+    <div class="admin-toolbar"><span>{{ tables().length }} mesas</span></div>
+    @if (loading()) { <div class="empty-state">Cargando mesas…</div> }
+    @else if (tables().length === 0) { <div class="empty-state">Aún no hay mesas registradas.</div> }
+    @else {
+      <div class="table-scroll"><table>
+        <thead><tr><th>Mesa</th><th>Capacidad</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody>
+          @for (table of tables(); track table.id) {
+            <tr><td><strong><span class="table-symbol" aria-hidden="true">▦</span> Mesa {{ table.table_number }}</strong></td><td>{{ table.capacity }} personas</td><td><span class="availability" [class.unavailable]="table.status !== 'disponible'">{{ table.status }}</span></td><td class="admin-actions"><button class="detail-button" type="button" (click)="openForm(table)">Editar</button><button class="detail-button danger-action" type="button" (click)="deleteTable(table)">Eliminar</button></td></tr>
+          }
+        </tbody>
+      </table></div>
+    }
+  </section>
+</section>
+
+@if (showForm()) {
+  <div class="modal-backdrop admin-backdrop" (click)="closeForm()">
+    <section class="admin-modal table-modal" role="dialog" aria-modal="true" aria-labelledby="table-form-title" (click)="$event.stopPropagation()">
+      <header class="modal-heading"><div><p class="eyebrow">SALÓN</p><h2 id="table-form-title">{{ tableId ? 'Editar mesa' : 'Nueva mesa' }}</h2></div><button class="quiet-button" type="button" (click)="closeForm()" aria-label="Cerrar">×</button></header>
+      <form class="admin-form" (ngSubmit)="saveTable()">
+        <div class="admin-form-grid"><label>Número de mesa<input name="tableNumber" type="number" min="1" step="1" required [(ngModel)]="tableNumber" /></label><label>Capacidad<input name="capacity" type="number" min="1" step="1" required [(ngModel)]="capacity" /></label></div>
+        <label>Estado<select name="status" [(ngModel)]="status">@for (option of statuses; track option) { <option [value]="option">{{ option }}</option> }</select></label>
+        <footer class="modal-footer"><button class="secondary-button" type="button" (click)="closeForm()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar mesa' }}</button></footer>
+      </form>
+    </section>
+  </div>
+}

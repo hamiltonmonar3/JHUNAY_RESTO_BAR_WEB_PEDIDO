@@ -1,0 +1,97 @@
+<section class="dashboard-page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">{{ today }}</p>
+      <h1>Resumen del día</h1>
+      <p class="page-subtitle">Ventas cobradas, pedidos activos y ocupación del salón.</p>
+    </div>
+    <a class="primary-action" routerLink="/pedidos"><span aria-hidden="true">+</span> Nuevo pedido</a>
+  </div>
+
+  <aside
+    class="connection-notice"
+    [class.is-connected]="databaseStatus() === 'connected'"
+    [class.is-error]="databaseStatus() === 'error'"
+    role="status"
+  >
+    <span class="notice-mark" aria-hidden="true">
+      {{ databaseStatus() === 'connected' ? '✓' : databaseStatus() === 'checking' ? '…' : '!' }}
+    </span>
+    @switch (databaseStatus()) {
+      @case ('not-configured') {
+        <div><strong>Falta configurar Supabase</strong><p>Agrega la publishable key en <code>src/environments/environment.ts</code>.</p></div>
+        <span class="notice-state">SIN CONFIGURAR</span>
+      }
+      @case ('checking') {
+        <div><strong>Probando acceso a la base de datos</strong><p>Consultando productos disponibles en Supabase…</p></div>
+        <span class="notice-state">CONECTANDO</span>
+      }
+      @case ('connected') {
+        <div><strong>Lectura de Supabase confirmada</strong><p>{{ availableProductCount() }} productos disponibles recibidos desde <code>products</code>.</p></div>
+        <span class="notice-state">CONECTADO</span>
+      }
+      @case ('error') {
+        <div><strong>La consulta a Supabase falló</strong><p>{{ databaseError() }} Revisa permisos y políticas RLS de <code>products</code>.</p></div>
+        <span class="notice-state">ERROR DE ACCESO</span>
+      }
+    }
+  </aside>
+
+  <div class="metric-grid" aria-label="Indicadores del restaurante">
+    <article class="metric-card">
+      <div class="metric-topline"><span>Pedidos activos</span><span class="metric-index">01</span></div>
+      <strong class="metric-value">{{ activeOrderCount() ?? '…' }}</strong>
+      <span class="metric-caption">Armados, en cocina o servidos</span>
+    </article>
+    <article class="metric-card metric-highlight">
+      <div class="metric-topline"><span>Ventas de hoy</span><span class="metric-index">02</span></div>
+      <strong class="metric-value">{{ todaySalesTotal() === null ? '…' : formatCurrency(todaySalesTotal() ?? 0) }}</strong>
+      <span class="metric-caption">{{ todaySalesCount() ?? 0 }} pedidos cobrados</span>
+    </article>
+    <article class="metric-card">
+      <div class="metric-topline"><span>Mesas ocupadas</span><span class="metric-index">03</span></div>
+      <strong class="metric-value">{{ occupiedTableCount() ?? '…' }}</strong>
+      <span class="metric-caption">Mesas ocupadas ahora</span>
+    </article>
+    <article class="metric-card">
+      <div class="metric-topline"><span>Productos activos</span><span class="metric-index">04</span></div>
+      <strong class="metric-value">{{ availableProductCount() ?? '…' }}</strong>
+      <span class="metric-caption">Disponibles en el menú</span>
+    </article>
+  </div>
+
+  <div class="dashboard-grid">
+    <section class="orders-panel" aria-labelledby="orders-heading">
+      <div class="section-heading"><div><p class="eyebrow">EN TIEMPO REAL</p><h2 id="orders-heading">Pedidos recientes</h2></div><a routerLink="/pedidos">Ver pedidos <span aria-hidden="true">→</span></a></div>
+      @if (recentOrders().length === 0 && databaseStatus() === 'connected') {
+        <div class="empty-state"><span class="empty-emblem" aria-hidden="true">J</span><strong>Aún no hay pedidos</strong><p>Los nuevos pedidos aparecerán aquí.</p></div>
+      } @else {
+        <div class="recent-orders-list">
+          @for (order of recentOrders(); track order.id) {
+            <a class="recent-order-row" routerLink="/pedidos">
+              <span class="recent-order-id">#{{ order.id }}</span>
+              <span class="recent-order-location">{{ orderLocation(order) }}</span>
+              <span class="status-pill" [class]="'status-pill status-' + order.status">{{ orderStatusLabel(order.status) }}</span>
+              <strong>{{ formatCurrency(order.total_amount) }}</strong>
+            </a>
+          } @empty {
+            <div class="empty-state">Cargando actividad…</div>
+          }
+        </div>
+      }
+    </section>
+
+    <aside class="quick-panel">
+      <p class="eyebrow">ACCESO RÁPIDO</p>
+      <h2>Áreas de trabajo</h2>
+      <a routerLink="/pedidos"><span>Pedidos y cocina</span><span aria-hidden="true">↗</span></a>
+      <a routerLink="/ventas"><span>Caja y ventas</span><span aria-hidden="true">↗</span></a>
+      @if (profile()?.role === 'admin') {
+        <a routerLink="/productos"><span>Administrar menú</span><span aria-hidden="true">↗</span></a>
+        <a routerLink="/mesas"><span>Administrar mesas</span><span aria-hidden="true">↗</span></a>
+        <a routerLink="/inventario"><span>Control de inventario</span><span aria-hidden="true">↗</span></a>
+      }
+      <div class="quick-note"><span class="quick-note-line"></span>El resumen se actualiza con los datos de hoy.</div>
+    </aside>
+  </div>
+</section>

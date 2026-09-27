@@ -1,0 +1,107 @@
+<section class="sales-page">
+  <header class="module-heading">
+    <div><p class="eyebrow">CAJA · CIERRE DIARIO</p><h1>Ventas</h1><p>Consulta pagos y registra cobros de pedidos servidos.</p></div>
+    <div class="heading-actions">
+      <button class="quiet-button" type="button" (click)="signOut()" aria-label="Cerrar sesión" title="Cerrar sesión">↪</button>
+    </div>
+  </header>
+
+  <form class="sales-toolbar" (ngSubmit)="loadSales()">
+    <label for="sales-date">Fecha de venta</label>
+    <input id="sales-date" name="salesDate" type="date" [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />
+    <button class="primary-button" type="submit" [disabled]="loading()">Consultar</button>
+    @if (profile()) { <span class="staff-label">{{ profile()?.full_name }}</span> }
+  </form>
+
+  @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
+  @if (paymentMessage()) { <div class="success-banner" role="status">{{ paymentMessage() }}</div> }
+
+  <div class="sales-metrics">
+    <article><span>Ventas cobradas</span><strong>{{ loading() ? '…' : formatCurrency(totalSales()) }}</strong><small>{{ paidOrders().length }} pedidos pagados</small></article>
+    <article><span>Promedio por pedido</span><strong>{{ loading() ? '…' : formatCurrency(averageSale()) }}</strong><small>En la fecha seleccionada</small></article>
+    <article class="metric-accent"><span>Por cobrar</span><strong>{{ servedOrders().length }}</strong><small>Pedidos servidos</small></article>
+  </div>
+
+  <section class="sales-section">
+    <div class="section-title"><div><p class="eyebrow">PENDIENTES DE COBRO</p><h2>Pedidos servidos</h2></div>
+      @if (canCollect()) {
+        <label class="payment-method">Método
+          <select [ngModel]="selectedPaymentMethod()" (ngModelChange)="selectedPaymentMethod.set($event)" name="paymentMethod">
+            <option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="transferencia">Transferencia</option>
+          </select>
+        </label>
+      }
+    </div>
+    @if (loading()) {
+      <div class="empty-state">Cargando pedidos por cobrar…</div>
+    } @else if (servedOrders().length === 0) {
+      <div class="empty-state">No hay pedidos servidos pendientes de cobro.</div>
+    } @else {
+      <div class="table-scroll"><table>
+        <thead><tr><th>Pedido</th><th>Mesa</th><th>Hora</th><th class="numeric">Total</th><th>Detalle</th>@if (canCollect()) { <th></th> }</tr></thead>
+        <tbody>
+          @for (order of servedOrders(); track order.id) {
+            <tr><td class="order-number">#{{ order.id }}</td><td>{{ locationLabel(order) }}</td><td>{{ formatDate(order.created_at) }}</td><td class="numeric amount">{{ formatCurrency(order.total_amount) }}</td>
+              <td><button class="detail-button" type="button" (click)="showServedDetails(order)">Ver desglose</button></td>
+              @if (canCollect()) { <td class="numeric"><button class="row-action" type="button" [disabled]="payingOrderId() === order.id" (click)="collectPayment(order)">{{ payingOrderId() === order.id ? 'Procesando…' : 'Registrar cobro' }}</button></td> }
+            </tr>
+          }
+        </tbody>
+      </table></div>
+    }
+  </section>
+
+  <div class="history-grid">
+    <section class="sales-section">
+      <div class="section-title"><div><p class="eyebrow">POR MÉTODO</p><h2>Forma de pago</h2></div></div>
+      @if (paymentBreakdown().length === 0) {
+        <div class="empty-state compact">Sin pagos registrados en esta fecha.</div>
+      } @else {
+        <div class="method-list">
+          @for (group of paymentBreakdown(); track group.method) {
+            <div><span>{{ group.method }}<small>{{ group.count }} pedidos</small></span><strong>{{ formatCurrency(group.total) }}</strong></div>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="sales-section sales-history">
+      <div class="section-title"><div><p class="eyebrow">HISTORIAL</p><h2>Pagos del día</h2></div><span class="result-count">{{ paidOrders().length }} registros</span></div>
+      @if (paidOrders().length === 0) {
+        <div class="empty-state compact">No hay ventas pagadas en esta fecha.</div>
+      } @else {
+        <div class="table-scroll"><table><thead><tr><th>Pedido</th><th>Hora</th><th>Método</th><th class="numeric">Total</th><th>Detalle</th></tr></thead><tbody>
+          @for (sale of paidOrders(); track sale.id) {
+            <tr><td class="order-number">#{{ sale.id }}</td><td>{{ formatDate(sale.paid_at) }}</td><td>{{ sale.payment_method || '—' }}</td><td class="numeric amount">{{ formatCurrency(sale.total_amount) }}</td><td><button class="detail-button" type="button" (click)="showSaleDetails(sale)">Ver desglose</button></td></tr>
+          }
+        </tbody></table></div>
+      }
+    </section>
+  </div>
+</section>
+
+@if (selectedDetail(); as order) {
+  <div class="modal-backdrop detail-backdrop" (click)="closeDetails()">
+    <section class="order-detail-modal" role="dialog" aria-modal="true" [attr.aria-labelledby]="'sale-detail-title-' + order.id" (click)="$event.stopPropagation()">
+      <header class="modal-heading detail-heading">
+        <div><p class="eyebrow">{{ order.status === 'Pagado' ? 'DESGLOSE DE VENTA' : 'DESGLOSE DEL PEDIDO' }}</p><h2 [id]="'sale-detail-title-' + order.id">Pedido #{{ order.id }}</h2></div>
+        <button class="quiet-button" type="button" (click)="closeDetails()" aria-label="Cerrar detalle">×</button>
+      </header>
+      <div class="detail-meta"><span>{{ order.status }}</span><span>{{ formatDate(order.date) }}</span>@if (order.paymentMethod) { <span>Método: {{ order.paymentMethod }}</span> }</div>
+      @if (detailError()) { <div class="error-banner" role="alert">{{ detailError() }}</div> }
+      @if (detailLoading()) {
+        <div class="empty-state">Cargando desglose…</div>
+      } @else if (detailItems().length === 0) {
+        <div class="empty-state">Este pedido no tiene productos detallados.</div>
+      } @else {
+        <div class="detail-items">
+          <div class="detail-line detail-line-heading"><span>Producto</span><span>Cant.</span><span>Precio</span><span>Subtotal</span></div>
+          @for (item of detailItems(); track item.id) {
+            <div class="detail-line"><span class="detail-product">{{ productName(item) }}@if (item.notes) { <small>{{ item.notes }}</small> }</span><span>{{ item.quantity }}</span><span>{{ formatCurrency(item.unit_price) }}</span><strong>{{ formatCurrency(item.subtotal) }}</strong></div>
+          }
+        </div>
+      }
+      <footer class="detail-total"><span>Total del pedido</span><strong>{{ formatCurrency(order.totalAmount) }}</strong></footer>
+    </section>
+  </div>
+}

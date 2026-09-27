@@ -1,0 +1,2 @@
+[functions.login-with-pin]
+verify_jwt = false

@@ -1,0 +1,42 @@
+.admin-page { display: grid; gap: 18px; }
+.admin-section { min-width: 0; border: 1px solid var(--line); background: var(--paper); }
+.admin-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.admin-tabs button { min-height: 40px; padding: 0 13px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
+.admin-tabs button.active { border-bottom-color: var(--orange); color: var(--ink); }
+.admin-tabs span { margin-left: 5px; color: #ffad74; font-size: 10px; }
+.admin-toolbar { display: flex; align-items: center; gap: 9px; min-height: 58px; padding: 10px 14px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+.admin-toolbar input, .admin-toolbar select { min-width: 150px; height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 3px; background: #211a16; color: var(--ink); font: inherit; font-size: 12px; }
+.admin-toolbar input { flex: 1; }
+.admin-toolbar .primary-button { margin-left: auto; white-space: nowrap; }
+.admin-page td { height: 58px; }
+.cell-description { display: block; max-width: 300px; overflow: hidden; margin-top: 3px; color: var(--muted); font-size: 10px; text-overflow: ellipsis; }
+.availability { color: #ffad74; font-size: 11px; }
+.availability.unavailable { color: #d18a7a; }
+.admin-actions { display: flex; gap: 12px; }
+.danger-action { color: #e98f75; }
+.empty-cell { height: 70px; color: var(--muted); text-align: center; }
+.admin-backdrop { z-index: 10; }
+.admin-modal { width: min(100%, 560px); max-height: 90dvh; overflow-y: auto; padding: 22px; border: 1px solid var(--line); background: var(--paper); box-shadow: 0 18px 60px #0008; }
+.category-modal { width: min(100%, 440px); }
+.admin-form { display: grid; gap: 13px; }
+.admin-form label { display: grid; gap: 6px; color: #d5c8bd; font-size: 11px; font-weight: 600; }
+.admin-form input:not([type=checkbox]), .admin-form select, .admin-form textarea { width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid var(--line); border-radius: 3px; background: #211a16; color: var(--ink); font: inherit; font-size: 12px; }
+.admin-form input:not([type=checkbox]), .admin-form select { height: 38px; }
+.admin-form textarea { resize: vertical; }
+.admin-form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.admin-form label.admin-check { display: flex; align-items: center; gap: 9px; }
+.admin-check input { accent-color: var(--orange); }
+.admin-form .modal-footer { justify-content: end; padding-top: 8px; }
+
+@media (max-width: 720px) {
+  .admin-toolbar { flex-wrap: wrap; }
+  .admin-toolbar input, .admin-toolbar select { flex: 1 1 140px; min-width: 0; }
+  .admin-toolbar .primary-button { margin-left: 0; }
+  .admin-page .table-scroll table { min-width: 760px; }
+}
+
+@media (max-width: 460px) {
+  .admin-modal { width: 100%; max-height: 94dvh; padding: 18px; border-radius: 8px 8px 0 0; }
+  .admin-backdrop { align-items: end; padding: 0; }
+  .admin-form-grid { grid-template-columns: 1fr; }
+}
