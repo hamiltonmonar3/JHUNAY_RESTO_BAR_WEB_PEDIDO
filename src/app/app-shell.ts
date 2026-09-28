@@ -2,6 +2,7 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { environment } from '../environments/environment';
 import { AuthService, StaffProfile } from './core/auth/auth.service';
+import { ThemeService } from './core/theme/theme.service';
 
 @Component({
   imports: [RouterLink, RouterLinkActive, RouterOutlet],
@@ -11,6 +12,7 @@ import { AuthService, StaffProfile } from './core/auth/auth.service';
 })
 export class AppShell implements OnInit {
   private readonly auth = inject(AuthService);
+  protected readonly theme = inject(ThemeService);
   protected readonly supabaseConfigured = Boolean(environment.supabaseAnonKey);
   protected readonly profile = signal<StaffProfile | null>(null);
   private readonly navigation = [

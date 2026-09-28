@@ -107,4 +107,26 @@ export class OrdersService {
     });
     if (error) throw error;
   }
+
+async cancelOrder(orderId: number): Promise<void> {
+  const client = this.supabase.client;
+  if (!client) throw new Error('Configura Supabase antes de cancelar pedidos.');
+
+  const { data, error } = await client
+    .from('orders')
+    .update({ status: 'cancelado' })
+    .eq('id', orderId)
+    .eq('status', 'armado')   // ← solo si sigue en armado
+    .select('id, status')
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error al cancelar pedido:', error);
+    throw new Error(error.message || 'No se pudo cancelar el pedido.');
+  }
+
+  if (!data) {
+    throw new Error('El pedido no se puede cancelar porque ya no está en estado Armado.');
+  }
+}
 }

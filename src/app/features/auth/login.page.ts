@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { ThemeService } from '../../core/theme/theme.service';
 
 @Component({
   imports: [FormsModule],
@@ -13,6 +14,7 @@ export class LoginPage {
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  protected readonly theme = inject(ThemeService);
   protected readonly pending = signal(false);
   protected readonly errorMessage = signal('');
   protected username = '';

@@ -12,8 +12,10 @@ export const staffGuard: CanActivateFn = async (_route, state) => {
       return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
     }
 
-    if (await auth.getActiveStaffProfile()) return true;
-    await auth.signOut();
+    const profile = await auth.getActiveStaffProfile();
+    if (profile) return true;
+
+    // NO llamamos a auth.signOut() aquí para evitar destruir la sesión por un falso positivo
     return router.createUrlTree(['/login'], { queryParams: { setup: 'staff' } });
   } catch {
     return router.createUrlTree(['/login'], { queryParams: { setup: 'migration' } });

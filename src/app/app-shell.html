@@ -5,14 +5,56 @@
       <span class="brand-copy"><strong>JHUNAY</strong><small>RESTO BAR</small></span>
     </a>
 
-    <div class="nav-label">OPERACIÓN</div>
-    <nav class="primary-nav" aria-label="Navegación principal">
-      @for (item of visibleNavigation(); track item.path) {
-        <a [routerLink]="item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-          <span class="nav-dot" aria-hidden="true"></span>{{ item.label }}
+    <!-- CATEGORÍA 1: OPERACIÓN DIARIA -->
+    <div class="nav-category-group">
+      <div class="nav-label">Operación Diaria</div>
+      <nav class="primary-nav" aria-label="Navegación Operación Diaria">
+        <!-- Resumen -->
+        <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          <span class="nav-icon" aria-hidden="true">📊</span>
+          <span class="nav-text">Resumen</span>
         </a>
-      }
-    </nav>
+        <!-- Pedidos con Badge -->
+        <a routerLink="/pedidos" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          <span class="nav-icon" aria-hidden="true">🛍️</span>
+          <span class="nav-text">Pedidos</span>
+          <span class="nav-badge accent">5</span>
+        </a>
+        <!-- Mesas con Badge -->
+        <a routerLink="/mesas" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          <span class="nav-icon" aria-hidden="true">🪑</span>
+          <span class="nav-text">Mesas</span>
+          <span class="nav-badge success">4 libres</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- CATEGORÍA 2: ADMINISTRACIÓN -->
+    <div class="nav-category-group" style="margin-top: 18px;">
+      <div class="nav-label">Administración</div>
+      <nav class="primary-nav" aria-label="Navegación Administración">
+        <!-- Ventas -->
+        <a routerLink="/ventas" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          <span class="nav-icon" aria-hidden="true">💳</span>
+          <span class="nav-text">Ventas</span>
+        </a>
+        <!-- Menú -->
+        <a routerLink="/productos" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          <span class="nav-icon" aria-hidden="true">🍔</span>
+          <span class="nav-text">Menú</span>
+        </a>
+        <!-- Inventario -->
+        <a routerLink="/inventario" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          <span class="nav-icon" aria-hidden="true">📦</span>
+          <span class="nav-text">Inventario</span>
+        </a>
+        <!-- Personal -->
+        <a routerLink="/personal" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          <span class="nav-icon" aria-hidden="true">👥</span>
+          <span class="nav-text">Personal</span>
+        </a>
+      </nav>
+    </div>
 
     <div class="sidebar-footer">
       <span class="status-indicator" [class.is-configured]="supabaseConfigured" aria-hidden="true"></span>
@@ -25,8 +67,21 @@
 
   <div class="workspace">
     <header class="topbar">
-      <div class="topbar-brand"><strong class="topbar-wordmark">JHUNAY</strong><span class="breadcrumb-divider">/</span><span class="topbar-section">OPERACIÓN</span></div>
-      <div class="topbar-user"><span class="user-avatar">{{ userInitials() }}</span><span class="user-identity"><strong>{{ displayName() }}</strong><small>{{ displayRole() }}</small></span></div>
+      <div class="topbar-brand">
+        <strong class="topbar-wordmark">JHUNAY</strong>
+        <span class="breadcrumb-divider">/</span>
+        <span class="topbar-section">OPERACIÓN</span>
+      </div>
+      <div class="topbar-user">
+        <button class="theme-toggle" type="button" (click)="theme.toggle()" [attr.aria-label]="theme.mode() === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'" [title]="theme.mode() === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'">
+          {{ theme.mode() === 'dark' ? '☼' : '☾' }}
+        </button>
+        <span class="user-avatar">{{ userInitials() }}</span>
+        <span class="user-identity">
+          <strong>{{ displayName() }}</strong>
+          <small>{{ displayRole() }}</small>
+        </span>
+      </div>
     </header>
     <main class="main-content">
       <router-outlet />

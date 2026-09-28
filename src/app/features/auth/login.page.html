@@ -1,4 +1,7 @@
-<main class="login-screen">
+<!-- Agregamos la clase dinámica aquí en el <main> -->
+<main class="login-screen" [class.light-mode]="theme.mode() !== 'dark'">
+  <button class="theme-toggle login-theme-toggle" type="button" (click)="theme.toggle()" [attr.aria-label]="theme.mode() === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'" [title]="theme.mode() === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'">{{ theme.mode() === 'dark' ? '☼' : '☾' }}</button>
+  
   <section class="login-content">
     <section class="login-panel" aria-label="Acceso de personal">
       <div class="login-brand-lockup">
@@ -18,13 +21,27 @@
       }
 
       <form (ngSubmit)="submit()">
-        <label for="username">Usuario</label>
-        <input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" [(ngModel)]="username" required />
-        <label for="pin">PIN</label>
-        <input id="pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]{6,12}" minlength="6" maxlength="12" autocomplete="current-password" [(ngModel)]="pin" required />
-        <p class="pin-hint">PIN numérico de 6 a 12 dígitos.</p>
+        <div class="login-field">
+          <label for="username">USUARIO</label>
+          <div class="input-wrapper">
+            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" placeholder="Ej. c.cabrera" [(ngModel)]="username" required />
+          </div>
+        </div>
+
+        <div class="login-field">
+          <label for="pin">PIN DE ACCESO</label>
+          <div class="input-wrapper">
+            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <input id="pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]{6,12}" minlength="6" maxlength="12" autocomplete="current-password" placeholder="••••••" [(ngModel)]="pin" required />
+          </div>
+          <p class="pin-hint">
+            <span class="hint-icon">ⓘ</span> PIN numérico de 6 a 12 dígitos.
+          </p>
+        </div>
+
         <button class="login-button" type="submit" [disabled]="pending() || !username || pin.length < 6">
-          {{ pending() ? 'Validando…' : 'Ingresar' }}
+          {{ pending() ? 'Validando…' : 'Ingresar →' }}
         </button>
       </form>
     </section>
