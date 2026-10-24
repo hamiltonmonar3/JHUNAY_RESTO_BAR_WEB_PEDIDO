@@ -14,11 +14,17 @@ export class LoginPage {
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  protected readonly theme = inject(ThemeService);
+    protected readonly theme = inject(ThemeService);
   protected readonly pending = signal(false);
+  protected readonly showPin = signal(false);
   protected readonly errorMessage = signal('');
   protected username = '';
   protected pin = '';
+
+  protected togglePin(): void {
+    this.showPin.update((v) => !v);
+  }
+
 
   protected get setupMessage(): string {
     if (this.route.snapshot.queryParamMap.get('setup') === 'migration') {
@@ -38,7 +44,7 @@ export class LoginPage {
       const profile = await this.auth.signIn(this.username.trim(), this.pin);
       const requestedUrl = this.route.snapshot.queryParamMap.get('returnUrl');
       const returnUrl = requestedUrl?.startsWith('/') && !requestedUrl.startsWith('//') ? requestedUrl : null;
-      await this.router.navigateByUrl(returnUrl ?? (profile.role === 'mesero' ? '/pedidos' : '/ventas'));
+      await this.router.navigateByUrl(returnUrl ?? (profile.role === 'Operador' ? '/pedidos' : '/ventas'));
     } catch (error) {
       this.errorMessage.set(error instanceof Error ? error.message : 'No se pudo iniciar sesión.');
     } finally {

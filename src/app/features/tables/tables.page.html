@@ -1,6 +1,6 @@
 <section class="admin-page">
   <header class="module-heading">
-    <div><p class="eyebrow">ADMINISTRACIÓN · SALÓN</p><h1>Mesas</h1><p>Organiza la capacidad y disponibilidad del salón.</p></div>
+    <div><h1>Mesas</h1><p>Organiza la capacidad y disponibilidad del salón.</p></div>
     <div class="heading-actions"><button class="quiet-button" type="button" (click)="loadTables()" [disabled]="loading()" aria-label="Actualizar mesas" title="Actualizar mesas">↻</button><button class="primary-button" type="button" (click)="openForm()">+ Agregar mesa</button></div>
   </header>
 
@@ -25,7 +25,7 @@
 @if (showForm()) {
   <div class="modal-backdrop admin-backdrop" (click)="closeForm()">
     <section class="admin-modal table-modal" role="dialog" aria-modal="true" aria-labelledby="table-form-title" (click)="$event.stopPropagation()">
-      <header class="modal-heading"><div><p class="eyebrow">SALÓN</p><h2 id="table-form-title">{{ tableId ? 'Editar mesa' : 'Nueva mesa' }}</h2></div><button class="quiet-button" type="button" (click)="closeForm()" aria-label="Cerrar">×</button></header>
+      <header class="modal-heading"><div><h2 id="table-form-title">{{ tableId ? 'Editar mesa' : 'Nueva mesa' }}</h2></div><button class="quiet-button close-top" type="button" (click)="closeForm()" aria-label="Cerrar">×</button></header>
       <form class="admin-form" (ngSubmit)="saveTable()">
         <div class="admin-form-grid"><label>Número de mesa<input name="tableNumber" type="number" min="1" step="1" required [(ngModel)]="tableNumber" /></label><label>Capacidad<input name="capacity" type="number" min="1" step="1" required [(ngModel)]="capacity" /></label></div>
         <label>Estado<select name="status" [(ngModel)]="status">@for (option of statuses; track option) { <option [value]="option">{{ option }}</option> }</select></label>

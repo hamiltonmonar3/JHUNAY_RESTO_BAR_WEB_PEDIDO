@@ -9,8 +9,8 @@
 .admin-backdrop { z-index: 10; }
 .admin-modal { width: min(100%, 460px); padding: 22px; border: 1px solid var(--line); background: var(--paper); box-shadow: 0 18px 60px #0008; }
 .admin-form { display: grid; gap: 14px; }
-.admin-form label { display: grid; gap: 6px; color: #d5c8bd; font-size: 11px; font-weight: 600; }
-.admin-form input, .admin-form select { width: 100%; min-width: 0; height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 3px; background: #211a16; color: var(--ink); font: inherit; font-size: 12px; }
+.admin-form label { display: grid; gap: 6px; color: var(--muted); font-size: 11px; font-weight: 600; }
+.admin-form input, .admin-form select { width: 100%; min-width: 0; height: 38px; padding: 0 10px; border: 1px solid var(--control-border); border-radius: 3px; background: var(--control-bg); color: var(--control-text); font: inherit; font-size: 12px; }
 .admin-form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
 .admin-form .modal-footer { justify-content: end; padding-top: 8px; }
 

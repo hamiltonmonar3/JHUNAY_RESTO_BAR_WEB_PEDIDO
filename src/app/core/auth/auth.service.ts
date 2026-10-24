@@ -59,7 +59,7 @@ export class AuthService {
   async signIn(username: string, pin: string): Promise<StaffProfile> {
     const client = this.supabase.client;
     if (!client) throw new Error('Configura la clave pública de Supabase antes de ingresar.');
-    if (!/^\d{6,12}$/.test(pin)) throw new Error('Usa un PIN numérico de 6 a 12 dígitos y no reutilices PIN de prueba.');
+    if (!/^[A-Za-z0-9]{6,12}$/.test(pin)) throw new Error('Usa una clave alfanumérica de 6 a 12 caracteres y no reutilices una clave de prueba.');
 
     const { data, error } = await client.functions.invoke('login-with-pin', {
       body: { username: username.trim(), pin },

@@ -1,6 +1,6 @@
 <section class="admin-page">
   <header class="module-heading">
-    <div><p class="eyebrow">ADMINISTRACIÓN · CATÁLOGO</p><h1>Menú</h1><p>Administra categorías, productos, precios y existencias.</p></div>
+    <div><h1>Menú</h1><p>Administra categorías, productos, precios y existencias.</p></div>
     <button class="quiet-button" type="button" (click)="loadMenu()" [disabled]="loading()" aria-label="Actualizar menú" title="Actualizar menú">↻</button>
   </header>
 
@@ -9,6 +9,7 @@
   <div class="admin-tabs" role="tablist" aria-label="Secciones del menú">
     <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'products'" [class.active]="activeTab() === 'products'" (click)="activeTab.set('products')">Productos <span>{{ products().length }}</span></button>
     <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'categories'" [class.active]="activeTab() === 'categories'" (click)="activeTab.set('categories')">Categorías <span>{{ categories().length }}</span></button>
+    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'promotions'" [class.active]="activeTab() === 'promotions'" (click)="activeTab.set('promotions')">Promociones <span>{{ promotions().length }}</span></button>
   </div>
 
   @if (activeTab() === 'products') {
@@ -42,7 +43,7 @@
         </table></div>
       }
     </section>
-  } @else {
+  } @else if (activeTab() === 'categories') {
     <section class="admin-section" aria-label="Categorías">
       <div class="admin-toolbar"><span>{{ categories().length }} categorías</span><button class="primary-button" type="button" (click)="openCategoryForm()">+ Agregar categoría</button></div>
       @if (loading()) { <div class="empty-state">Cargando categorías…</div> }
@@ -57,13 +58,36 @@
         </table></div>
       }
     </section>
+  } @else {
+    <section class="admin-section" aria-label="Promociones">
+      <div class="admin-toolbar"><span>{{ promotions().length }} promociones</span><button class="primary-button" type="button" (click)="openPromotionForm()">+ Agregar promoción</button></div>
+      @if (loading()) { <div class="empty-state">Cargando promociones…</div> }
+      @else if (promotions().length === 0) { <div class="empty-state">Aún no hay promociones.</div> }
+      @else {
+        <div class="table-scroll"><table>
+          <thead><tr><th>Promoción</th><th>Aplica a</th><th class="numeric">Descuento</th><th>Vigencia</th><th>Activa</th><th>Acciones</th></tr></thead>
+          <tbody>
+            @for (promotion of promotions(); track promotion.id) {
+              <tr>
+                <td><strong>{{ promotion.name }}</strong><small class="cell-description">{{ promotion.description || 'Sin descripción' }}</small></td>
+                <td>{{ promotionTargetLabel(promotion) }}</td>
+                <td class="numeric amount">{{ promotionDiscountLabel(promotion) }}</td>
+                <td>{{ promotion.start_date || '—' }} / {{ promotion.end_date || '—' }}</td>
+                <td><span class="availability" [class.unavailable]="!promotion.is_active">{{ promotion.is_active ? 'Sí' : 'No' }}</span></td>
+                <td class="admin-actions"><button class="detail-button" type="button" (click)="openPromotionForm(promotion)">Editar</button><button class="detail-button danger-action" type="button" (click)="deletePromotion(promotion)">Eliminar</button></td>
+              </tr>
+            }
+          </tbody>
+        </table></div>
+      }
+    </section>
   }
 </section>
 
 @if (showProductForm()) {
   <div class="modal-backdrop admin-backdrop" (click)="closeForms()">
     <section class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="product-form-title" (click)="$event.stopPropagation()">
-      <header class="modal-heading"><div><p class="eyebrow">MENÚ</p><h2 id="product-form-title">{{ productId ? 'Editar producto' : 'Nuevo producto' }}</h2></div><button class="quiet-button" type="button" (click)="closeForms()" aria-label="Cerrar">×</button></header>
+      <header class="modal-heading"><div><h2 id="product-form-title">{{ productId ? 'Editar producto' : 'Nuevo producto' }}</h2></div><button class="quiet-button close-top" type="button" (click)="closeForms()" aria-label="Cerrar">×</button></header>
       @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
       <form class="admin-form" (ngSubmit)="saveProduct()">
         <label>Nombre<input name="productName" required maxlength="150" [(ngModel)]="productName" /></label>
@@ -82,12 +106,40 @@
 @if (showCategoryForm()) {
   <div class="modal-backdrop admin-backdrop" (click)="closeForms()">
     <section class="admin-modal category-modal" role="dialog" aria-modal="true" aria-labelledby="category-form-title" (click)="$event.stopPropagation()">
-      <header class="modal-heading"><div><p class="eyebrow">MENÚ</p><h2 id="category-form-title">{{ categoryId ? 'Editar categoría' : 'Nueva categoría' }}</h2></div><button class="quiet-button" type="button" (click)="closeForms()" aria-label="Cerrar">×</button></header>
+      <header class="modal-heading"><div><h2 id="category-form-title">{{ categoryId ? 'Editar categoría' : 'Nueva categoría' }}</h2></div><button class="quiet-button close-top" type="button" (click)="closeForms()" aria-label="Cerrar">×</button></header>
       @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
       <form class="admin-form" (ngSubmit)="saveCategory()">
         <label>Nombre<input name="categoryName" required maxlength="100" [(ngModel)]="categoryName" /></label>
         <label>Descripción<textarea name="categoryDescription" rows="3" [(ngModel)]="categoryDescription"></textarea></label>
         <footer class="modal-footer"><button class="secondary-button" type="button" (click)="closeForms()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar categoría' }}</button></footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (showPromotionForm()) {
+  <div class="modal-backdrop admin-backdrop" (click)="closeForms()">
+    <section class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="promotion-form-title" (click)="$event.stopPropagation()">
+      <header class="modal-heading"><div><h2 id="promotion-form-title">{{ promotionId ? 'Editar promoción' : 'Nueva promoción' }}</h2></div><button class="quiet-button close-top" type="button" (click)="closeForms()" aria-label="Cerrar">×</button></header>
+      @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
+      <form class="admin-form" (ngSubmit)="savePromotion()">
+        <label>Nombre<input name="promotionName" required maxlength="150" [(ngModel)]="promotionName" /></label>
+        <label>Descripción<textarea name="promotionDescription" rows="2" [(ngModel)]="promotionDescription"></textarea></label>
+        <div class="admin-form-grid">
+          <label>Tipo de descuento<select name="promotionDiscountType" [(ngModel)]="promotionDiscountType"><option value="percentage">Porcentaje (%)</option><option value="fixed">Monto fijo (S/)</option></select></label>
+          <label>Valor<input name="promotionDiscountValue" type="number" min="0.01" step="0.01" required [(ngModel)]="promotionDiscountValue" /></label>
+        </div>
+        <div class="admin-form-grid">
+          <label>Producto específico<select name="promotionProductId" [(ngModel)]="promotionProductId"><option value="">— Ninguno —</option>@for (product of products(); track product.id) { <option [value]="product.id">{{ product.name }}</option> }</select></label>
+          <label>O categoría completa<select name="promotionCategoryId" [(ngModel)]="promotionCategoryId"><option value="">— Ninguna —</option>@for (category of categories(); track category.id) { <option [value]="category.id">{{ category.name }}</option> }</select></label>
+        </div>
+        <p class="field-hint">Elige solo un producto o solo una categoría. La promoción queda guardada como referencia y no modifica pedidos ni ventas.</p>
+        <div class="admin-form-grid">
+          <label>Desde<input name="promotionStartDate" type="date" [(ngModel)]="promotionStartDate" /></label>
+          <label>Hasta<input name="promotionEndDate" type="date" [(ngModel)]="promotionEndDate" /></label>
+        </div>
+        <label class="admin-check"><input name="promotionActive" type="checkbox" [(ngModel)]="promotionActive" /> Promoción activa</label>
+        <footer class="modal-footer"><button class="secondary-button" type="button" (click)="closeForms()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar promoción' }}</button></footer>
       </form>
     </section>
   </div>

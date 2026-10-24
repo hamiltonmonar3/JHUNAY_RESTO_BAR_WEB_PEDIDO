@@ -1,6 +1,6 @@
 <section class="admin-page">
   <header class="module-heading">
-    <div><p class="eyebrow">ADMINISTRACIÓN · ACCESOS</p><h1>Personal</h1><p>Gestiona perfiles, roles y estado de acceso.</p></div>
+    <div><h1>Personal</h1><p>Gestiona perfiles, roles y estado de acceso.</p></div>
     <button class="quiet-button" type="button" (click)="loadStaff()" [disabled]="loading()" aria-label="Actualizar personal" title="Actualizar personal">↻</button>
   </header>
   @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
@@ -40,7 +40,7 @@
 @if (showPersonForm()) {
   <div class="modal-backdrop admin-backdrop" (click)="closeForms()">
     <section class="admin-modal staff-modal" role="dialog" aria-modal="true" aria-labelledby="staff-form-title" (click)="$event.stopPropagation()">
-      <header class="modal-heading"><div><p class="eyebrow">PERSONAL</p><h2 id="staff-form-title">{{ personId ? 'Editar perfil' : 'Nuevo perfil' }}</h2></div><button class="quiet-button" type="button" (click)="closeForms()" aria-label="Cerrar">×</button></header>
+      <header class="modal-heading"><div><h2 id="staff-form-title">{{ personId ? 'Editar perfil' : 'Nuevo perfil' }}</h2></div><button class="quiet-button close-top" type="button" (click)="closeForms()" aria-label="Cerrar">×</button></header>
       <p class="staff-auth-note">El PIN se administra en Supabase Auth. Crea allí una cuenta confirmada con el mismo correo para vincularla a este perfil.</p>
       <form class="admin-form" (ngSubmit)="savePerson()">
         <label>Nombre completo<input name="fullName" required maxlength="150" [(ngModel)]="personName" /></label>
@@ -57,7 +57,7 @@
 @if (showRoleForm()) {
   <div class="modal-backdrop admin-backdrop" (click)="closeForms()">
     <section class="admin-modal role-modal" role="dialog" aria-modal="true" aria-labelledby="role-form-title" (click)="$event.stopPropagation()">
-      <header class="modal-heading"><div><p class="eyebrow">PERSONAL</p><h2 id="role-form-title">{{ roleId ? 'Editar rol' : 'Nuevo rol' }}</h2></div><button class="quiet-button" type="button" (click)="closeForms()" aria-label="Cerrar">×</button></header>
+      <header class="modal-heading"><div><h2 id="role-form-title">{{ roleId ? 'Editar rol' : 'Nuevo rol' }}</h2></div><button class="quiet-button close-top" type="button" (click)="closeForms()" aria-label="Cerrar">×</button></header>
       <form class="admin-form" (ngSubmit)="saveRole()">
         <label>Nombre<input name="roleName" required maxlength="50" [(ngModel)]="roleName" /></label>
         <label>Descripción<textarea name="roleDescription" rows="3" [(ngModel)]="roleDescription"></textarea></label>

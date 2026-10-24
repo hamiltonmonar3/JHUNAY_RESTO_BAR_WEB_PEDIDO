@@ -23,9 +23,9 @@ export class ThemeService {
 
   private readSavedTheme(): ThemeMode {
     try {
-      return localStorage.getItem('jhunay-theme') === 'light' ? 'light' : 'dark';
+      return localStorage.getItem('jhunay-theme') === 'dark' ? 'dark' : 'light';
     } catch {
-      return 'dark';
+      return 'light';
     }
   }
 

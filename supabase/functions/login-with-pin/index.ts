@@ -20,7 +20,7 @@ Deno.serve(async (request) => {
   const input = await request.json().catch(() => null);
   const username = typeof input?.username === 'string' ? input.username.trim() : '';
   const pin = typeof input?.pin === 'string' ? input.pin : '';
-  if (!username || !/^\d{6,12}$/.test(pin)) {
+  if (!username || !/^[A-Za-z0-9]{6,12}$/.test(pin)) {
     return respond({ error: 'Usuario o PIN incorrectos.' }, 401);
   }
 

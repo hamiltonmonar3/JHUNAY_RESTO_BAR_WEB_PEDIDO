@@ -1,8 +1,8 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MenuCategory, MenuProduct, MenuService } from './menu.service';
+import { MenuCategory, MenuProduct, MenuPromotion, MenuService, PromotionDiscountType } from './menu.service';
 
-type MenuTab = 'products' | 'categories';
+type MenuTab = 'products' | 'categories' | 'promotions';
 
 @Component({
   imports: [FormsModule],
@@ -17,11 +17,13 @@ export class MenuPage implements OnInit {
   protected readonly activeTab = signal<MenuTab>('products');
   protected readonly categories = signal<MenuCategory[]>([]);
   protected readonly products = signal<MenuProduct[]>([]);
+  protected readonly promotions = signal<MenuPromotion[]>([]);
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly errorMessage = signal('');
   protected readonly showProductForm = signal(false);
   protected readonly showCategoryForm = signal(false);
+  protected readonly showPromotionForm = signal(false);
   protected readonly search = signal('');
   protected readonly categoryFilter = signal('');
   protected readonly filteredProducts = computed(() => {
@@ -47,6 +49,17 @@ export class MenuPage implements OnInit {
   protected categoryName = '';
   protected categoryDescription = '';
 
+  protected promotionId: number | null = null;
+  protected promotionName = '';
+  protected promotionDescription = '';
+  protected promotionDiscountType: PromotionDiscountType = 'percentage';
+  protected promotionDiscountValue = 0;
+  protected promotionProductId = '';
+  protected promotionCategoryId = '';
+  protected promotionStartDate = '';
+  protected promotionEndDate = '';
+  protected promotionActive = true;
+
   ngOnInit(): void {
     void this.loadMenu();
   }
@@ -55,12 +68,14 @@ export class MenuPage implements OnInit {
     this.loading.set(true);
     this.errorMessage.set('');
     try {
-      const [categories, products] = await Promise.all([
+      const [categories, products, promotions] = await Promise.all([
         this.menuService.listCategories(),
         this.menuService.listProducts(),
+        this.menuService.listPromotions(),
       ]);
       this.categories.set(categories);
       this.products.set(products);
+      this.promotions.set(promotions);
     } catch (error) {
       this.errorMessage.set(this.readableError(error));
     } finally {
@@ -150,6 +165,76 @@ export class MenuPage implements OnInit {
     }
   }
 
+  protected openPromotionForm(promotion?: MenuPromotion): void {
+    this.promotionId = promotion?.id ?? null;
+    this.promotionName = promotion?.name ?? '';
+    this.promotionDescription = promotion?.description ?? '';
+    this.promotionDiscountType = promotion?.discount_type ?? 'percentage';
+    this.promotionDiscountValue = promotion?.discount_value ?? 0;
+    this.promotionProductId = promotion?.product_id ? String(promotion.product_id) : '';
+    this.promotionCategoryId = promotion?.category_id ? String(promotion.category_id) : '';
+    this.promotionStartDate = promotion?.start_date ? promotion.start_date.slice(0, 10) : '';
+    this.promotionEndDate = promotion?.end_date ? promotion.end_date.slice(0, 10) : '';
+    this.promotionActive = promotion?.is_active ?? true;
+    this.showPromotionForm.set(true);
+    this.errorMessage.set('');
+  }
+
+  protected async savePromotion(): Promise<void> {
+    if (!this.promotionProductId && !this.promotionCategoryId) {
+      this.errorMessage.set('Selecciona un producto o una categoría para la promoción.');
+      return;
+    }
+    this.saving.set(true);
+    this.errorMessage.set('');
+    try {
+      await this.menuService.savePromotion({
+        id: this.promotionId,
+        name: this.promotionName,
+        description: this.promotionDescription,
+        discount_type: this.promotionDiscountType,
+        discount_value: Number(this.promotionDiscountValue),
+        product_id: this.promotionProductId ? Number(this.promotionProductId) : null,
+        category_id: this.promotionCategoryId ? Number(this.promotionCategoryId) : null,
+        start_date: this.promotionStartDate || null,
+        end_date: this.promotionEndDate || null,
+        is_active: this.promotionActive,
+      });
+      this.showPromotionForm.set(false);
+      await this.loadMenu();
+    } catch (error) {
+      this.errorMessage.set(this.readableError(error));
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  protected async deletePromotion(promotion: MenuPromotion): Promise<void> {
+    if (!window.confirm(`¿Eliminar la promoción “${promotion.name}”?`)) return;
+    try {
+      await this.menuService.deletePromotion(promotion.id);
+      await this.loadMenu();
+    } catch (error) {
+      this.errorMessage.set(this.readableError(error));
+    }
+  }
+
+  protected promotionTargetLabel(promotion: MenuPromotion): string {
+    if (promotion.product_id) {
+      return this.products().find((product) => product.id === promotion.product_id)?.name ?? `Producto #${promotion.product_id}`;
+    }
+    if (promotion.category_id) {
+      return `Categoría: ${this.categoryNameFor(promotion.category_id)}`;
+    }
+    return '—';
+  }
+
+  protected promotionDiscountLabel(promotion: MenuPromotion): string {
+    return promotion.discount_type === 'percentage'
+      ? `${promotion.discount_value}%`
+      : this.formatCurrency(promotion.discount_value);
+  }
+
   protected categoryNameFor(categoryId: number | null): string {
     return this.categories().find((category) => category.id === categoryId)?.name ?? 'Sin categoría';
   }
@@ -162,6 +247,7 @@ export class MenuPage implements OnInit {
     if (this.saving()) return;
     this.showProductForm.set(false);
     this.showCategoryForm.set(false);
+    this.showPromotionForm.set(false);
   }
 
   private readableError(error: unknown): string {

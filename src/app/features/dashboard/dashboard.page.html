@@ -1,12 +1,26 @@
 <section class="dashboard-page">
-  <div class="page-heading">
+  <header class="page-heading">
     <div>
       <p class="eyebrow">{{ today }}</p>
-      <h1>Resumen del día</h1>
-      <p class="page-subtitle">Ventas cobradas, pedidos activos y ocupación del salón.</p>
+      <h1>Resumen del negocio</h1>
+      <p class="page-subtitle">Ventas, egresos y actividad del restaurante en un solo lugar.</p>
     </div>
-    <a class="primary-action" routerLink="/pedidos"><span aria-hidden="true">+</span> Nuevo pedido</a>
-  </div>
+    <div class="heading-actions">
+      <button
+        class="quiet-button"
+        type="button"
+        (click)="refresh()"
+        [disabled]="loadingPeriod()"
+        aria-label="Actualizar resumen"
+        title="Actualizar resumen"
+      >
+        {{ loadingPeriod() ? '…' : '↻' }}
+      </button>
+      <a class="primary-action" routerLink="/pedidos"
+        ><span aria-hidden="true">+</span> Nuevo pedido</a
+      >
+    </div>
+  </header>
 
   <aside
     class="connection-notice"
@@ -19,79 +33,349 @@
     </span>
     @switch (databaseStatus()) {
       @case ('not-configured') {
-        <div><strong>Falta configurar Supabase</strong><p>Agrega la publishable key en <code>src/environments/environment.ts</code>.</p></div>
+        <div>
+          <strong>Falta configurar Supabase</strong>
+          <p>Agrega la publishable key en <code>src/environments/environment.ts</code>.</p>
+        </div>
         <span class="notice-state">SIN CONFIGURAR</span>
       }
       @case ('checking') {
-        <div><strong>Probando acceso a la base de datos</strong><p>Consultando productos disponibles en Supabase…</p></div>
+        <div>
+          <strong>Actualizando datos del negocio</strong>
+          <p>Consultando ventas, egresos y productos del período…</p>
+        </div>
         <span class="notice-state">CONECTANDO</span>
       }
       @case ('connected') {
-        <div><strong>Lectura de Supabase confirmada</strong><p>{{ availableProductCount() }} productos disponibles recibidos desde <code>products</code>.</p></div>
+        <div>
+          <strong>Datos sincronizados</strong>
+          <p>Información recibida desde Supabase para el período seleccionado.</p>
+        </div>
         <span class="notice-state">CONECTADO</span>
       }
       @case ('error') {
-        <div><strong>La consulta a Supabase falló</strong><p>{{ databaseError() }} Revisa permisos y políticas RLS de <code>products</code>.</p></div>
+        <div>
+          <strong>No se pudo actualizar el resumen</strong>
+          <p>{{ databaseError() }} Revisa la conexión y los permisos de Supabase.</p>
+        </div>
         <span class="notice-state">ERROR DE ACCESO</span>
       }
     }
   </aside>
 
-  <div class="metric-grid" aria-label="Indicadores del restaurante">
-    <article class="metric-card">
-      <div class="metric-topline"><span>Pedidos activos</span><span class="metric-index">01</span></div>
-      <strong class="metric-value">{{ activeOrderCount() ?? '…' }}</strong>
-      <span class="metric-caption">Armados, en cocina o servidos</span>
-    </article>
-    <article class="metric-card metric-highlight">
-      <div class="metric-topline"><span>Ventas de hoy</span><span class="metric-index">02</span></div>
-      <strong class="metric-value">{{ todaySalesTotal() === null ? '…' : formatCurrency(todaySalesTotal() ?? 0) }}</strong>
-      <span class="metric-caption">{{ todaySalesCount() ?? 0 }} pedidos cobrados</span>
-    </article>
-    <article class="metric-card">
-      <div class="metric-topline"><span>Mesas ocupadas</span><span class="metric-index">03</span></div>
-      <strong class="metric-value">{{ occupiedTableCount() ?? '…' }}</strong>
-      <span class="metric-caption">Mesas ocupadas ahora</span>
-    </article>
-    <article class="metric-card">
-      <div class="metric-topline"><span>Productos activos</span><span class="metric-index">04</span></div>
-      <strong class="metric-value">{{ availableProductCount() ?? '…' }}</strong>
-      <span class="metric-caption">Disponibles en el menú</span>
-    </article>
-  </div>
+  <section class="period-toolbar" aria-label="Período del resumen">
+    <div class="period-presets" role="group" aria-label="Períodos rápidos">
+      <span class="period-heading"><span aria-hidden="true">▦</span> Período:</span>
+      <button
+        type="button"
+        [class.active]="selectedPeriod() === 'day'"
+        [attr.aria-pressed]="selectedPeriod() === 'day'"
+        (click)="selectPeriod('day')"
+      >
+        Hoy
+      </button>
+      <button
+        type="button"
+        [class.active]="selectedPeriod() === 'week'"
+        [attr.aria-pressed]="selectedPeriod() === 'week'"
+        (click)="selectPeriod('week')"
+      >
+        Esta semana
+      </button>
+      <button
+        type="button"
+        [class.active]="selectedPeriod() === 'month'"
+        [attr.aria-pressed]="selectedPeriod() === 'month'"
+        (click)="selectPeriod('month')"
+      >
+        Este mes
+      </button>
+      <button
+        type="button"
+        [class.active]="selectedPeriod() === 'custom'"
+        [attr.aria-pressed]="selectedPeriod() === 'custom'"
+        (click)="selectPeriod('custom')"
+      >
+        Personalizado
+      </button>
+    </div>
+    @if (selectedPeriod() === 'custom') {
+      <div class="custom-dates">
+        <label
+          >Desde<input
+            type="date"
+            [value]="customStart()"
+            (change)="updateCustomDate('start', $event)"
+        /></label>
+        <label
+          >Hasta<input type="date" [value]="customEnd()" (change)="updateCustomDate('end', $event)"
+        /></label>
+      </div>
+    }
+    <span class="period-range">{{ periodLabel() }}</span>
+  </section>
+  @if (periodError()) {
+    <div class="error-banner" role="alert">{{ periodError() }}</div>
+  }
 
-  <div class="dashboard-grid">
-    <section class="orders-panel" aria-labelledby="orders-heading">
-      <div class="section-heading"><div><p class="eyebrow">EN TIEMPO REAL</p><h2 id="orders-heading">Pedidos recientes</h2></div><a routerLink="/pedidos">Ver pedidos <span aria-hidden="true">→</span></a></div>
-      @if (recentOrders().length === 0 && databaseStatus() === 'connected') {
-        <div class="empty-state"><span class="empty-emblem" aria-hidden="true">J</span><strong>Aún no hay pedidos</strong><p>Los nuevos pedidos aparecerán aquí.</p></div>
+  <section class="metric-grid" aria-label="Indicadores financieros">
+    <article class="metric-card metric-sales">
+      <div class="metric-topline">
+        <span>Ventas cobradas</span><span class="metric-icon" aria-hidden="true">$</span>
+      </div>
+      <strong class="metric-value">{{
+        loadingPeriod() ? '…' : formatCurrency(totalSales())
+      }}</strong>
+      <span class="metric-caption">{{ paidOrders().length }} pedidos pagados en el período</span>
+    </article>
+    <article class="metric-card metric-expenses">
+      <div class="metric-topline">
+        <span>Total de egresos</span><span class="metric-icon" aria-hidden="true">−</span>
+      </div>
+      <strong class="metric-value">{{
+        loadingPeriod() ? '…' : formatCurrency(totalExpenses())
+      }}</strong>
+      <span class="metric-caption">{{ expenses().length }} gastos registrados</span>
+    </article>
+    <article class="metric-card metric-net">
+      <div class="metric-topline">
+        <span>Balance neto</span><span class="metric-icon" aria-hidden="true">↗</span>
+      </div>
+      <strong class="metric-value" [class.is-negative]="netBalance() < 0">{{
+        loadingPeriod() ? '…' : formatCurrency(netBalance())
+      }}</strong>
+      <span class="metric-caption">{{ formatPercent(profitMargin()) }} de margen sobre ventas</span>
+    </article>
+    <article class="metric-card metric-average">
+      <div class="metric-topline">
+        <span>Ticket promedio</span><span class="metric-icon" aria-hidden="true">▤</span>
+      </div>
+      <strong class="metric-value">{{
+        loadingPeriod() ? '…' : formatCurrency(averageTicket())
+      }}</strong>
+      <span class="metric-caption">Promedio por pedido cobrado</span>
+    </article>
+  </section>
+
+  <section class="chart-panel" aria-labelledby="chart-heading">
+    <div class="chart-heading">
+      <div>
+        <p class="eyebrow">COMPORTAMIENTO DEL NEGOCIO</p>
+        <h2 id="chart-heading">Ventas vs. egresos</h2>
+        <p>Comparativa de ingresos cobrados y gastos registrados · {{ periodLabel() }}</p>
+      </div>
+      <div class="chart-legend" aria-label="Series del gráfico">
+        <span><i class="legend-sales"></i>Ventas</span>
+        <span><i class="legend-expenses"></i>Egresos</span>
+      </div>
+    </div>
+    @if (loadingPeriod() && paidOrders().length === 0 && expenses().length === 0) {
+      <div class="chart-loading" role="status">Cargando actividad del período…</div>
+    } @else {
+      <div class="chart-scroll">
+        <svg
+          class="sales-chart"
+          viewBox="0 0 1000 270"
+          role="img"
+          [attr.aria-label]="'Gráfico de ventas y egresos del período ' + periodLabel()"
+        >
+          <defs>
+            <linearGradient id="sales-area" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" class="sales-gradient-start" />
+              <stop offset="100%" class="sales-gradient-end" />
+            </linearGradient>
+          </defs>
+          <line class="chart-gridline" x1="42" y1="40" x2="958" y2="40" />
+          <line class="chart-gridline" x1="42" y1="99" x2="958" y2="99" />
+          <line class="chart-gridline" x1="42" y1="159" x2="958" y2="159" />
+          <line class="chart-gridline" x1="42" y1="218" x2="958" y2="218" />
+          <text class="chart-y-label" x="0" y="44">{{ formatCurrency(chartMaximum()) }}</text>
+          <text class="chart-y-label" x="0" y="103">
+            {{ formatCurrency(chartMaximum() * 0.67) }}
+          </text>
+          <text class="chart-y-label" x="0" y="163">
+            {{ formatCurrency(chartMaximum() * 0.33) }}
+          </text>
+          <text class="chart-y-label" x="0" y="222">$0</text>
+          <path class="sales-area" [attr.d]="salesAreaPath()" />
+          <polyline class="sales-line" [attr.points]="salesPath()" />
+          <polyline class="expenses-line" [attr.points]="expensesPath()" />
+          @for (point of chartPoints(); track point.key) {
+            <circle class="sales-point" [attr.cx]="point.x" [attr.cy]="point.salesY" r="3">
+              <title>{{ point.label }} — ventas {{ formatCurrency(point.sales) }}</title>
+            </circle>
+            <circle class="expenses-point" [attr.cx]="point.x" [attr.cy]="point.expensesY" r="2.5">
+              <title>{{ point.label }} — egresos {{ formatCurrency(point.expenses) }}</title>
+            </circle>
+            @if (point.showLabel) {
+              <text class="chart-x-label" [attr.x]="point.x" y="250">{{ point.label }}</text>
+            }
+          }
+        </svg>
+      </div>
+    }
+  </section>
+
+  <section class="insights-grid" aria-label="Desgloses del período">
+    <article class="insight-panel payment-panel">
+      <header class="insight-heading">
+        <div>
+          <p class="eyebrow">INGRESOS</p>
+          <h2>Ventas por método de pago</h2>
+        </div>
+        <span class="insight-period">{{ periodLabel() }}</span>
+      </header>
+      @if (loadingPeriod() && paymentBreakdown().length === 0) {
+        <div class="insight-empty">Cargando métodos de pago…</div>
+      } @else if (paymentBreakdown().length === 0) {
+        <div class="insight-empty">No hay pagos registrados en este período.</div>
       } @else {
-        <div class="recent-orders-list">
-          @for (order of recentOrders(); track order.id) {
-            <a class="recent-order-row" routerLink="/pedidos">
-              <span class="recent-order-id">#{{ order.id }}</span>
-              <span class="recent-order-location">{{ orderLocation(order) }}</span>
-              <span class="status-pill" [class]="'status-pill status-' + order.status">{{ orderStatusLabel(order.status) }}</span>
-              <strong>{{ formatCurrency(order.total_amount) }}</strong>
-            </a>
-          } @empty {
-            <div class="empty-state">Cargando actividad…</div>
+        <div class="payment-list">
+          @for (group of paymentBreakdown(); track group.method) {
+            <div class="payment-row">
+              <div class="payment-row-heading">
+                <span
+                  ><i [class]="'payment-dot payment-' + group.method"></i
+                  >{{ paymentMethodLabel(group.method)
+                  }}<small>{{ group.count }} pedidos</small></span
+                >
+                <strong
+                  >{{ formatCurrency(group.total) }}
+                  <small>{{ formatPercent(group.percent) }}</small></strong
+                >
+              </div>
+              <div
+                class="payment-track"
+                role="img"
+                [attr.aria-label]="
+                  paymentMethodLabel(group.method) +
+                  ': ' +
+                  formatPercent(group.percent) +
+                  ' de las ventas'
+                "
+              >
+                <span
+                  [class]="'payment-fill payment-' + group.method"
+                  [style.width.%]="group.percent"
+                ></span>
+              </div>
+            </div>
           }
         </div>
+        <footer class="payment-total">
+          <span>Total ingresado</span><strong>{{ formatCurrency(totalSales()) }}</strong>
+        </footer>
       }
-    </section>
+    </article>
 
-    <aside class="quick-panel">
+    <article class="insight-panel products-panel">
+      <header class="insight-heading">
+        <div>
+          <p class="eyebrow">PRODUCTOS</p>
+          <h2>Más vendidos</h2>
+        </div>
+        <span class="insight-period">Por unidades</span>
+      </header>
+      @if (loadingPeriod() && topProducts().length === 0) {
+        <div class="insight-empty">Calculando productos más vendidos…</div>
+      } @else if (topProducts().length === 0) {
+        <div class="insight-empty">No hay productos vendidos en este período.</div>
+      } @else {
+        <ol class="top-products-list">
+          @for (product of topProducts(); track product.product_id; let index = $index) {
+            <li class="top-product-row">
+              <span class="product-rank">{{ index + 1 }}</span>
+              <span class="product-name">{{ product.name }}</span>
+              <span class="product-quantity">{{ product.quantity }} vendidas</span>
+              <strong>{{ formatCurrency(product.total) }}</strong>
+            </li>
+          }
+        </ol>
+      }
+    </article>
+  </section>
+
+  <section class="operations-strip" aria-label="Actividad actual del restaurante">
+    <article>
+      <span class="operation-icon" aria-hidden="true">◷</span><span>Pedidos activos</span
+      ><strong>{{ activeOrderCount() ?? '…' }}</strong
+      ><small>En preparación o servidos</small>
+    </article>
+    <article>
+      <span class="operation-icon operation-tables" aria-hidden="true">⌂</span
+      ><span>Mesas ocupadas</span><strong>{{ occupiedTableCount() ?? '…' }}</strong
+      ><small>Ocupación actual</small>
+    </article>
+    <article>
+      <span class="operation-icon operation-products" aria-hidden="true">◈</span
+      ><span>Productos disponibles</span><strong>{{ availableProductCount() ?? '…' }}</strong
+      ><small>Activos en el menú</small>
+    </article>
+  </section>
+
+  <section class="orders-panel" aria-labelledby="orders-heading">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">ACTIVIDAD DEL PERÍODO</p>
+        <h2 id="orders-heading">Últimos pedidos cobrados</h2>
+      </div>
+      <a routerLink="/ventas">Ver ventas <span aria-hidden="true">→</span></a>
+    </div>
+    @if (loadingPeriod() && paidOrders().length === 0) {
+      <div class="empty-state">Cargando ventas del período…</div>
+    } @else if (paidOrders().length === 0) {
+      <div class="empty-state">
+        <span class="empty-emblem" aria-hidden="true">J</span
+        ><strong>Aún no hay pedidos cobrados</strong>
+        <p>Las ventas pagadas del período aparecerán aquí.</p>
+      </div>
+    } @else {
+      <div class="orders-table-scroll">
+        <table class="orders-table">
+          <thead>
+            <tr>
+              <th>Pedido</th>
+              <th>Ubicación</th>
+              <th>Atendido por</th>
+              <th>Fecha y hora</th>
+              <th>Estado</th>
+              <th class="numeric">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (order of paidOrders().slice(0, 8); track order.id) {
+              <tr>
+                <td class="order-number">#{{ order.id }}</td>
+                <td>{{ orderLocation(order) }}</td>
+                <td>{{ orderWaiter(order) }}</td>
+                <td>{{ formatDate(order.paid_at) }}</td>
+                <td><span class="paid-badge">Pagado</span></td>
+                <td class="numeric amount">{{ formatCurrency(order.total_amount) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <aside class="quick-panel">
+    <div>
       <p class="eyebrow">ACCESO RÁPIDO</p>
       <h2>Áreas de trabajo</h2>
+    </div>
+    <nav aria-label="Áreas de trabajo">
       <a routerLink="/pedidos"><span>Pedidos y cocina</span><span aria-hidden="true">↗</span></a>
       <a routerLink="/ventas"><span>Caja y ventas</span><span aria-hidden="true">↗</span></a>
-      @if (profile()?.role === 'admin') {
-        <a routerLink="/productos"><span>Administrar menú</span><span aria-hidden="true">↗</span></a>
+      @if (profile()?.role === 'Administrador') {
+        <a routerLink="/productos"
+          ><span>Administrar menú</span><span aria-hidden="true">↗</span></a
+        >
         <a routerLink="/mesas"><span>Administrar mesas</span><span aria-hidden="true">↗</span></a>
-        <a routerLink="/inventario"><span>Control de inventario</span><span aria-hidden="true">↗</span></a>
+        <a routerLink="/inventario"
+          ><span>Control de inventario</span><span aria-hidden="true">↗</span></a
+        >
       }
-      <div class="quick-note"><span class="quick-note-line"></span>El resumen se actualiza con los datos de hoy.</div>
-    </aside>
-  </div>
+    </nav>
+  </aside>
 </section>

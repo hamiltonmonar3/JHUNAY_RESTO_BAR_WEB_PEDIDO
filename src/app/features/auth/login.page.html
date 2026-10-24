@@ -1,49 +1,68 @@
 <!-- Agregamos la clase dinámica aquí en el <main> -->
 <main class="login-screen" [class.light-mode]="theme.mode() !== 'dark'">
-  <button class="theme-toggle login-theme-toggle" type="button" (click)="theme.toggle()" [attr.aria-label]="theme.mode() === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'" [title]="theme.mode() === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'">{{ theme.mode() === 'dark' ? '☼' : '☾' }}</button>
+  <div class="bg-blobs" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+  </div>
+
+  <button class="theme-toggle" type="button" (click)="theme.toggle()" [attr.aria-label]="theme.mode() === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'">
+    {{ theme.mode() === 'dark' ? '☀️' : '🌙' }}
+  </button>
   
   <section class="login-content">
-    <section class="login-panel" aria-label="Acceso de personal">
-      <div class="login-brand-lockup">
-        <img src="/assets/images/logo.jpeg" alt="Jhunay Resto Bar" />
-        <div class="login-brand-copy">
-          <p>PORTAL DEL EQUIPO</p>
-          <strong>JHUNAY RESTO BAR</strong>
+    <div class="login-card">
+      <header class="login-header">
+        <div class="logo-container">
+          <img src="/assets/images/logo.jpeg" alt="Logo" class="logo-img" />
         </div>
-      </div>
-      <p class="login-tagline">Pedidos, servicio y caja en un solo lugar.</p>
+        <div class="brand-text">
+          <h1 class="title">JHUNAY <span>RESTO BAR</span></h1>
+        </div>
+      </header>
 
       @if (setupMessage) {
-        <div class="login-message" role="status">{{ setupMessage }}</div>
+        <div class="alert message" role="status">{{ setupMessage }}</div>
       }
       @if (errorMessage()) {
-        <div class="login-error" role="alert">{{ errorMessage() }}</div>
+        <div class="alert error" role="alert">
+          <span class="alert-icon">⚠️</span>
+          {{ errorMessage() }}
+        </div>
       }
 
-      <form (ngSubmit)="submit()">
-        <div class="login-field">
-          <label for="username">USUARIO</label>
-          <div class="input-wrapper">
+      <form (ngSubmit)="submit()" #loginForm="ngForm">
+        <div class="form-group">
+          <label for="username">Usuario</label>
+          <div class="input-container">
             <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            <input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" placeholder="Ej. c.cabrera" [(ngModel)]="username" required />
+            <input id="username" name="username" type="text" [(ngModel)]="username" required placeholder="tu.usuario" autocomplete="username" autocapitalize="none" />
           </div>
         </div>
 
-        <div class="login-field">
-          <label for="pin">PIN DE ACCESO</label>
-          <div class="input-wrapper">
+        <div class="form-group">
+          <label for="pin">Clave de Acceso</label>
+          <div class="input-container">
             <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-            <input id="pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]{6,12}" minlength="6" maxlength="12" autocomplete="current-password" placeholder="••••••" [(ngModel)]="pin" required />
+            <input [type]="showPin() ? 'text' : 'password'" id="pin" name="pin" [(ngModel)]="pin" required 
+                   placeholder="••••••" minlength="6" maxlength="12" pattern="[A-Za-z0-9]+" autocomplete="current-password" />
+            <button type="button" class="view-toggle" (click)="togglePin()" [title]="showPin() ? 'Ocultar' : 'Mostrar'">
+              {{ showPin() ? '🙈' : '👁️' }}
+            </button>
           </div>
-          <p class="pin-hint">
-            <span class="hint-icon">ⓘ</span> PIN numérico de 6 a 12 dígitos.
-          </p>
         </div>
 
-        <button class="login-button" type="submit" [disabled]="pending() || !username || pin.length < 6">
-          {{ pending() ? 'Validando…' : 'Ingresar →' }}
+        <button class="btn-submit" type="submit" [disabled]="pending() || !loginForm.valid">
+          @if (pending()) {
+            <span class="loader"></span> Validando...
+          } @else {
+            Ingresar al Sistema <span class="arrow">→</span>
+          }
         </button>
       </form>
-    </section>
+      
+      <footer class="login-footer">
+        <p>Pedidos, servicio y caja en un solo lugar.</p>
+      </footer>
+    </div>
   </section>
 </main>

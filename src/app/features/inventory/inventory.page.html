@@ -1,6 +1,6 @@
 <section class="inventory-page">
   <header class="module-heading">
-    <div><p class="eyebrow">ADMINISTRACIÓN · CONTROL DE STOCK</p><h1>Inventario</h1><p>Registra entradas, salidas y ajustes con historial de auditoría.</p></div>
+    <div><h1>Inventario</h1><p>Registra entradas, salidas y ajustes con historial de auditoría.</p></div>
     <button class="primary-button" type="button" (click)="openMovement()">+ Registrar movimiento</button>
   </header>
 
@@ -41,7 +41,7 @@
 @if (showForm()) {
   <div class="modal-backdrop admin-backdrop" (click)="closeForm()">
     <section class="admin-modal inventory-modal" role="dialog" aria-modal="true" aria-labelledby="movement-title" (click)="$event.stopPropagation()">
-      <header class="modal-heading"><div><p class="eyebrow">INVENTARIO</p><h2 id="movement-title">Registrar movimiento</h2></div><button class="quiet-button" type="button" (click)="closeForm()" aria-label="Cerrar">×</button></header>
+      <header class="modal-heading"><div><h2 id="movement-title">Registrar movimiento</h2></div><button class="quiet-button close-top" type="button" (click)="closeForm()" aria-label="Cerrar">×</button></header>
       @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
       <form class="admin-form" (ngSubmit)="saveMovement()">
         <label>Producto<select name="product" required [(ngModel)]="productId"><option value="" disabled>Seleccionar producto</option>@for (product of products(); track product.id) { <option [value]="product.id">{{ product.name }} · {{ product.current_stock }} en stock</option> }</select></label>

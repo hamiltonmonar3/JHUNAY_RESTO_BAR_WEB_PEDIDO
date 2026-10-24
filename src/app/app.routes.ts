@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { adminGuard, staffGuard } from './core/auth/staff.guard';
+import { adminGuard, nonOperatorGuard, staffGuard } from './core/auth/staff.guard';
 
 export const routes: Routes = [
 	{ path: '', pathMatch: 'full', redirectTo: 'login' },
@@ -15,6 +15,7 @@ export const routes: Routes = [
 			{ path: '', pathMatch: 'full', redirectTo: 'dashboard' },
 			{
 				path: 'dashboard',
+				canActivate: [nonOperatorGuard],
 				loadComponent: () => import('./features/dashboard/dashboard.page').then((page) => page.DashboardPage),
 			},
 			{

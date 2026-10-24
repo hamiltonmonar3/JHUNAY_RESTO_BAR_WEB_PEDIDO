@@ -4,6 +4,7 @@ import { SupabaseService } from '../../core/supabase/supabase.service';
 export interface ProductOption {
   id: number;
   name: string;
+  description: string | null;
   price: number;
 }
 

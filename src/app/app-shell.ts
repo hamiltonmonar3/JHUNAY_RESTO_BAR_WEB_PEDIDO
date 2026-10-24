@@ -1,8 +1,10 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { environment } from '../environments/environment';
 import { AuthService, StaffProfile } from './core/auth/auth.service';
 import { ThemeService } from './core/theme/theme.service';
+import { OrdersService } from './features/orders/orders.service';
+import { TablesService } from './features/tables/tables.service';
 
 @Component({
   imports: [RouterLink, RouterLinkActive, RouterOutlet],
@@ -10,11 +12,23 @@ import { ThemeService } from './core/theme/theme.service';
   styleUrl: './app.scss',
   templateUrl: './app-shell.html',
 })
-export class AppShell implements OnInit {
+export class AppShell implements OnDestroy, OnInit {
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly ordersService = inject(OrdersService);
+  private readonly tablesService = inject(TablesService);
   protected readonly theme = inject(ThemeService);
   protected readonly supabaseConfigured = Boolean(environment.supabaseAnonKey);
   protected readonly profile = signal<StaffProfile | null>(null);
+  protected readonly todayOrderCount = signal<number | null>(null);
+  protected readonly freeTableCount = signal<number | null>(null);
+  protected readonly navigationCountError = signal(false);
+  protected readonly logoutError = signal('');
+  protected readonly signingOut = signal(false);
+  protected readonly homePath = computed(() =>
+    this.profile()?.role === 'Operador' ? '/pedidos' : '/dashboard',
+  );
+  private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private readonly navigation = [
     { label: 'Resumen', path: '/dashboard', adminOnly: false },
     { label: 'Pedidos', path: '/pedidos', adminOnly: false },
@@ -25,7 +39,7 @@ export class AppShell implements OnInit {
     { label: 'Personal', path: '/personal', adminOnly: true },
   ];
   protected readonly visibleNavigation = computed(() =>
-    this.navigation.filter((item) => !item.adminOnly || this.profile()?.role === 'admin'),
+    this.navigation.filter((item) => !item.adminOnly || this.profile()?.role === 'Administrador'),
   );
   protected readonly displayName = computed(() => this.profile()?.full_name || this.profile()?.email || 'Personal');
   protected readonly displayRole = computed(() => this.profile()?.role ?? '');
@@ -35,6 +49,28 @@ export class AppShell implements OnInit {
 
   ngOnInit(): void {
     void this.loadProfile();
+    void this.refreshNavigationCounts();
+    this.refreshTimer = setInterval(() => void this.refreshNavigationCounts(), 30_000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.refreshTimer) clearInterval(this.refreshTimer);
+  }
+
+  protected async signOut(): Promise<void> {
+    if (this.signingOut()) return;
+
+    this.signingOut.set(true);
+    this.logoutError.set('');
+    try {
+      await this.auth.signOut();
+      await this.router.navigateByUrl('/login');
+    } catch (error) {
+      this.logoutError.set('No se pudo cerrar la sesión. Inténtalo de nuevo.');
+      console.error('No se pudo cerrar la sesión.', error);
+    } finally {
+      this.signingOut.set(false);
+    }
   }
 
   private async loadProfile(): Promise<void> {
@@ -42,6 +78,23 @@ export class AppShell implements OnInit {
       this.profile.set(await this.auth.getActiveStaffProfile());
     } catch {
       this.profile.set(null);
+    }
+  }
+
+  private async refreshNavigationCounts(): Promise<void> {
+    try {
+      const [todayOrders, freeTables] = await Promise.all([
+        this.ordersService.countToday(),
+        this.tablesService.countFree(),
+      ]);
+      this.todayOrderCount.set(todayOrders);
+      this.freeTableCount.set(freeTables);
+      this.navigationCountError.set(false);
+    } catch (error) {
+      this.todayOrderCount.set(null);
+      this.freeTableCount.set(null);
+      this.navigationCountError.set(true);
+      console.error('No se pudieron actualizar los contadores de navegación desde Supabase.', error);
     }
   }
 }

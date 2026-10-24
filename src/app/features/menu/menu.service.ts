@@ -20,6 +20,21 @@ export interface MenuProduct {
   min_stock: number;
 }
 
+export type PromotionDiscountType = 'percentage' | 'fixed';
+
+export interface MenuPromotion {
+  id: number;
+  name: string;
+  description: string | null;
+  discount_type: PromotionDiscountType;
+  discount_value: number;
+  product_id: number | null;
+  category_id: number | null;
+  start_date: string | null;
+  end_date: string | null;
+  is_active: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class MenuService {
   private readonly supabase = inject(SupabaseService);
@@ -81,6 +96,41 @@ export class MenuService {
 
   async deleteProduct(id: number): Promise<void> {
     const { error } = await this.requireClient().from('products').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  async listPromotions(): Promise<MenuPromotion[]> {
+    const client = this.requireClient();
+    const { data, error } = await client
+      .from('promotions')
+      .select('id, name, description, discount_type, discount_value, product_id, category_id, start_date, end_date, is_active')
+      .order('id', { ascending: false });
+    if (error) throw error;
+    const promotions = data as unknown as MenuPromotion[];
+    return (promotions ?? []).map((promotion) => ({ ...promotion, discount_value: Number(promotion.discount_value) }));
+  }
+
+  async savePromotion(input: Omit<MenuPromotion, 'id'> & { id: number | null }): Promise<void> {
+    const client = this.requireClient();
+    const values = {
+      name: input.name.trim(),
+      description: input.description?.trim() || null,
+      discount_type: input.discount_type,
+      discount_value: input.discount_value,
+      product_id: input.product_id,
+      category_id: input.category_id,
+      start_date: input.start_date || null,
+      end_date: input.end_date || null,
+      is_active: input.is_active,
+    };
+    const { error } = input.id
+      ? await client.from('promotions').update(values).eq('id', input.id)
+      : await client.from('promotions').insert(values);
+    if (error) throw error;
+  }
+
+  async deletePromotion(id: number): Promise<void> {
+    const { error } = await this.requireClient().from('promotions').delete().eq('id', id);
     if (error) throw error;
   }
 

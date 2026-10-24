@@ -36,6 +36,16 @@ export class TablesService {
     return data as unknown as RestaurantTable[];
   }
 
+  async countFree(): Promise<number> {
+    const client = this.requireClient();
+    const { count, error } = await client
+      .from('restaurant_tables')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'disponible');
+    if (error) throw error;
+    return count ?? 0;
+  }
+
   async saveTable(input: { id: number | null; table_number: number; capacity: number; status: string }): Promise<void> {
     const client = this.requireClient();
     const values = { table_number: input.table_number, capacity: input.capacity, status: input.status };

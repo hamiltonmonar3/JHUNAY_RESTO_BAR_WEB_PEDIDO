@@ -28,8 +28,16 @@ export const adminGuard: CanActivateFn = async () => {
 
   try {
     const profile = await auth.getActiveStaffProfile();
-    return profile?.role === 'admin' ? true : router.parseUrl('/dashboard');
+    return profile?.role === 'Administrador' ? true : router.parseUrl('/dashboard');
   } catch {
     return router.parseUrl('/dashboard');
   }
+};
+
+export const nonOperatorGuard: CanActivateFn = async () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  const profile = await auth.getActiveStaffProfile();
+
+  return profile?.role === 'Operador' ? router.parseUrl('/pedidos') : true;
 };

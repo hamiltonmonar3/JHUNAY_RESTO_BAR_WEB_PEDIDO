@@ -1,19 +1,21 @@
 <section class="orders-page">
-  <header class="module-heading">
-    <div>
-      <p class="eyebrow">OPERACIÓN · SALÓN Y COCINA</p>
+  <header class="module-heading orders-heading">
+    <div class="orders-heading-copy">
       <h1>Pedidos</h1>
       <p>Registra órdenes y sigue su avance hasta el servicio.</p>
     </div>
-    <div class="heading-actions">
+    <div class="heading-actions orders-heading-actions">
       <button class="quiet-button" type="button" (click)="loadOrders()" [disabled]="loading()"
-              aria-label="Actualizar pedidos" title="Actualizar pedidos">↻</button>
-      <button class="primary-button" type="button" (click)="openOrderForm()">+ Nuevo pedido</button>
+        aria-label="Actualizar pedidos" title="Actualizar pedidos">↻</button>
+      <button class="primary-button" type="button" (click)="openOrderForm()">
+        <span aria-hidden="true">+</span>
+        Nuevo pedido
+      </button>
     </div>
   </header>
 
   @if (errorMessage()) {
-    <div class="error-banner" role="alert">{{ errorMessage() }}</div>
+  <div class="error-banner" role="alert">{{ errorMessage() }}</div>
   }
 
   <section class="orders-section" aria-label="Lista de pedidos">
@@ -21,347 +23,526 @@
     <div class="section-toolbar">
       <div class="filter-list" role="group" aria-label="Filtrar pedidos">
         @for (filter of filters; track filter.value) {
-          <button type="button"
-                  [class.active]="selectedFilter() === filter.value"
-                  (click)="selectedFilter.set(filter.value)">
-            {{ filter.label }}
-          </button>
+        <button type="button" [class.active]="selectedFilter() === filter.value"
+          (click)="selectedFilter.set(filter.value)">
+          {{ filter.label }}
+        </button>
         }
       </div>
-      <span class="result-count">{{ filteredOrders().length }} pedidos</span>
+      <div class="search-field">
+        <span class="search-icon" aria-hidden="true">🔎</span>
+        <input type="search" name="orderSearch" autocomplete="off"
+          placeholder="Buscar por N.º, mesa, cliente o mesero" [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)" aria-label="Buscar por número de pedido, mesa, cliente o mesero" />
+      </div>
+      <span class="result-count">{{ filteredOrders().length }} pedidos de hoy</span>
     </div>
 
     <!-- Contenido -->
     @if (loading()) {
-      <div class="empty-state">Cargando pedidos…</div>
+    <div class="empty-state">Cargando pedidos…</div>
     } @else if (filteredOrders().length === 0) {
-      <div class="empty-state">
-        <strong>No hay pedidos en esta vista</strong>
-        <span>Crea un pedido o cambia el filtro.</span>
-      </div>
+    <div class="empty-state">
+      <strong>No hay pedidos de hoy en esta vista</strong>
+      <span>Crea un pedido, cambia el filtro o ajusta la búsqueda.</span>
+    </div>
     } @else {
-      <!-- GRID DE CARDS -->
-      <div class="orders-grid">
-        @for (order of filteredOrders(); track order.id) {
-          <article class="order-card" [class]="'status-' + order.status">
-            <div class="card-header">
-              <button class="order-id-link" type="button"
-                      (click)="openOrderDetails(order)"
-                      [attr.aria-label]="'Ver detalle del pedido ' + order.id">
-                #{{ order.id }}
-              </button>
-              <span class="status-pill" [class]="'status-pill status-' + order.status">
-                {{ statusLabel(order.status) }}
-              </span>
-            </div>
+    <!-- GRID DE CARDS REDISEÑADO -->
+    <div class="orders-grid">
+      @for (order of filteredOrders(); track order.id) {
+      <article class="order-card" [class]="'status-' + order.status">
 
-            <div class="card-body">
-              <p class="location">{{ locationLabel(order) }}</p>
-              <p class="customer">{{ order.customer_name || 'Sin nombre' }}</p>
-              <p class="time">{{ formatDate(order.created_at) }}</p>
-            </div>
+        <!-- CABECERA DE LA TARJETA -->
+        <header class="card-header">
+          <div class="card-id-group">
+            <span class="location-badge">{{ locationLabel(order) }}</span>
+            <span class="order-seq">Pedido N.° {{ dailyOrderNumber(order) }}</span>
+          </div>
 
-            <div class="card-footer">
-              <span class="amount">{{ formatCurrency(order.total_amount) }}</span>
-              <div class="card-actions">
-                @if (order.status === 'armado' || order.status === 'en_preparacion') {
-                  <button class="row-action" type="button" (click)="advanceOrder(order)">
-                    {{ nextStatusLabel(order.status) }}
-                  </button>
-                }
+          <button class="order-id-link" type="button" (click)="openOrderDetails(order)"
+            [attr.aria-label]="'Ver detalle del pedido ' + dailyOrderNumber(order)">
+            Ver detalle
+          </button>
+        </header>
 
-                @if (order.status === 'armado') {
-                  <button class="cancel-action" type="button" (click)="requestCancelOrder(order)" title="Cancelar pedido">
-                    Cancelar
-                  </button>
-                }
+        <!-- CUERPO DE LA TARJETA -->
+        <div class="card-body">
+          <div class="meta-info">
+            <p class="customer">👤 {{ order.customer_name || 'Sin nombre' }}</p>
+            <p class="waiter">🧑‍🍳 {{ waiterName(order) || 'Mesero sin asignar' }}</p>
+            <p class="time">⏱️ {{ formatDate(order.created_at) }}</p>
+          </div>
 
-                @if (order.status !== 'armado' && order.status !== 'en_preparacion') {
-                  <span class="muted-dash">—</span>
-                }
-              </div>
-            </div>
-          </article>
-        }
-      </div>
+          <div class="status-wrapper">
+            <span class="status-pill" [class]="'status-pill status-' + order.status">
+              {{ statusLabel(order.status) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- PIE DE TARJETA CON ACCIONES Y TOTAL -->
+        <footer class="card-footer">
+          <div class="amount-group">
+            <small class="amount-label">TOTAL</small>
+            <strong class="amount">{{ formatCurrency(order.total_amount) }}</strong>
+          </div>
+
+          <div class="card-actions">
+            <button class="print-action" type="button" [disabled]="printingOrderId() === order.id"
+              (click)="printOrder(order)" title="Imprimir comanda">
+              {{ printingOrderId() === order.id ? 'Preparando…' : 'Imprimir' }}
+            </button>
+
+            @if (order.status === 'armado') {
+            <button class="cancel-action" type="button" (click)="requestCancelOrder(order)" title="Cancelar pedido">
+              Cancelar
+            </button>
+            }
+
+            @if (order.status === 'armado' || order.status === 'en_preparacion') {
+            <button class="row-action" type="button" (click)="advanceOrder(order)">
+              {{ nextStatusLabel(order.status) }}
+            </button>
+            }
+
+          </div>
+        </footer>
+
+      </article>
+      }
+    </div>
     }
   </section>
 </section>
 
 <!-- ==================== MODAL NUEVO PEDIDO ==================== -->
 @if (showForm()) {
-  <div class="modal-backdrop" (click)="closeOrderForm()">
-    <section class="order-modal" role="dialog" aria-modal="true" aria-labelledby="new-order-title"
-             (click)="onModalContentClick($event); $event.stopPropagation()">
-      <header class="modal-heading">
-        <div>
-          <p class="eyebrow">NUEVA ORDEN</p>
-          <h2 id="new-order-title">Armar pedido</h2>
-        </div>
-        <button class="quiet-button" type="button" (click)="closeOrderForm()" aria-label="Cerrar">×</button>
-      </header>
+<div class="modal-backdrop" (click)="closeOrderForm()">
+  <section class="order-modal" role="dialog" aria-modal="true" aria-labelledby="new-order-title"
+    (click)="onModalContentClick($event); $event.stopPropagation()">
 
-      @if (formError()) {
-        <div class="error-banner" role="alert">{{ formError() }}</div>
-      }
+    <header class="modal-heading custom-modal-header">
+      <div>
+        <p class="eyebrow modal-title-large" id="new-order-title">Nueva Orden</p>
+      </div>
+      <button class="quiet-button close-top" type="button" (click)="closeOrderForm()" aria-label="Cerrar">×</button>
+    </header>
 
-      @if (formLoading()) {
-        <div class="empty-state">Cargando menú y mesas…</div>
-      } @else {
-        <form class="order-form" (ngSubmit)="createOrder()">
-          <div class="form-row">
-            <!-- Mesa -->
-            <div class="table-field">
-              <span class="field-label">Mesa</span>
-              <div class="table-picker">
-                <button class="table-picker-trigger" type="button"
-                        aria-haspopup="listbox"
-                        [attr.aria-expanded]="tablePickerOpen()"
-                        (click)="tablePickerOpen.update(open => !open)"
-                        (keydown.escape)="tablePickerOpen.set(false)">
-                  <span class="table-symbol" aria-hidden="true">▦</span>
-                  <span class="table-trigger-label">
-                    @if (selectedTable(); as table) {
-                      Mesa {{ table.table_number }} · {{ table.capacity }} personas
-                    } @else {
-                      Para llevar
-                    }
-                  </span>
-                  <span class="table-chevron" aria-hidden="true">⌄</span>
-                </button>
+    @if (formError()) {
+    <div class="error-banner" role="alert">{{ formError() }}</div>
+    }
 
-                @if (tablePickerOpen()) {
-                  <div class="table-picker-menu">
-                    <label class="table-search">
-                      <span aria-hidden="true">⌕</span>
-                      <input type="search" name="tableSearch" aria-label="Buscar mesa"
-                             placeholder="Buscar mesa o capacidad" autocomplete="off"
-                             [ngModel]="tableSearch()" (ngModelChange)="tableSearch.set($event)" />
-                    </label>
-                    <div role="listbox" aria-label="Mesas disponibles">
-                      <button class="table-option takeout-option" type="button" role="option"
-                              [attr.aria-selected]="!selectedTable()"
-                              (click)="selectTable(null)">
-                        <span class="table-symbol" aria-hidden="true">↗</span>
-                        <span>Para llevar</span>
-                      </button>
-                      @for (table of filteredTables(); track table.id) {
-                        <button class="table-option" type="button" role="option"
-                                [attr.aria-selected]="selectedTableId === '' + table.id"
-                                (click)="selectTable(table)">
-                          <span class="table-symbol" aria-hidden="true">▦</span>
-                          <span>Mesa {{ table.table_number }}</span>
-                          <small>{{ table.capacity }} personas</small>
-                        </button>
-                      } @empty {
-                        <p class="table-no-results">No hay mesas con ese número o capacidad.</p>
-                      }
-                    </div>
-                  </div>
+    @if (formLoading()) {
+    <div class="empty-state">Cargando menú y mesas…</div>
+    } @else {
+    <form class="order-form" (ngSubmit)="createOrder()">
+      <div class="form-row">
+        <!-- Mesa -->
+        <div class="form-group">
+          <label class="field-label">Mesa</label>
+          <div class="table-picker">
+            <button class="table-picker-trigger" type="button" aria-haspopup="true"
+              [attr.aria-expanded]="tablePickerOpen()" (click)="tablePickerOpen.update(open => !open)"
+              (keydown.escape)="tablePickerOpen.set(false)">
+              <span class="table-symbol" aria-hidden="true">▦</span>
+              <span class="table-trigger-label black-text">
+                @if (selectedTable(); as table) {
+                Mesa {{ table.table_number }}
+                } @else {
+                Para llevar
                 }
-              </div>
-            </div>
-
-            <!-- Cliente -->
-            <label>
-              Nombre del cliente
-              <input name="customer" type="text" maxlength="100"
-                     [(ngModel)]="customerName" placeholder="Opcional" />
-            </label>
-          </div>
-
-          <!-- Producto + cantidad -->
-          <div class="add-line">
-            <div class="product-field">
-              <span class="field-label">Producto</span>
-              <div class="product-picker">
-                <button class="table-picker-trigger" type="button"
-                        aria-haspopup="listbox"
-                        [attr.aria-expanded]="productPickerOpen()"
-                        (click)="productPickerOpen.update(open => !open)"
-                        (keydown.escape)="productPickerOpen.set(false)">
-                  <span class="product-symbol" aria-hidden="true">◉</span>
-                  <span class="table-trigger-label">
-                    @if (selectedProduct(); as product) {
-                      {{ product.name }} · {{ formatCurrency(product.price) }}
-                    } @else {
-                      Buscar producto del menú
-                    }
-                  </span>
-                  <span class="table-chevron" aria-hidden="true">⌄</span>
-                </button>
-
-                @if (productPickerOpen()) {
-                  <div class="table-picker-menu">
-                    <label class="table-search">
-                      <span aria-hidden="true">⌕</span>
-                      <input type="search" name="productSearch" aria-label="Buscar producto del menú"
-                             placeholder="Escribe el nombre del producto" autocomplete="off"
-                             [ngModel]="productSearch()" (ngModelChange)="productSearch.set($event)" />
-                    </label>
-                    <div role="listbox" aria-label="Productos del menú">
-                      @for (product of filteredProducts(); track product.id) {
-                        <button class="table-option product-option" type="button" role="option"
-                                [attr.aria-selected]="selectedProductId === '' + product.id"
-                                (click)="selectProduct(product)">
-                          <span class="product-symbol" aria-hidden="true">◉</span>
-                          <span>{{ product.name }}</span>
-                          <small>{{ formatCurrency(product.price) }}</small>
-                        </button>
-                      } @empty {
-                        <p class="table-no-results">No hay productos con ese nombre.</p>
-                      }
-                    </div>
-                  </div>
-                }
-              </div>
-            </div>
-
-            <label class="quantity-field">
-              Cant.
-              <input name="quantity" type="number" min="1" step="1" [(ngModel)]="quantity" />
-            </label>
-
-            <button class="secondary-button" type="button"
-                    (click)="addCartLine()" [disabled]="!selectedProductId">
-              Agregar
+              </span>
+              <span class="table-chevron" aria-hidden="true">▼</span>
             </button>
-          </div>
 
-          <label class="notes-field">
-            Nota de cocina
-            <input name="notes" type="text" maxlength="500"
-                   [(ngModel)]="itemNotes" placeholder="Ej. sin cebolla" />
-          </label>
-
-          <!-- Carrito -->
-          <div class="cart-lines">
-            @for (line of cart(); track $index; let index = $index) {
-              <div class="cart-line">
-                <span>
-                  {{ line.quantity }} × {{ line.product.name }}
-                  <small>{{ line.notes || 'Sin nota' }}</small>
-                </span>
-                <strong>{{ formatCurrency(lineTotal(line)) }}</strong>
-                <button type="button" (click)="removeCartLine(index)" aria-label="Quitar producto">×</button>
+            @if (tablePickerOpen()) {
+            <div class="table-picker-menu">
+              <label class="table-search">
+                <span aria-hidden="true">⌕</span>
+                <input type="search" name="tableSearch" aria-label="Buscar mesa" placeholder="Buscar mesa o capacidad"
+                  autocomplete="off" [ngModel]="tableSearch()" (ngModelChange)="tableSearch.set($event)" />
+              </label>
+              <div role="listbox" aria-label="Mesas disponibles">
+                <button class="table-option takeout-option" type="button" role="option"
+                  [attr.aria-selected]="!selectedTable()" (click)="selectTable(null)">
+                  <span class="table-symbol" aria-hidden="true">↗</span>
+                  <span class="black-text">Para llevar</span>
+                </button>
+                @for (table of filteredTables(); track table.id) {
+                <button class="table-option" type="button" role="option"
+                  [disabled]="table.status !== 'disponible'"
+                  [class.table-option-unavailable]="table.status !== 'disponible'"
+                  [class.table-option-available]="table.status === 'disponible'"
+                  [attr.aria-selected]="selectedTableId === '' + table.id" (click)="selectTable(table)">
+                  <span class="table-symbol" aria-hidden="true">▦</span>
+                  <span class="black-text">Mesa {{ table.table_number }}</span>
+                  <small>{{ table.status === 'disponible' ? 'Disponible' : 'Ocupada' }}</small>
+                </button>
+                } @empty {
+                <p class="table-no-results">No hay mesas con ese número o capacidad.</p>
+                }
               </div>
-            } @empty {
-              <p class="cart-empty">Agrega productos para calcular el pedido.</p>
+            </div>
             }
           </div>
+        </div>
 
-          <footer class="modal-footer">
-            <span>Total <strong>{{ formatCurrency(cartTotal()) }}</strong></span>
-            <div>
-              <button class="secondary-button" type="button" (click)="closeOrderForm()">Cancelar</button>
-              <button class="primary-button" type="submit" [disabled]="saving() || !cart().length">
-                {{ saving() ? 'Guardando…' : 'Crear pedido' }}
-              </button>
+        <!-- Cliente -->
+        <div class="form-group customer-field">
+          <label class="field-label" for="customer-input">Nombre del cliente</label>
+          <input id="customer-input" name="customer" type="text" maxlength="100" [(ngModel)]="customerName"
+            placeholder="Introduce nombre..." />
+        </div>
+      </div>
+
+      <div class="form-group product-field">
+        <label class="field-label">Producto</label>
+        <div class="product-picker">
+          <button class="table-picker-trigger" type="button" aria-haspopup="true"
+            [attr.aria-expanded]="productPickerOpen()" (click)="productPickerOpen.update(open => !open)"
+            (keydown.escape)="productPickerOpen.set(false)">
+            <span class="product-symbol" aria-hidden="true">◉</span>
+            <span class="table-trigger-label">Buscar productos del menú</span>
+            <span class="table-chevron" aria-hidden="true">▼</span>
+          </button>
+
+          @if (productPickerOpen()) {
+          <div class="table-picker-menu">
+            <label class="table-search">
+              <span aria-hidden="true">⌕</span>
+              <input type="search" name="productSearch" aria-label="Buscar producto del menú"
+                placeholder="Escribe el nombre del producto" autocomplete="off" [ngModel]="productSearch()"
+                (ngModelChange)="productSearch.set($event)" />
+            </label>
+            <div class="product-order-list" role="group" aria-label="Productos para agregar al pedido">
+              @for (product of filteredProducts(); track product.id) {
+              <article class="product-order-row">
+                <div class="product-order-summary">
+                  <span class="product-symbol" aria-hidden="true">◉</span>
+                  <span class="product-option-copy">
+                    <span>{{ product.name }}</span>
+                    <small [title]="product.description || 'Sin descripción'">{{ product.description || 'Sin descripción' }}</small>
+                  </span>
+                  <strong class="product-option-price">{{ formatCurrency(product.price) }}</strong>
+                </div>
+                <div class="product-order-controls">
+                  <label class="product-row-quantity">Cantidad
+                    <input type="number" min="1" step="1" inputmode="numeric"
+                      [name]="'productQuantity-' + product.id"
+                      [ngModel]="productDraft(product.id).quantity"
+                      (ngModelChange)="updateProductDraft(product.id, 'quantity', $event)"
+                      [ngModelOptions]="{ standalone: true }"
+                      [attr.aria-label]="'Cantidad de ' + product.name" />
+                  </label>
+                  <label class="product-row-note">Nota de cocina
+                    <input type="text" maxlength="500" placeholder="Opcional"
+                      [name]="'productNote-' + product.id"
+                      [ngModel]="productDraft(product.id).notes"
+                      (ngModelChange)="updateProductDraft(product.id, 'notes', $event)"
+                      [ngModelOptions]="{ standalone: true }"
+                      [attr.aria-label]="'Nota de cocina para ' + product.name" />
+                  </label>
+                  <button class="product-row-add" type="button" (click)="addProductToCart(product)"
+                    [disabled]="!canAddProduct(product.id)">
+                    <span aria-hidden="true">+</span> Agregar
+                  </button>
+                </div>
+              </article>
+              } @empty {
+              <p class="table-no-results">No hay productos con ese nombre.</p>
+              }
             </div>
-          </footer>
-        </form>
-      }
-    </section>
-  </div>
+          </div>
+          }
+        </div>
+      </div>
+
+      <!-- Carrito -->
+      <div class="cart-lines">
+        @for (line of cart(); track $index; let index = $index) {
+        <div class="cart-line" [class.cart-line-editing-note]="editingCartNoteIndex() === index">
+          <span class="cart-line-copy">
+            <span class="cart-line-title">
+              <strong>{{ line.quantity }} × {{ line.product.name }}</strong>
+              @if (editingCartNoteIndex() !== index) {
+              <button class="cart-note-action" type="button" (click)="toggleCartNoteEditor(index)"
+                [attr.aria-label]="(line.notes ? 'Editar nota de cocina para ' : 'Agregar nota de cocina para ') + line.product.name"
+                [title]="line.notes ? 'Editar nota de cocina' : 'Agregar nota de cocina'">✎</button>
+              }
+            </span>
+            @if (editingCartNoteIndex() === index) {
+            <span class="cart-note-row">
+              <input class="cart-note-input" [name]="'cartNote-' + index" type="text" maxlength="500"
+                [ngModel]="line.notes" (ngModelChange)="updateCartLineNote(index, $event)"
+                (keydown.enter)="$event.preventDefault(); toggleCartNoteEditor(index)"
+                [attr.aria-label]="'Nota de cocina para ' + line.product.name" placeholder="Ej. sin cebolla" />
+              <button class="cart-note-action" type="button" (click)="toggleCartNoteEditor(index)">Listo</button>
+            </span>
+            } @else if (line.notes) {
+            <small class="cart-line-note">{{ line.notes }}</small>
+            }
+          </span>
+          <strong>{{ formatCurrency(lineTotal(line)) }}</strong>
+          <button type="button" (click)="removeCartLine(index)" aria-label="Quitar producto">×</button>
+        </div>
+        } @empty {
+        <div class="cart-empty">
+          <span class="cart-empty-icon" aria-hidden="true">🛒</span>
+          <span><strong>Tu pedido está vacío.</strong><small>Agrega productos desde el menú arriba.</small></span>
+        </div>
+        }
+      </div>
+
+      <footer class="modal-footer">
+        <span>Total <strong>{{ formatCurrency(cartTotal()) }}</strong></span>
+        <div>
+          <button class="secondary-button" type="button" (click)="closeOrderForm()">Cancelar</button>
+          <button class="primary-button" type="submit" [disabled]="saving() || !cart().length">
+            {{ saving() ? 'Guardando…' : 'Crear pedido' }}
+          </button>
+        </div>
+      </footer>
+    </form>
+    }
+  </section>
+</div>
 }
 
 <!-- ==================== MODAL DETALLE ==================== -->
 @if (selectedOrder(); as order) {
-  <div class="modal-backdrop detail-backdrop" (click)="closeOrderDetails()">
-    <section class="order-detail-modal" role="dialog" aria-modal="true"
-             [attr.aria-labelledby]="'order-detail-title-' + order.id"
-             (click)="$event.stopPropagation()">
-      <header class="modal-heading detail-heading">
-        <div>
-          <p class="eyebrow">DESGLOSE DEL PEDIDO</p>
-          <h2 [id]="'order-detail-title-' + order.id">Pedido #{{ order.id }}</h2>
-        </div>
-        <button class="quiet-button" type="button" (click)="closeOrderDetails()" aria-label="Cerrar detalle">×</button>
-      </header>
-
-      <div class="detail-meta">
-        <span>{{ locationLabel(order) }}</span>
-        <span>{{ formatDate(order.created_at) }}</span>
-        <span class="status-pill" [class]="'status-pill status-' + order.status">
-          {{ statusLabel(order.status) }}
-        </span>
+<div class="modal-backdrop detail-backdrop" (click)="closeOrderDetails()">
+  <section class="order-detail-modal" role="dialog" aria-modal="true"
+    [attr.aria-labelledby]="'order-detail-title-' + order.id" (click)="$event.stopPropagation()">
+    
+    <header class="modal-heading custom-modal-header">
+      <div>
+        <h2 [id]="'order-detail-title-' + order.id" class="modal-title-large">
+          Pedido N.° {{ dailyOrderNumber(order) }}
+        </h2>
       </div>
+      <div class="detail-header-actions">
+        <button class="print-action" type="button" [disabled]="printingOrderId() === order.id"
+          (click)="printOrder(order)">
+          <span aria-hidden="true">▣</span>
+          {{ printingOrderId() === order.id ? 'Preparando…' : 'Imprimir' }}
+        </button>
+        <button class="quiet-button close-top" type="button" (click)="closeOrderDetails()" aria-label="Cerrar detalle">×</button>
+      </div>
+    </header>
 
-      @if (detailError()) {
-        <div class="error-banner" role="alert">{{ detailError() }}</div>
+    <div class="detail-meta">
+      <span class="detail-meta-item"><span aria-hidden="true">▦</span>{{ locationLabel(order) }}</span>
+      <span class="detail-meta-item"><span aria-hidden="true">◷</span>{{ formatDate(order.created_at) }}</span>
+      <span class="detail-meta-item"><span aria-hidden="true">♙</span>Mesero: <strong>{{ waiterName(order) || 'Sin asignar' }}</strong></span>
+      @if (order.customer_name) {
+        <span class="detail-meta-item"><span aria-hidden="true">♙</span>Cliente: <strong>{{ order.customer_name }}</strong></span>
       }
+      @if (order.payment_method) {
+        <span class="detail-meta-item"><span aria-hidden="true">▤</span>Pago: <strong>{{ paymentMethodName(order.payment_method) }}</strong></span>
+      }
+      <span class="status-pill detail-status" [class]="'status-pill status-' + order.status">
+        {{ statusLabel(order.status) }}
+      </span>
+    </div>
 
-      @if (detailLoading()) {
-        <div class="empty-state">Cargando desglose…</div>
-      } @else if (detailItems().length === 0) {
-        <div class="empty-state">Este pedido no tiene productos detallados.</div>
-      } @else {
-        <div class="detail-items">
-          <div class="detail-line detail-line-heading">
-            <span>Producto</span>
-            <span>Cant.</span>
-            <span>Precio</span>
-            <span>Subtotal</span>
-          </div>
-          @for (item of detailItems(); track item.id) {
-            <div class="detail-line">
-              <span class="detail-product">
-                {{ productName(item) }}
-                @if (item.notes) {
-                  <small>{{ item.notes }}</small>
-                }
-              </span>
-              <span>{{ item.quantity }}</span>
-              <span>{{ formatCurrency(item.unit_price) }}</span>
-              <strong>{{ formatCurrency(item.subtotal) }}</strong>
+    @if (detailError()) {
+    <div class="error-banner" role="alert">{{ detailError() }}</div>
+    }
+
+    @if (detailLoading()) {
+    <div class="empty-state">Cargando desglose…</div>
+    } @else if (detailItems().length === 0) {
+    <div class="empty-state">Este pedido no tiene productos detallados.</div>
+    } @else {
+    <div class="detail-items" [class.editable]="isOrderEditable(order)">
+      <div class="detail-line detail-line-heading">
+        <span>Producto</span>
+        <span>Cant.</span>
+        <span>Precio</span>
+        <span>Subtotal</span>
+        @if (isOrderEditable(order)) { <span></span> }
+      </div>
+      @for (item of detailItems(); track item.id) {
+      <div class="detail-line">
+        <span class="detail-product">
+          {{ productName(item) }}
+          @if (item.notes) {
+          <small>{{ item.notes }}</small>
+          }
+        </span>
+        @if (isOrderEditable(order)) {
+        <span class="qty-stepper">
+          <button type="button" (click)="decrementItem(item)"
+            [disabled]="updatingItemId() === item.id || removingItemId() === item.id"
+            aria-label="Disminuir cantidad">−</button>
+          <strong>{{ item.quantity }}</strong>
+          <button type="button" (click)="incrementItem(item)"
+            [disabled]="updatingItemId() === item.id || removingItemId() === item.id"
+            aria-label="Aumentar cantidad">+</button>
+        </span>
+        } @else {
+        <span>{{ item.quantity }}</span>
+        }
+        <span>{{ formatCurrency(item.unit_price) }}</span>
+        <strong>{{ formatCurrency(item.subtotal) }}</strong>
+        @if (isOrderEditable(order)) {
+        <button class="remove-item-btn" type="button" (click)="deleteItem(item)"
+          [disabled]="removingItemId() === item.id || detailItems().length <= 1" aria-label="Quitar producto del pedido"
+          title="Quitar producto">
+          {{ removingItemId() === item.id ? '…' : '×' }}
+        </button>
+        }
+      </div>
+      }
+    </div>
+    }
+
+    @if (isOrderEditable(order)) {
+    <div class="detail-add-item compact-add-item">
+      <p class="field-label">Agregar producto al pedido</p>
+      <div class="form-group product-field">
+        <label class="field-label">Producto</label>
+        <div class="product-picker">
+          <button class="table-picker-trigger" type="button" aria-haspopup="true"
+            [attr.aria-expanded]="detailProductPickerOpen()" (click)="detailProductPickerOpen.update(open => !open)"
+            (keydown.escape)="detailProductPickerOpen.set(false)">
+            <span class="product-symbol" aria-hidden="true">◉</span>
+            <span class="table-trigger-label">Buscar productos del menú</span>
+            <span class="table-chevron" aria-hidden="true">▼</span>
+          </button>
+
+          @if (detailProductPickerOpen()) {
+          <div class="table-picker-menu">
+            <label class="table-search">
+              <span aria-hidden="true">⌕</span>
+              <input type="search" name="detailProductSearch" aria-label="Buscar producto del menú"
+                placeholder="Escribe el nombre del producto" autocomplete="off" [ngModel]="detailProductSearch()"
+                (ngModelChange)="detailProductSearch.set($event)" />
+            </label>
+            <div class="product-order-list" role="group" aria-label="Productos para agregar al pedido">
+              @for (product of detailFilteredProducts(); track product.id) {
+              <article class="product-order-row">
+                <div class="product-order-summary">
+                  <span class="product-symbol" aria-hidden="true">◉</span>
+                  <span class="product-option-copy">
+                    <span>{{ product.name }}</span>
+                    <small [title]="product.description || 'Sin descripción'">{{ product.description || 'Sin descripción' }}</small>
+                  </span>
+                  <strong class="product-option-price">{{ formatCurrency(product.price) }}</strong>
+                </div>
+                <div class="product-order-controls">
+                  <label class="product-row-quantity">Cantidad
+                    <input type="number" min="1" step="1" inputmode="numeric"
+                      [name]="'detailProductQuantity-' + product.id"
+                      [ngModel]="detailProductDraft(product.id).quantity"
+                      (ngModelChange)="updateDetailProductDraft(product.id, 'quantity', $event)"
+                      [ngModelOptions]="{ standalone: true }"
+                      [attr.aria-label]="'Cantidad de ' + product.name" />
+                  </label>
+                  <label class="product-row-note">Nota de cocina
+                    <input type="text" maxlength="500" placeholder="Opcional"
+                      [name]="'detailProductNote-' + product.id"
+                      [ngModel]="detailProductDraft(product.id).notes"
+                      (ngModelChange)="updateDetailProductDraft(product.id, 'notes', $event)"
+                      [ngModelOptions]="{ standalone: true }"
+                      [attr.aria-label]="'Nota de cocina para ' + product.name" />
+                  </label>
+                  <button class="product-row-add" type="button" (click)="addDetailItem(order, product)"
+                    [disabled]="!canAddDetailProduct(product.id)">
+                    <span aria-hidden="true">+</span> {{ addingItem() ? 'Agregando…' : 'Agregar' }}
+                  </button>
+                </div>
+              </article>
+              } @empty {
+              <p class="table-no-results">No hay productos con ese nombre.</p>
+              }
             </div>
+          </div>
           }
         </div>
-      }
+      </div>
+    </div>
+    }
 
-      <footer class="detail-total">
-        <span>Total del pedido</span>
-        <strong>{{ formatCurrency(order.total_amount) }}</strong>
-      </footer>
+    <footer class="detail-total">
+      <span>Total del pedido</span>
+      <strong>{{ formatCurrency(order.total_amount) }}</strong>
+    </footer>
 
-      @if (order.status === 'armado') {
-        <div class="detail-actions">
-          <button class="cancel-button" type="button" (click)="requestCancelOrder(order)">
-            Cancelar pedido
-          </button>
-        </div>
+    @if (order.status === 'armado') {
+    <div class="detail-actions">
+      <button class="cancel-button" type="button" (click)="requestCancelOrder(order)">
+        Cancelar pedido
+      </button>
+    </div>
+    }
+  </section>
+</div>
+}
+
+@if (printJob(); as job) {
+  <main id="order-print-root" class="order-print-root">
+    <header class="receipt-header">
+      <h1>COMANDA</h1>
+      <strong>Pedido N.° {{ dailyOrderNumber(job.order) }}</strong>
+      <span>{{ formatDate(job.order.created_at) }}</span>
+    </header>
+
+    <section class="receipt-meta">
+      <p><strong>{{ locationLabel(job.order) }}</strong></p>
+      <p>Cliente: {{ job.order.customer_name || 'Sin nombre' }}</p>
+      <p>Atiende: {{ waiterName(job.order) || 'Sin asignar' }}</p>
+      <p>Estado: {{ statusLabel(job.order.status) }}</p>
+    </section>
+
+    <div class="receipt-divider"></div>
+    <section class="receipt-items" aria-label="Productos del pedido">
+      @for (item of job.items; track item.id) {
+        <article class="receipt-item">
+          <div class="receipt-item-heading">
+            <strong>{{ item.quantity }} × {{ productName(item) }}</strong>
+            <strong>{{ formatCurrency(item.subtotal) }}</strong>
+          </div>
+          @if (item.notes) { <p class="receipt-note">Nota: {{ item.notes }}</p> }
+        </article>
       }
     </section>
-  </div>
+    <div class="receipt-divider"></div>
+    <footer class="receipt-total">
+      <span>TOTAL</span>
+      <strong>{{ formatCurrency(job.order.total_amount) }}</strong>
+    </footer>
+    <p class="receipt-footer">Gracias</p>
+  </main>
 }
 
 <!-- ==================== MODAL CONFIRMAR CANCELACIÓN ==================== -->
 @if (showCancelConfirm()) {
-  <div class="modal-backdrop confirm-backdrop" (click)="closeCancelConfirm()">
-    <section class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-cancel-title"
-             (click)="$event.stopPropagation()">
-      <div class="confirm-icon">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-        </svg>
-      </div>
+<div class="modal-backdrop confirm-backdrop" (click)="closeCancelConfirm()">
+  <section class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-cancel-title"
+    (click)="$event.stopPropagation()">
+    <div class="confirm-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+      </svg>
+    </div>
 
-      <h3 id="confirm-cancel-title">Cancelar pedido</h3>
-      <p>
-        ¿Seguro que quieres cancelar el pedido 
-        <strong>#{{ orderToCancel()?.id }}</strong>?
-        <br>
-        Esta acción no se puede deshacer.
-      </p>
+    <h3 id="confirm-cancel-title">Cancelar pedido</h3>
+    <p>
+      ¿Seguro que quieres cancelar el pedido
+      <strong>N.° {{ dailyOrderNumber(orderToCancel()!) }}</strong>?
+      <br>
+      Esta acción no se puede deshacer.
+    </p>
 
-      <div class="confirm-actions">
-        <button class="secondary-button" type="button" (click)="closeCancelConfirm()">
-          No, mantener
-        </button>
-        <button class="danger-button" type="button" (click)="confirmCancelOrder()">
-          Sí, cancelar
-        </button>
-      </div>
-    </section>
-  </div>
+    <div class="confirm-actions">
+      <button class="secondary-button" type="button" (click)="closeCancelConfirm()">
+        No, mantener
+      </button>
+      <button class="danger-button" type="button" (click)="confirmCancelOrder()">
+        Sí, cancelar
+      </button>
+    </div>
+  </section>
+</div>
 }

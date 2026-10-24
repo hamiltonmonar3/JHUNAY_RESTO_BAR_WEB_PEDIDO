@@ -15,7 +15,7 @@ Abre `http://localhost:4200/`.
 
 La URL y la clave pública están en `src/environments/environment.ts`. En el frontend solo debe usarse la publishable key o la clave `anon`; nunca añadas `service_role` ni credenciales PostgreSQL.
 
-1. En Supabase Auth, crea un usuario por cada empleado, usando el mismo correo que aparece en `public.users.email`. Configura un PIN numérico propio de 6 a 12 dígitos como contraseña de Auth y confirma la cuenta. No reutilices PIN de prueba.
+1. En Supabase Auth, crea un usuario por cada empleado, usando el mismo correo que aparece en `public.users.email`. Configura una clave alfanumérica propia de 6 a 12 caracteres (solo letras y números) como contraseña de Auth y confirma la cuenta. No reutilices claves de prueba.
 2. Aplica las migraciones del proyecto con `npx supabase db push`. La primera agrega `username`, el vínculo con Auth, RLS y las funciones transaccionales; las siguientes habilitan las escrituras de administración y la RPC auditada de inventario.
 3. Instala y autentica Supabase CLI, enlaza el proyecto y despliega la función. `supabase login` solicitará un Access Token creado en el dashboard; introdúcelo directamente en el terminal, nunca en el código ni en el chat:
 
@@ -42,8 +42,8 @@ Los roles `admin` y `caja`/`cajero` pueden consultar todos los pedidos; `mesero`
 
 - `/login`: acceso independiente con usuario y PIN.
 - `/pedidos`: carrito, selección de mesa y estados de cocina.
-- `/ventas`: cobro, consulta por fecha de pago e informe por método.
-- `/productos`: CRUD de productos y categorías, solo para `admin`.
+- `/ventas`: consulta y cobro de pedidos servidos; se puede pagar toda la cuenta o repartir productos/cantidades por persona, combinando efectivo, tarjeta y transferencia. Los cobros divididos se reflejan por método en el informe y en el cierre de caja.
+- `/productos`: CRUD de productos, categorías y promociones, solo para `admin`. Las promociones se guardan como referencia y no se aplican a pedidos ni ventas.
 - `/mesas`: CRUD de mesas y capacidades, solo para `admin`.
 - `/inventario`: stock y registro auditable de entradas, salidas y ajustes; el historial no se elimina.
 - `/personal`: perfiles y roles; los empleados se desactivan para conservar sus pedidos históricos.
@@ -53,4 +53,3 @@ Las rutas administrativas están protegidas por un guard de rol y por políticas
 La cabecera de acceso usa temporalmente una fotografía gastronómica remota y una composición naranja/negro. El banner exacto adjunto no está como archivo en el workspace; para usarlo, guárdalo como `public/jhunay-header.png` y reemplaza la imagen de `src/app/features/auth/login.page.html`.
 
 Build: `npm run build`. Pruebas: `npm test -- --watch=false`.
-
