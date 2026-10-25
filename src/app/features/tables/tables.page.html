@@ -13,11 +13,15 @@
       <div class="table-scroll"><table>
         <thead><tr><th>Mesa</th><th>Capacidad</th><th>Estado</th><th>Acciones</th></tr></thead>
         <tbody>
-          @for (table of tables(); track table.id) {
+          @for (table of tablesPagination.visible(tables()); track table.id) {
             <tr><td><strong><span class="table-symbol" aria-hidden="true">▦</span> Mesa {{ table.table_number }}</strong></td><td>{{ table.capacity }} personas</td><td><span class="availability" [class.unavailable]="table.status !== 'disponible'">{{ table.status }}</span></td><td class="admin-actions"><button class="detail-button" type="button" (click)="openForm(table)">Editar</button><button class="detail-button danger-action" type="button" (click)="deleteTable(table)">Eliminar</button></td></tr>
           }
         </tbody>
       </table></div>
+      <app-table-pagination [totalItems]="tables().length"
+        [page]="tablesPagination.currentPage(tables().length)" [pageSize]="tablesPagination.pageSize()"
+        (pageChange)="tablesPagination.setPage($event, tables().length)"
+        (pageSizeChange)="tablesPagination.setPageSize($event)" />
     }
   </section>
 </section>

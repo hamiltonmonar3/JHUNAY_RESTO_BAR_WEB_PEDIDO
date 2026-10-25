@@ -1,9 +1,10 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RestaurantTable, TablesService } from './tables.service';
+import { TablePaginationComponent, TablePaginationState } from '../../shared/table-pagination';
 
 @Component({
-  imports: [FormsModule],
+  imports: [FormsModule, TablePaginationComponent],
   selector: 'app-tables-page',
   styleUrl: './tables.page.scss',
   templateUrl: './tables.page.html',
@@ -11,6 +12,7 @@ import { RestaurantTable, TablesService } from './tables.service';
 export class TablesPage implements OnInit {
   private readonly tablesService = inject(TablesService);
   protected readonly tables = signal<RestaurantTable[]>([]);
+  protected readonly tablesPagination = new TablePaginationState();
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly errorMessage = signal('');

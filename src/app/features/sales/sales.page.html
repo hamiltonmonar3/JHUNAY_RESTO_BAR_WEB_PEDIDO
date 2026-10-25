@@ -62,14 +62,18 @@
       <div class="table-scroll"><table>
         <thead><tr><th>Pedido</th><th>Mesa</th><th>Hora</th><th class="numeric">Total</th><th>Detalle</th>@if (canCollect()) { <th></th> }</tr></thead>
         <tbody>
-          @for (order of servedOrders(); track order.id) {
-            <tr><td class="order-number">#{{ order.id }}</td><td>{{ locationLabel(order) }}</td><td>{{ formatDate(order.created_at) }}</td><td class="numeric amount">{{ formatCurrency(order.total_amount) }}</td>
+          @for (order of servedOrdersPagination.visible(servedOrders()); track order.id) {
+            <tr><td class="order-number">Pedido {{ servedOrderNumber(order) }}</td><td>{{ locationLabel(order) }}</td><td>{{ formatDate(order.created_at) }}</td><td class="numeric amount">{{ formatCurrency(order.total_amount) }}</td>
               <td><button class="detail-button" type="button" (click)="showServedDetails(order)">Ver desglose</button></td>
               @if (canCollect()) { <td class="numeric"><button class="row-action" type="button" [disabled]="payingOrderId() !== null" (click)="openPayment(order)">{{ payingOrderId() === order.id ? 'Cargando…' : 'Cobrar' }}</button></td> }
             </tr>
           }
         </tbody>
       </table></div>
+      <app-table-pagination [totalItems]="servedOrders().length"
+        [page]="servedOrdersPagination.currentPage(servedOrders().length)" [pageSize]="servedOrdersPagination.pageSize()"
+        (pageChange)="servedOrdersPagination.setPage($event, servedOrders().length)"
+        (pageSizeChange)="servedOrdersPagination.setPageSize($event)" />
     }
   </section>
 
@@ -111,10 +115,14 @@
         <div class="empty-state compact">No hay ventas pagadas en esta fecha.</div>
       } @else {
         <div class="table-scroll"><table><thead><tr><th>Pedido</th><th>Hora</th><th>Método</th><th class="numeric">Total</th><th>Detalle</th></tr></thead><tbody>
-          @for (sale of paidOrders(); track sale.id) {
-            <tr><td class="order-number">Pedido #{{ sale.id }}</td><td>{{ formatDate(sale.paid_at) }}</td><td><span class="payment-method-cell"><span aria-hidden="true">{{ paymentMethodIcon(sale.payment_method ?? '') }}</span>{{ salePaymentMethodLabel(sale.payment_method) }}</span></td><td class="numeric amount">{{ formatCurrency(sale.total_amount) }}</td><td><button class="detail-button" type="button" (click)="showSaleDetails(sale)">Ver desglose</button></td></tr>
+          @for (sale of paidOrdersPagination.visible(paidOrders()); track sale.id) {
+            <tr><td class="order-number">Pedido {{ paidOrderNumber(sale) }}</td><td>{{ formatDate(sale.paid_at) }}</td><td><span class="payment-method-cell"><span aria-hidden="true">{{ paymentMethodIcon(sale.payment_method ?? '') }}</span>{{ salePaymentMethodLabel(sale.payment_method) }}</span></td><td class="numeric amount">{{ formatCurrency(sale.total_amount) }}</td><td><button class="detail-button" type="button" (click)="showSaleDetails(sale)">Ver desglose</button></td></tr>
           }
         </tbody></table></div>
+        <app-table-pagination [totalItems]="paidOrders().length"
+          [page]="paidOrdersPagination.currentPage(paidOrders().length)" [pageSize]="paidOrdersPagination.pageSize()"
+          (pageChange)="paidOrdersPagination.setPage($event, paidOrders().length)"
+          (pageSizeChange)="paidOrdersPagination.setPageSize($event)" />
       }
     </section>
   </div>
@@ -170,26 +178,46 @@
           } @else {
             <div class="expense-table-scroll">
               <table>
-                <thead><tr><th>Descripción</th><th class="numeric">Monto</th><th>Categoría</th><th>Fecha</th><th>Registrado por</th>@if (isAdmin()) { <th></th> }</tr></thead>
+                <thead><tr>
+                  <th>Descripción</th>
+                  <th class="numeric" [attr.aria-sort]="expenseAmountSort() === 'none' ? 'none' : expenseAmountSort()">
+                    <button class="expense-sort-button" type="button" (click)="toggleExpenseAmountSort()"
+                      [attr.aria-label]="expenseAmountSort() === 'ascending' ? 'Ordenar monto de mayor a menor' : 'Ordenar monto de menor a mayor'">
+                      Monto @if (expenseAmountSort() === 'ascending') { <span aria-hidden="true">↑</span> } @else if (expenseAmountSort() === 'descending') { <span aria-hidden="true">↓</span> } @else { <span aria-hidden="true">↕</span> }
+                    </button>
+                  </th>
+                  <th>Categoría</th><th>Tipo de egreso</th><th>Fecha</th><th>Registrado por</th>@if (isAdmin()) { <th></th> }
+                </tr></thead>
                 <tbody>
-                  @for (expense of expenses(); track expense.id) {
+                  @for (expense of expensesPagination.visible(sortedExpenses()); track expense.id) {
                     <tr>
                       <td>{{ expense.description }}</td>
                       <td class="numeric amount">{{ formatCurrency(expense.amount) }}</td>
                       <td><span class="expense-category">{{ expenseCategoryName(expense.category) }}</span></td>
+                      <td>{{ expenseTypeLabel(expense.expense_period) }}</td>
                       <td>{{ formatDate(expense.created_at) }}</td>
                       <td>{{ expenseAuthorName(expense) }}</td>
-                      @if (isAdmin()) { <td class="admin-actions"><button class="detail-button danger-action" type="button" (click)="deleteExpense(expense)">Eliminar</button></td> }
+                      @if (isAdmin()) {
+                        <td class="admin-actions">
+                          <button class="detail-button" type="button" (click)="openEditExpense(expense)">Editar</button>
+                          <button class="detail-button danger-action" type="button" (click)="deleteExpense(expense)">Eliminar</button>
+                        </td>
+                      }
                     </tr>
                   }
                 </tbody>
               </table>
             </div>
+            <app-table-pagination [totalItems]="sortedExpenses().length"
+              [page]="expensesPagination.currentPage(sortedExpenses().length)" [pageSize]="expensesPagination.pageSize()"
+              (pageChange)="expensesPagination.setPage($event, sortedExpenses().length)"
+              (pageSizeChange)="expensesPagination.setPageSize($event)" />
           }
         </section>
 
         <aside class="expense-entry">
           <h3>Nuevo registro de egreso</h3>
+          <p class="expense-entry-date">Fecha del egreso: <strong>{{ formatDate(expenseDate() + 'T12:00:00') }}</strong></p>
           <form (ngSubmit)="recordExpense()">
             <label>Monto<input name="expenseAmount" type="number" min="0.01" step="0.01" required
               [(ngModel)]="expenseAmountValue" placeholder="$ 0,00" /></label>
@@ -298,6 +326,7 @@
         </div>
       </div>
       @if (closureError()) { <div class="error-banner" role="alert">{{ closureError() }}</div> }
+      @if (closureSuccess()) { <div class="success-banner" role="status">{{ closureSuccess() }}</div> }
       @if (closureLoading()) {
         <div class="empty-state">Consultando estado de la caja…</div>
       } @else if (!openClosure()) {
@@ -322,6 +351,9 @@
               <div class="closure-cash-movements">
                 <p><span><i class="movement-dot opening-dot"></i>Fondo inicial (Apertura)</span><strong>{{ formatCurrency(openClosure()!.opening_amount) }}</strong></p>
                 <p><span><i class="movement-dot sales-dot"></i>Ventas en efectivo</span><strong>+ {{ formatCurrency(closureCashSales()) }}</strong></p>
+                @if (closureAdditionalCashIncome() > 0) {
+                  <p><span><i class="movement-dot sales-dot"></i>Ingresos adicionales en efectivo</span><strong>+ {{ formatCurrency(closureAdditionalCashIncome()) }}</strong></p>
+                }
                 <p><span><i class="movement-dot expenses-dot"></i>Egresos / Gastos</span><strong>− {{ formatCurrency(closureExpenseTotal()) }}</strong></p>
               </div>
               <div class="closure-expected">
@@ -335,20 +367,26 @@
             <h3>Resumen de métodos de pago</h3>
             @if (closurePaymentSummary().length === 0) {
               <p class="closure-no-payments">Aún no hay pagos en esta caja.</p>
-            } @else {
-              <table>
-                <thead><tr><th>Método</th><th class="numeric">Ventas</th><th class="numeric">Pagos</th></tr></thead>
-                <tbody>
-                  @for (method of closurePaymentSummary(); track method.method) {
-                    <tr>
-                      <td>{{ method.label }}</td>
-                      <td class="numeric">{{ formatCurrency(method.total) }}</td>
-                      <td class="numeric">{{ method.count }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
             }
+            <table>
+              <thead><tr><th>Método</th><th class="numeric">Total</th><th class="numeric">Movimientos</th></tr></thead>
+              <tbody>
+                @for (method of closurePaymentSummary(); track method.method) {
+                  <tr>
+                    <td>{{ method.label }}</td>
+                    <td class="numeric">{{ formatCurrency(method.total) }}</td>
+                    <td class="numeric">{{ method.count }}</td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Total acumulado</th>
+                  <th class="numeric">{{ formatCurrency(closurePaymentTotal()) }}</th>
+                  <th class="numeric">{{ closurePaymentCount() }}</th>
+                </tr>
+              </tfoot>
+            </table>
           </section>
         </div>
 
@@ -358,6 +396,22 @@
             <input name="countedCash" type="number" min="0" step="0.01" required
               [value]="countedCashValue() ?? ''" (input)="updateCountedCash($event)" placeholder="0,00" />
           </label>
+          <div class="closure-additional-entry">
+            <label>Ingreso adicional en efectivo
+              <span>Se suma al efectivo esperado</span>
+              <input name="additionalCashIncome" type="number" min="0" step="0.01"
+                [value]="additionalCashIncomeValue() || ''" (input)="updateAdditionalIncome($event, 'efectivo')" placeholder="0,00" />
+            </label>
+            <label>Ingreso adicional por transferencia
+              <span>Se suma al total de transferencias</span>
+              <input name="additionalTransferIncome" type="number" min="0" step="0.01"
+                [value]="additionalTransferIncomeValue() || ''" (input)="updateAdditionalIncome($event, 'transferencia')" placeholder="0,00" />
+            </label>
+            <button class="secondary-button closure-register-income" type="button"
+              (click)="recordAdditionalIncome()" [disabled]="closureBusy()">
+              {{ closureBusy() ? 'Registrando…' : 'Registrar ingresos' }}
+            </button>
+          </div>
           <div class="closure-difference" [class.balanced]="cashDifference() === 0"
             [class.shortage]="cashDifference() !== null && cashDifference()! < 0"
             [class.surplus]="cashDifference() !== null && cashDifference()! > 0">
@@ -390,11 +444,15 @@
         <div class="table-scroll"><table>
           <thead><tr><th>Cerrado</th><th>Apertura</th><th class="numeric">Esperado</th><th class="numeric">Contado</th><th class="numeric">Diferencia</th><th>Responsable</th></tr></thead>
           <tbody>
-            @for (closure of closureHistory(); track closure.id) {
+            @for (closure of closureHistoryPagination.visible(closureHistory()); track closure.id) {
               <tr><td>{{ closure.closed_at ? formatDate(closure.closed_at) : '—' }}</td><td>{{ formatCurrency(closure.opening_amount) }}</td><td class="numeric amount">{{ formatCurrency(closure.expected_cash) }}</td><td class="numeric amount">{{ formatCurrency(closure.counted_cash) }}</td><td class="numeric" [class.amount]="closure.difference === 0">{{ formatCurrency(closure.difference) }}</td><td>{{ closureAuthorName(closure) }}</td></tr>
             }
           </tbody>
         </table></div>
+        <app-table-pagination [totalItems]="closureHistory().length"
+          [page]="closureHistoryPagination.currentPage(closureHistory().length)" [pageSize]="closureHistoryPagination.pageSize()"
+          (pageChange)="closureHistoryPagination.setPage($event, closureHistory().length)"
+          (pageSizeChange)="closureHistoryPagination.setPageSize($event)" />
       }
     </section>
   }
@@ -410,6 +468,12 @@
       <p id="closure-confirm-description">¿Confirmas el cierre con el efectivo contado?</p>
       <dl class="closure-confirm-values">
         <div><dt>Efectivo esperado</dt><dd>{{ formatCurrency(expectedClosureCash()) }}</dd></div>
+        @if (closureAdditionalCashIncome() > 0) {
+          <div><dt>Ingreso adicional en efectivo</dt><dd>{{ formatCurrency(closureAdditionalCashIncome()) }}</dd></div>
+        }
+        @if (closureAdditionalTransferIncome() > 0) {
+          <div><dt>Ingreso adicional por transferencia</dt><dd>{{ formatCurrency(closureAdditionalTransferIncome()) }}</dd></div>
+        }
         <div><dt>Efectivo contado</dt><dd>{{ formatCurrency(countedCashValue() ?? 0) }}</dd></div>
         @if (cashDifference() !== null && cashDifference() !== 0) {
           <div><dt>{{ cashDifference()! > 0 ? 'Sobrante' : 'Faltante' }}</dt><dd>{{ formatCurrency(cashDifference()!) }}</dd></div>
@@ -425,19 +489,83 @@
   </div>
 }
 
+@if (editingExpense(); as expense) {
+  <div class="modal-backdrop admin-backdrop" (click)="closeEditExpense()">
+    <section class="admin-modal expense-edit-modal" role="dialog" aria-modal="true"
+      [attr.aria-labelledby]="'expense-edit-title-' + expense.id" (click)="$event.stopPropagation()">
+      <header class="modal-heading">
+        <div><p class="eyebrow">CONTROL DE GASTOS</p><h2 [id]="'expense-edit-title-' + expense.id">Editar egreso</h2></div>
+        <button class="quiet-button close-top" type="button" (click)="closeEditExpense()" aria-label="Cerrar" [disabled]="savingExpenseEdit()">×</button>
+      </header>
+      @if (expenseError()) { <div class="error-banner" role="alert">{{ expenseError() }}</div> }
+      <form class="admin-form expense-edit-form" (ngSubmit)="saveExpenseEdit()">
+        <div class="expense-edit-row">
+          <label>Monto<input name="editExpenseAmount" type="number" min="0.01" step="0.01" required [(ngModel)]="editExpenseAmount" /></label>
+          <label>Fecha<input name="editExpenseDate" type="date" required [(ngModel)]="editExpenseDate" /></label>
+        </div>
+        <div class="expense-edit-row">
+          <label>Descripción<input name="editExpenseDescription" type="text" required maxlength="200" [(ngModel)]="editExpenseDescription" /></label>
+          <label>Categoría
+            <select name="editExpenseCategory" required [(ngModel)]="editExpenseCategory">
+              <option value="insumos">Insumos</option>
+              <option value="personal">Personal</option>
+              <option value="otros">Otros</option>
+              <option value="servicios">Servicios</option>
+              <option value="inmueble">Inmueble</option>
+              <option value="apertura_caja">Apertura de Caja</option>
+            </select>
+          </label>
+        </div>
+        <label class="expense-period-field">Tipo de egreso
+          <select name="editExpensePeriod" required [(ngModel)]="editExpensePeriod">
+            <option value="day">Diario</option>
+            <option value="week">Semanal</option>
+            <option value="month">Mensual</option>
+          </select>
+        </label>
+        <footer class="modal-footer">
+          <button class="secondary-button" type="button" (click)="closeEditExpense()" [disabled]="savingExpenseEdit()">Cancelar</button>
+          <button class="primary-button" type="submit" [disabled]="savingExpenseEdit()">
+            {{ savingExpenseEdit() ? 'Guardando…' : 'Guardar cambios' }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (deletingExpense(); as expense) {
+  <div class="closure-confirm-backdrop expense-delete-backdrop" (click)="cancelDeleteExpense()">
+    <section class="closure-confirm-modal expense-delete-modal" role="alertdialog" aria-modal="true"
+      aria-labelledby="expense-delete-title" aria-describedby="expense-delete-description"
+      (click)="$event.stopPropagation()">
+      <span class="closure-confirm-icon" aria-hidden="true">!</span>
+      <h2 id="expense-delete-title">Eliminar egreso</h2>
+      <p id="expense-delete-description">¿Seguro que quieres eliminar “{{ expense.description }}”? Esta acción no se puede deshacer.</p>
+      @if (expenseError()) { <div class="error-banner" role="alert">{{ expenseError() }}</div> }
+      <div class="closure-confirm-actions">
+        <button class="secondary-button" type="button" (click)="cancelDeleteExpense()" [disabled]="confirmingExpenseDelete()">Cancelar</button>
+        <button class="primary-button" type="button" (click)="confirmDeleteExpense()" [disabled]="confirmingExpenseDelete()">
+          {{ confirmingExpenseDelete() ? 'Eliminando…' : 'Sí, eliminar' }}
+        </button>
+      </div>
+    </section>
+  </div>
+}
+
 @if (selectedDetail(); as order) {
   <div class="modal-backdrop detail-backdrop" (click)="closeDetails()">
     <section class="order-detail-modal" [class.payment-active]="order.status === 'Servido' && paymentMode()" role="dialog" aria-modal="true" [attr.aria-labelledby]="'sale-detail-title-' + order.id" (click)="onDetailModalClick($event)">
       <header class="modal-heading detail-heading">
         <div class="detail-title-content">
           <div class="detail-title-row">
-            <h2 [id]="'sale-detail-title-' + order.id">Pedido #{{ order.id }}</h2>
+            <h2 [id]="'sale-detail-title-' + order.id">Pedido #{{ order.orderNumber ?? order.id }}</h2>
             <span class="status-pill sale-detail-status" [class.status-servido]="order.status === 'Servido'" [class.status-pagado]="order.status === 'Pagado'">
               {{ order.status }}
             </span>
           </div>
         </div>
-        <button class="quiet-button close-top" type="button" (click)="closeDetails()" aria-label="Cerrar detalle">×</button>
+        <button class="quiet-button close-top" type="button" (click)="closeDetails()" aria-label="Cerrar detalle" [disabled]="paymentCorrectionSaving()">×</button>
       </header>
       <div class="detail-meta">
         <span><span aria-hidden="true">◷</span>{{ formatDate(order.date) }}</span>
@@ -485,6 +613,64 @@
             </article>
           }
         </section>
+      }
+      @if (order.status === 'Pagado' && isAdmin()) {
+        @if (paymentCorrectionMode()) {
+          <form class="split-payment-panel payment-correction-panel" (ngSubmit)="savePaymentCorrection()">
+            <header class="split-payment-heading">
+              <div><h3>Corregir cobro</h3><p>El total del pedido no cambia; distribuye el cobro entre los métodos correctos.</p></div>
+            </header>
+            <div class="split-tenders">
+              @for (tender of correctionTenders(); track tender.id) {
+                <div class="split-tender">
+                  <label>Método
+                    <select [name]="'correction-method-' + tender.id" [ngModel]="tender.payment_method"
+                      (ngModelChange)="updateCorrectionTenderMethod(tender.id, $event)">
+                      @for (method of paymentMethods; track method) {
+                        <option [value]="method">{{ paymentMethodLabel(method) }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label>Monto
+                    <input [name]="'correction-amount-' + tender.id" type="number" min="0.01" step="0.01" required
+                      [ngModel]="tender.amount" (ngModelChange)="updateCorrectionTenderAmount(tender.id, $event)" />
+                  </label>
+                  @if (correctionTenders().length > 1) {
+                    <button class="remove-split-button" type="button" (click)="removeCorrectionTender(tender.id)"
+                      [attr.aria-label]="'Quitar método ' + paymentMethodLabel(tender.payment_method)">×</button>
+                  }
+                </div>
+              }
+            </div>
+            @if (correctionTenders().length < 3) {
+              <button class="detail-button" type="button" (click)="addCorrectionTender()">+ Agregar método</button>
+            }
+            <div class="split-balance correction-total" [class.correction-invalid]="correctionTenderTotal() !== order.totalAmount">
+              <span>Total del pedido: <strong>{{ formatCurrency(order.totalAmount) }}</strong></span>
+              <span>Distribución: <strong>{{ formatCurrency(correctionTenderTotal()) }}</strong></span>
+            </div>
+            <label class="correction-reason">Motivo de la corrección
+              <textarea name="paymentCorrectionReason" rows="2" maxlength="300" required
+                [(ngModel)]="paymentCorrectionReason" placeholder="Describe por qué se corrige este cobro"></textarea>
+            </label>
+            <p class="correction-audit-note">Se guardará el método anterior, el nuevo y el motivo para auditoría. Los cierres ya realizados no se modificarán.</p>
+            @if (savedPaymentGroups().length > 0) {
+              <p class="correction-audit-note">En pagos divididos, los métodos corregidos se asignan a los grupos existentes sin cambiar sus productos ni montos.</p>
+            }
+            @if (paymentCorrectionError()) { <div class="error-banner" role="alert">{{ paymentCorrectionError() }}</div> }
+            @if (paymentCorrectionValidation()) { <p class="split-validation" role="status">{{ paymentCorrectionValidation() }}</p> }
+            <footer class="split-payment-footer">
+              <button class="secondary-button" type="button" (click)="cancelPaymentCorrection()" [disabled]="paymentCorrectionSaving()">Cancelar</button>
+              <button class="primary-button" type="submit" [disabled]="paymentCorrectionSaving() || !!paymentCorrectionValidation()">
+                {{ paymentCorrectionSaving() ? 'Guardando…' : 'Guardar corrección' }}
+              </button>
+            </footer>
+          </form>
+        } @else {
+          <div class="payment-correction-action">
+            <button class="detail-button" type="button" (click)="startPaymentCorrection()">Corregir cobro</button>
+          </div>
+        }
       }
       @if (order.status === 'Servido' && paymentMode()) {
         <section class="split-payment-panel" [attr.aria-label]="splitPaymentMode() ? 'Dividir cuenta por persona' : 'Cobrar cuenta completa'">
@@ -545,23 +731,27 @@
                       <span class="product-symbol" aria-hidden="true">◉</span>
                       <span class="split-item-picker-placeholder">Buscar platos del pedido</span>
                       <span class="split-item-picker-count">
-                        {{ splitGroupSelectedItemCount(group) }} seleccionados
+                        {{ splitGroupSelectedItemCount(group) }} unidades seleccionadas
                       </span>
                       <span class="split-item-picker-chevron" aria-hidden="true">▼</span>
                     </button>
                     @if (openSplitItemPicker() === group.id) {
                       <div class="split-item-picker-menu" role="group" aria-label="Platos disponibles">
-                        @for (item of availableSplitItems(group); track item.id) {
+                        @for (item of detailItems(); track item.id) {
+                        @for (unitIndex of splitUnitIndexes(item.quantity); track unitIndex) {
                           <label class="split-item-option">
-                            <input type="checkbox" [checked]="(group.quantities[item.id] ?? 0) > 0"
-                              (change)="toggleSplitItem(group.id, item.id, $event)" />
+                            <input type="checkbox"
+                              [checked]="splitUnitSelected(group, item.id, unitIndex)"
+                              [disabled]="splitUnitUnavailable(group, item, unitIndex)"
+                              (change)="toggleSplitUnit(group.id, item.id, unitIndex, $event)" />
                             <span class="product-symbol" aria-hidden="true">◉</span>
                             <span class="split-picker-copy">
                               <strong>{{ productName(item) }}</strong>
-                              <small>Disponibles: {{ splitItemRemaining(item) }}</small>
+                              <small>Unidad {{ unitIndex + 1 }} · {{ splitUnitStatus(group, item, unitIndex) }}</small>
                             </span>
                             <small class="split-picker-price">{{ formatCurrency(item.unit_price) }}</small>
                           </label>
+                        }
                         } @empty {
                           <p class="split-item-picker-empty">No hay platos disponibles para asignar.</p>
                         }

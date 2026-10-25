@@ -21,11 +21,17 @@ export interface ServedOrder {
   users: { full_name: string } | { full_name: string }[] | null;
 }
 
+export interface DailyOrderNumberRecord {
+  id: number;
+  created_at: string;
+}
+
 export interface ExpenseRecord {
   id: number;
   amount: number;
   description: string;
   category: string;
+  expense_period: 'day' | 'week' | 'month';
   created_at: string;
   user_id: number | null;
   users?: { full_name: string } | { full_name: string }[] | null;
@@ -39,6 +45,8 @@ export interface CashClosure {
   total_card_sales: number;
   total_other_sales: number;
   total_expenses: number;
+  additional_cash_income: number;
+  additional_transfer_income: number;
   expected_cash: number;
   counted_cash: number;
   difference: number;
@@ -73,6 +81,11 @@ export interface OrderPaymentGroup {
 
 export interface SplitTenderSale {
   order_id: number;
+  payment_method: SalePaymentMethod;
+  amount: number;
+}
+
+export interface PaymentCorrectionTender {
   payment_method: SalePaymentMethod;
   amount: number;
 }
@@ -157,6 +170,29 @@ export class SalesService {
     return orders;
   }
 
+  async listDailyOrderNumbers(startIso: string, endIso: string): Promise<DailyOrderNumberRecord[]> {
+    const client = this.supabase.client;
+    if (!client) throw new Error('Configura Supabase antes de consultar la numeración diaria.');
+
+    const orders: DailyOrderNumberRecord[] = [];
+    for (let offset = 0; ; offset += this.pageSize) {
+      const { data, error } = await client
+        .from('orders')
+        .select('id, created_at')
+        .gte('created_at', startIso)
+        .lt('created_at', endIso)
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(offset, offset + this.pageSize - 1);
+
+      if (error) throw error;
+      const page = data as DailyOrderNumberRecord[];
+      orders.push(...(page ?? []));
+      if (!page || page.length < this.pageSize) break;
+    }
+    return orders;
+  }
+
   async recordPayment(orderId: number, method: 'efectivo' | 'tarjeta' | 'transferencia'): Promise<void> {
     const client = this.supabase.client;
     if (!client) throw new Error('Configura Supabase antes de registrar cobros.');
@@ -206,23 +242,47 @@ export class SalesService {
     }));
   }
 
-  async listExpenses(startIso: string, endIso: string): Promise<ExpenseRecord[]> {
+  async correctPaidOrderPayment(orderId: number, tenders: PaymentCorrectionTender[], reason: string): Promise<void> {
+    const client = this.supabase.client;
+    if (!client) throw new Error('Configura Supabase para corregir el cobro.');
+
+    const { error } = await client.rpc('correct_paid_order_payment', {
+      p_order_id: orderId,
+      p_tenders: tenders,
+      p_reason: reason.trim(),
+    });
+    if (error) throw error;
+  }
+
+  async listExpenses(
+    startIso: string,
+    endIso: string,
+    periods?: ExpenseRecord['expense_period'][],
+  ): Promise<ExpenseRecord[]> {
     const client = this.supabase.client;
     if (!client) throw new Error('Configura Supabase antes de consultar egresos.');
 
-    const { data, error } = await client
+    let query = client
       .from('expenses')
-      .select('id, amount, description, category, created_at, user_id, users(full_name)')
+      .select('id, amount, description, category, expense_period, created_at, user_id, users(full_name)')
       .gte('created_at', startIso)
       .lt('created_at', endIso)
       .order('created_at', { ascending: false });
+    if (periods) query = query.in('expense_period', periods);
 
+    const { data, error } = await query;
     if (error) throw error;
     const expenses = data as unknown as ExpenseRecord[];
     return (expenses ?? []).map((expense) => ({ ...expense, amount: Number(expense.amount) }));
   }
 
-  async recordExpense(amount: number, description: string, category: string): Promise<void> {
+  async recordExpense(
+    amount: number,
+    description: string,
+    category: string,
+    expenseDate: string,
+    period: ExpenseRecord['expense_period'],
+  ): Promise<void> {
     const client = this.supabase.client;
     if (!client) throw new Error('Configura Supabase antes de registrar egresos.');
 
@@ -230,6 +290,8 @@ export class SalesService {
       p_amount: amount,
       p_description: description,
       p_category: category,
+      p_expense_date: expenseDate,
+      p_expense_period: period,
     });
     if (error) throw error;
   }
@@ -242,13 +304,35 @@ export class SalesService {
     if (error) throw error;
   }
 
+  async updateExpense(
+    id: number,
+    amount: number,
+    description: string,
+    category: string,
+    expenseDate: string,
+    period: ExpenseRecord['expense_period'],
+  ): Promise<void> {
+    const client = this.supabase.client;
+    if (!client) throw new Error('Configura Supabase antes de actualizar egresos.');
+
+    const { error } = await client.rpc('update_expense_details', {
+      p_expense_id: id,
+      p_amount: amount,
+      p_description: description,
+      p_category: category,
+      p_expense_date: expenseDate,
+      p_expense_period: period,
+    });
+    if (error) throw error;
+  }
+
   async getOpenClosure(): Promise<CashClosure | null> {
     const client = this.supabase.client;
     if (!client) throw new Error('Configura Supabase antes de consultar la caja.');
 
     const { data, error } = await client
       .from('cash_closures')
-      .select('id, user_id, opening_amount, total_cash_sales, total_card_sales, total_other_sales, total_expenses, expected_cash, counted_cash, difference, notes, status, opened_at, closed_at, users(full_name)')
+      .select('id, user_id, opening_amount, total_cash_sales, total_card_sales, total_other_sales, total_expenses, additional_cash_income, additional_transfer_income, expected_cash, counted_cash, difference, notes, status, opened_at, closed_at, users(full_name)')
       .eq('status', 'abierta')
       .maybeSingle();
 
@@ -262,7 +346,7 @@ export class SalesService {
 
     const { data, error } = await client
       .from('cash_closures')
-      .select('id, user_id, opening_amount, total_cash_sales, total_card_sales, total_other_sales, total_expenses, expected_cash, counted_cash, difference, notes, status, opened_at, closed_at, users(full_name)')
+      .select('id, user_id, opening_amount, total_cash_sales, total_card_sales, total_other_sales, total_expenses, additional_cash_income, additional_transfer_income, expected_cash, counted_cash, difference, notes, status, opened_at, closed_at, users(full_name)')
       .eq('status', 'cerrada')
       .order('closed_at', { ascending: false })
       .limit(limit);
@@ -280,11 +364,35 @@ export class SalesService {
     if (error) throw error;
   }
 
-  async closeClosure(countedCash: number, notes: string | null): Promise<void> {
+  async closeClosure(
+    countedCash: number,
+    notes: string | null,
+    additionalCashIncome: number,
+    additionalTransferIncome: number,
+  ): Promise<void> {
     const client = this.supabase.client;
     if (!client) throw new Error('Configura Supabase antes de cerrar la caja.');
 
-    const { error } = await client.rpc('close_cash_closure', { p_counted_cash: countedCash, p_notes: notes });
+    const { error } = await client.rpc('close_cash_closure', {
+      p_counted_cash: countedCash,
+      p_notes: notes,
+      p_additional_cash_income: additionalCashIncome,
+      p_additional_transfer_income: additionalTransferIncome,
+    });
+    if (error) throw error;
+  }
+
+  async recordAdditionalClosureIncome(
+    additionalCashIncome: number,
+    additionalTransferIncome: number,
+  ): Promise<void> {
+    const client = this.supabase.client;
+    if (!client) throw new Error('Configura Supabase antes de registrar ingresos de caja.');
+
+    const { error } = await client.rpc('record_cash_closure_additional_income', {
+      p_additional_cash_income: additionalCashIncome,
+      p_additional_transfer_income: additionalTransferIncome,
+    });
     if (error) throw error;
   }
 
@@ -296,6 +404,8 @@ export class SalesService {
       total_card_sales: Number(closure.total_card_sales),
       total_other_sales: Number(closure.total_other_sales),
       total_expenses: Number(closure.total_expenses),
+      additional_cash_income: Number(closure.additional_cash_income),
+      additional_transfer_income: Number(closure.additional_transfer_income),
       expected_cash: Number(closure.expected_cash),
       counted_cash: Number(closure.counted_cash),
       difference: Number(closure.difference),

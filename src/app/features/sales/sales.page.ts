@@ -1,11 +1,13 @@
 import { Component, computed, HostListener, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService, StaffProfile } from '../../core/auth/auth.service';
-import { CashClosure, ExpenseRecord, OrderPaymentGroup, SalePaymentMethod, SalesService, SaleRecord, ServedOrder, SplitPaymentInput, SplitTenderSale } from './sales.service';
+import { CashClosure, ExpenseRecord, OrderPaymentGroup, PaymentCorrectionTender, SalePaymentMethod, SalesService, SaleRecord, ServedOrder, SplitPaymentInput, SplitTenderSale } from './sales.service';
 import { OrderItemDetail, OrdersService } from '../orders/orders.service';
+import { TablePaginationComponent, TablePaginationState } from '../../shared/table-pagination';
 
 type SalesTab = 'ventas' | 'egresos' | 'apertura' | 'cierre';
 type ExpensePeriod = 'day' | 'yesterday' | 'week' | 'month';
+type ExpenseAmountSort = 'none' | 'ascending' | 'descending';
 type ExpenseCategory = 'insumos' | 'personal' | 'otros' | 'servicios' | 'inmueble' | 'apertura_caja';
 
 interface DraftTender {
@@ -18,11 +20,17 @@ interface DraftPaymentGroup {
   id: number;
   payer_name: string;
   quantities: Record<number, number>;
+  unitIndexes: Record<number, number[]>;
   tenders: DraftTender[];
+}
+
+interface CorrectionTenderDraft extends PaymentCorrectionTender {
+  id: number;
 }
 
 interface SaleDetailHeader {
   id: number;
+  orderNumber?: number;
   totalAmount: number;
   date: string;
   paymentMethod: string | null;
@@ -80,6 +88,15 @@ function paymentErrorMessage(error: unknown): string {
     .join(' — ') || 'No se pudo registrar el cobro.';
 }
 
+function paymentCorrectionErrorMessage(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'code' in error
+    && (error.code === 'PGRST202' || error.code === '42883')) {
+    return 'La corrección de cobros no está habilitada en la base de datos. Aplica la migración 202610252100_correct_paid_order_payment.sql.';
+  }
+  if (error instanceof Error) return error.message;
+  return 'No se pudo corregir el cobro.';
+}
+
 function cashOpeningErrorMessage(error: unknown): string {
   const message = error instanceof Error
     ? error.message
@@ -96,8 +113,26 @@ function cashOpeningErrorMessage(error: unknown): string {
   return message || 'No se pudo abrir la caja.';
 }
 
+function cashRegisterErrorMessage(error: unknown): string {
+  if (typeof error !== 'object' || error === null) {
+    return error instanceof Error ? error.message : 'No se pudo consultar la caja.';
+  }
+
+  const response = error as Record<string, unknown>;
+  const code = typeof response['code'] === 'string' ? response['code'] : '';
+  const message = [response['message'], response['details'], response['hint']]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .join(' — ');
+
+  if (code === 'PGRST204' || code === '42703' || /column .* does not exist|could not find the .* column/i.test(message)) {
+    return 'Falta actualizar la base de datos para el cierre de caja. Aplica la migración 202610251400_additional_cash_closure_income.sql en Supabase y vuelve a cargar la página.';
+  }
+
+  return message || 'No se pudo consultar la caja.';
+}
+
 @Component({
-  imports: [FormsModule],
+  imports: [FormsModule, TablePaginationComponent],
   selector: 'app-sales-page',
   styleUrl: './sales.page.scss',
   templateUrl: './sales.page.html',
@@ -113,6 +148,12 @@ export class SalesPage implements OnDestroy, OnInit {
   protected readonly paidOrders = signal<SaleRecord[]>([]);
   protected readonly splitPaymentTenders = signal<SplitTenderSale[]>([]);
   protected readonly servedOrders = signal<ServedOrder[]>([]);
+  protected readonly servedOrdersPagination = new TablePaginationState();
+  protected readonly paidOrdersPagination = new TablePaginationState();
+  protected readonly expensesPagination = new TablePaginationState();
+  protected readonly closureHistoryPagination = new TablePaginationState();
+  protected readonly dailyOrderNumbers = signal<Map<number, number>>(new Map());
+  protected readonly paidDailyOrderNumbers = signal<Map<number, number>>(new Map());
   protected readonly loading = signal(true);
   protected readonly refreshingServedOrders = signal(false);
   protected readonly payingOrderId = signal<number | null>(null);
@@ -131,6 +172,11 @@ export class SalesPage implements OnDestroy, OnInit {
   protected readonly savedPaymentGroups = signal<OrderPaymentGroup[]>([]);
   protected readonly paymentSaving = signal(false);
   protected readonly paymentError = signal('');
+  protected readonly paymentCorrectionMode = signal(false);
+  protected readonly paymentCorrectionSaving = signal(false);
+  protected readonly paymentCorrectionError = signal('');
+  protected readonly correctionTenders = signal<CorrectionTenderDraft[]>([]);
+  protected paymentCorrectionReason = '';
   protected readonly selectedDate = signal(localDateValue(new Date()));
   protected readonly totalSales = computed(() => this.paidOrders().reduce((total, sale) => total + sale.total_amount, 0));
   protected readonly averageSale = computed(() => {
@@ -159,21 +205,40 @@ export class SalesPage implements OnDestroy, OnInit {
     }));
   });
   protected readonly canCollect = signal(false);
+  protected readonly paymentMethods: SalePaymentMethod[] = ['efectivo', 'transferencia', 'tarjeta'];
   private nextPaymentGroupId = 1;
   private nextTenderId = 1;
+  private nextCorrectionTenderId = 1;
   protected readonly isAdmin = computed(() => this.profile()?.role === 'Administrador');
 
   protected readonly activeTab = signal<SalesTab>('ventas');
 
   protected readonly expenses = signal<ExpenseRecord[]>([]);
+  protected readonly expenseAmountSort = signal<ExpenseAmountSort>('none');
+  protected readonly sortedExpenses = computed(() => {
+    const expenses = [...this.expenses()];
+    const sort = this.expenseAmountSort();
+    if (sort === 'none') return expenses;
+    const direction = sort === 'ascending' ? 1 : -1;
+    return expenses.sort((a, b) => (a.amount - b.amount) * direction);
+  });
   protected readonly expensesLoading = signal(false);
   protected readonly savingExpense = signal(false);
+  protected readonly savingExpenseEdit = signal(false);
   protected readonly expenseError = signal('');
+  protected readonly editingExpense = signal<ExpenseRecord | null>(null);
+  protected readonly deletingExpense = signal<ExpenseRecord | null>(null);
+  protected readonly confirmingExpenseDelete = signal(false);
   protected readonly expenseDate = signal(localDateValue(new Date()));
   protected readonly expensePeriod = signal<ExpensePeriod>('day');
   protected expenseAmountValue = 0;
   protected expenseDescription = '';
   protected expenseCategory: ExpenseCategory = 'insumos';
+  protected editExpenseAmount = 0;
+  protected editExpenseDescription = '';
+  protected editExpenseCategory = 'insumos';
+  protected editExpenseDate = localDateValue(new Date());
+  protected editExpensePeriod: ExpenseRecord['expense_period'] = 'day';
   protected readonly totalExpenses = computed(() => this.expenses().reduce((total, expense) => total + expense.amount, 0));
 
   protected readonly openClosure = signal<CashClosure | null>(null);
@@ -208,22 +273,45 @@ export class SalesPage implements OnDestroy, OnInit {
       group.total += tender.amount;
       group.orderIds.add(tender.order_id);
     }
+    const additionalCashIncome = this.closureAdditionalCashIncome();
+    const additionalTransferIncome = this.closureAdditionalTransferIncome();
+    methods.get('efectivo')!.total += additionalCashIncome;
+    methods.get('transferencia')!.total += additionalTransferIncome;
     return [...methods.entries()].map(([method, value]) => ({
       method,
       label: value.label,
       total: this.roundMoney(value.total),
-      count: value.orderIds.size,
+      count: value.orderIds.size
+        + (method === 'efectivo' && additionalCashIncome > 0 ? 1 : 0)
+        + (method === 'transferencia' && additionalTransferIncome > 0 ? 1 : 0),
     })).filter((method) => method.count > 0);
   });
+  protected readonly closurePaymentTotal = computed(() =>
+    this.roundMoney(this.closurePaymentSummary().reduce((total, method) => total + method.total, 0)),
+  );
+  protected readonly closurePaymentCount = computed(() =>
+    this.closurePaymentSummary().reduce((count, method) => count + method.count, 0),
+  );
+  protected readonly closureAdditionalCashIncome = computed(() =>
+    this.roundMoney((this.openClosure()?.additional_cash_income ?? 0) + this.additionalCashIncomeValue()),
+  );
+  protected readonly closureAdditionalTransferIncome = computed(() =>
+    this.roundMoney((this.openClosure()?.additional_transfer_income ?? 0) + this.additionalTransferIncomeValue()),
+  );
   protected readonly closureCashSales = computed(() =>
-    this.closurePaymentSummary().find((method) => method.method === 'efectivo')?.total ?? 0,
+    this.roundMoney(
+      (this.closurePaymentSummary().find((method) => method.method === 'efectivo')?.total ?? 0)
+      - this.closureAdditionalCashIncome(),
+    ),
   );
   protected readonly closureExpenseTotal = computed(() =>
     this.closureExpenses().reduce((total, expense) => total + expense.amount, 0),
   );
   protected readonly expectedClosureCash = computed(() => {
     const openingAmount = this.openClosure()?.opening_amount ?? 0;
-    return this.roundMoney(openingAmount + this.closureCashSales() - this.closureExpenseTotal());
+    return this.roundMoney(
+      openingAmount + this.closureCashSales() + this.closureAdditionalCashIncome() - this.closureExpenseTotal(),
+    );
   });
   protected readonly cashDifference = computed(() => this.countedCashValue() === null
     ? null
@@ -234,10 +322,13 @@ export class SalesPage implements OnDestroy, OnInit {
   protected readonly closureLoading = signal(false);
   protected readonly closureBusy = signal(false);
   protected readonly closureError = signal('');
+  protected readonly closureSuccess = signal('');
   protected readonly showCloseConfirm = signal(false);
   protected readonly openingAmountValue = signal(0);
   protected readonly openingCountedCashValue = signal<number | null>(null);
   protected readonly countedCashValue = signal<number | null>(null);
+  protected readonly additionalCashIncomeValue = signal(0);
+  protected readonly additionalTransferIncomeValue = signal(0);
   protected closingNotes = '';
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private paymentMessageTimer: ReturnType<typeof setTimeout> | null = null;
@@ -285,7 +376,9 @@ export class SalesPage implements OnDestroy, OnInit {
     this.servedOrdersRefreshInProgress = true;
     this.refreshingServedOrders.set(true);
     try {
-      this.servedOrders.set(await this.salesService.listServedOrders());
+      const orders = await this.salesService.listServedOrders();
+      this.servedOrders.set(orders);
+      await this.loadDailyOrderNumbers();
     } catch (error) {
       this.errorMessage.set(error instanceof Error ? error.message : 'No se pudieron actualizar los pedidos por cobrar.');
     } finally {
@@ -308,6 +401,10 @@ export class SalesPage implements OnDestroy, OnInit {
       ]);
       this.paidOrders.set(paidOrders);
       this.servedOrders.set(servedOrders);
+      await Promise.all([
+        this.loadDailyOrderNumbers(),
+        this.loadPaidDailyOrderNumbers(this.selectedDate()),
+      ]);
       try {
         this.splitPaymentTenders.set(await this.salesService.listSplitPaymentTenders(start, end));
       } catch (error) {
@@ -372,6 +469,7 @@ export class SalesPage implements OnDestroy, OnInit {
       id: this.nextPaymentGroupId++,
       payer_name: '',
       quantities,
+      unitIndexes: {},
       tenders: [{ id: this.nextTenderId++, payment_method: 'efectivo', amount: split ? 0 : total }],
     }]);
   }
@@ -382,6 +480,7 @@ export class SalesPage implements OnDestroy, OnInit {
       id: this.nextPaymentGroupId++,
       payer_name: '',
       quantities,
+      unitIndexes: {},
       tenders: [{ id: this.nextTenderId++, payment_method: 'efectivo', amount: 0 }],
     }]);
   }
@@ -432,14 +531,27 @@ export class SalesPage implements OnDestroy, OnInit {
     const group = this.paymentGroups().find((candidate) => candidate.id === groupId);
     if (!item || !group) return;
 
-    const alreadyPaid = this.savedItemQuantity(itemId);
-    const remainingForOthers = item.quantity - alreadyPaid - this.paymentGroups()
+    const currentIndexes = group.unitIndexes[itemId] ?? [];
+    const otherIndexes = this.paymentGroups()
       .filter((candidate) => candidate.id !== groupId)
-      .reduce((total, candidate) => total + (candidate.quantities[itemId] ?? 0), 0);
+      .flatMap((candidate) => candidate.unitIndexes[itemId] ?? []);
+    const paidCount = this.savedItemQuantity(itemId);
+    const availableIndexes = Array.from({ length: item.quantity }, (_, index) => index)
+      .filter((index) => index >= paidCount && !otherIndexes.includes(index));
+    const remainingForOthers = currentIndexes.length
+      + availableIndexes.filter((index) => !currentIndexes.includes(index)).length;
     const quantity = Math.min(Math.max(Math.trunc(Number(value) || 0), 0), remainingForOthers);
+    const nextIndexes = quantity < currentIndexes.length
+      ? currentIndexes.slice(0, quantity)
+      : [...currentIndexes, ...availableIndexes.filter((index) => !currentIndexes.includes(index))
+        .slice(0, quantity - currentIndexes.length)];
     this.paymentGroups.update((groups) => groups.map((candidate) => {
       if (candidate.id !== groupId) return candidate;
-      const updated = { ...candidate, quantities: { ...candidate.quantities, [itemId]: quantity } };
+      const updated = {
+        ...candidate,
+        quantities: { ...candidate.quantities, [itemId]: nextIndexes.length },
+        unitIndexes: { ...candidate.unitIndexes, [itemId]: nextIndexes },
+      };
       return this.syncSingleTender(updated);
     }));
   }
@@ -450,10 +562,57 @@ export class SalesPage implements OnDestroy, OnInit {
     this.setSplitQuantity(groupId, itemId, (group.quantities[itemId] ?? 0) + change);
   }
 
-  protected toggleSplitItem(groupId: number, itemId: number, event: Event): void {
+  protected splitUnitIndexes(quantity: number): number[] {
+    return Array.from({ length: Math.max(0, Math.floor(quantity)) }, (_, index) => index);
+  }
+
+  protected splitUnitSelected(group: DraftPaymentGroup, itemId: number, unitIndex: number): boolean {
+    return group.unitIndexes[itemId]?.includes(unitIndex) ?? false;
+  }
+
+  protected splitUnitUnavailable(group: DraftPaymentGroup, item: OrderItemDetail, unitIndex: number): boolean {
+    if (unitIndex < this.savedItemQuantity(item.id)) return true;
+    return this.paymentGroups()
+      .some((candidate) => candidate.id !== group.id
+        && (candidate.unitIndexes[item.id]?.includes(unitIndex) ?? false));
+  }
+
+  protected splitUnitStatus(group: DraftPaymentGroup, item: OrderItemDetail, unitIndex: number): string {
+    if (this.splitUnitSelected(group, item.id, unitIndex)) return 'Asignada a esta persona';
+    if (unitIndex < this.savedItemQuantity(item.id)) return 'Ya pagada';
+    if (this.splitUnitUnavailable(group, item, unitIndex)) return 'Asignada a otra persona';
+    return 'Disponible';
+  }
+
+  protected toggleSplitUnit(
+    groupId: number,
+    itemId: number,
+    unitIndex: number,
+    event: Event,
+  ): void {
     const checkbox = event.target;
-    if (!(checkbox instanceof HTMLInputElement)) return;
-    this.setSplitQuantity(groupId, itemId, checkbox.checked ? 1 : 0);
+    const item = this.detailItems().find((candidate) => candidate.id === itemId);
+    const group = this.paymentGroups().find((candidate) => candidate.id === groupId);
+    if (!(checkbox instanceof HTMLInputElement) || !item || !group) return;
+
+    const selected = group.unitIndexes[itemId] ?? [];
+    if (checkbox.checked && this.splitUnitUnavailable(group, item, unitIndex)) {
+      checkbox.checked = false;
+      return;
+    }
+    const nextIndexes = checkbox.checked
+      ? [...selected, unitIndex].sort((first, second) => first - second)
+      : selected.filter((index) => index !== unitIndex);
+
+    this.paymentGroups.update((groups) => groups.map((candidate) => {
+      if (candidate.id !== groupId) return candidate;
+      const updated = {
+        ...candidate,
+        quantities: { ...candidate.quantities, [itemId]: nextIndexes.length },
+        unitIndexes: { ...candidate.unitIndexes, [itemId]: nextIndexes },
+      };
+      return this.syncSingleTender(updated);
+    }));
   }
 
   protected toggleSplitItemPicker(groupId: number): void {
@@ -461,13 +620,7 @@ export class SalesPage implements OnDestroy, OnInit {
   }
 
   protected splitGroupSelectedItemCount(group: DraftPaymentGroup): number {
-    return Object.values(group.quantities).filter((quantity) => quantity > 0).length;
-  }
-
-  protected availableSplitItems(group: DraftPaymentGroup): OrderItemDetail[] {
-    return this.detailItems().filter((item) =>
-      this.splitItemRemaining(item) > 0 || (group.quantities[item.id] ?? 0) > 0,
-    );
+    return Object.values(group.quantities).reduce((total, quantity) => total + quantity, 0);
   }
 
   protected addPaymentTender(groupId: number): void {
@@ -625,7 +778,13 @@ export class SalesPage implements OnDestroy, OnInit {
     this.expenseError.set('');
     try {
       const { start, end } = this.expenseDateRange();
-      this.expenses.set(await this.salesService.listExpenses(start, end));
+      const periods: ExpenseRecord['expense_period'][] =
+        this.expensePeriod() === 'month'
+          ? ['day', 'week', 'month']
+          : this.expensePeriod() === 'week'
+            ? ['day', 'week']
+            : ['day'];
+      this.expenses.set(await this.salesService.listExpenses(start, end, periods));
     } catch (error) {
       this.expenseError.set(error instanceof Error ? error.message : 'No se pudieron cargar los egresos.');
     } finally {
@@ -695,6 +854,15 @@ export class SalesPage implements OnDestroy, OnInit {
     return category === 'apertura_caja' ? 'Apertura de Caja' : category;
   }
 
+  protected expenseTypeLabel(period: ExpenseRecord['expense_period']): string {
+    return period === 'month' ? 'Mensual' : period === 'week' ? 'Semanal' : 'Diario';
+  }
+
+  protected toggleExpenseAmountSort(): void {
+    this.expenseAmountSort.update((sort) => sort === 'ascending' ? 'descending' : 'ascending');
+    this.expensesPagination.page.set(1);
+  }
+
   protected async recordExpense(): Promise<void> {
     if (!this.expenseDescription.trim() || this.expenseAmountValue <= 0) {
       this.expenseError.set('Ingresa un monto válido y una descripción para el egreso.');
@@ -703,7 +871,13 @@ export class SalesPage implements OnDestroy, OnInit {
     this.savingExpense.set(true);
     this.expenseError.set('');
     try {
-      await this.salesService.recordExpense(this.expenseAmountValue, this.expenseDescription, this.expenseCategory);
+      await this.salesService.recordExpense(
+        this.expenseAmountValue,
+        this.expenseDescription,
+        this.expenseCategory,
+        this.expenseDate(),
+        this.expensePeriod() === 'month' ? 'month' : this.expensePeriod() === 'week' ? 'week' : 'day',
+      );
       this.expenseAmountValue = 0;
       this.expenseDescription = '';
       this.expenseCategory = 'insumos';
@@ -716,12 +890,71 @@ export class SalesPage implements OnDestroy, OnInit {
   }
 
   protected async deleteExpense(expense: ExpenseRecord): Promise<void> {
-    if (!window.confirm(`¿Eliminar el egreso “${expense.description}”?`)) return;
+    this.expenseError.set('');
+    this.deletingExpense.set(expense);
+  }
+
+  protected cancelDeleteExpense(): void {
+    if (this.confirmingExpenseDelete()) return;
+    this.deletingExpense.set(null);
+  }
+
+  protected async confirmDeleteExpense(): Promise<void> {
+    const expense = this.deletingExpense();
+    if (!expense || this.confirmingExpenseDelete()) return;
+    this.confirmingExpenseDelete.set(true);
+    this.expenseError.set('');
     try {
       await this.salesService.deleteExpense(expense.id);
+      this.deletingExpense.set(null);
       await this.loadExpenses();
     } catch (error) {
       this.expenseError.set(error instanceof Error ? error.message : 'No se pudo eliminar el egreso.');
+    } finally {
+      this.confirmingExpenseDelete.set(false);
+    }
+  }
+
+  protected openEditExpense(expense: ExpenseRecord): void {
+    this.editExpenseAmount = expense.amount;
+    this.editExpenseDescription = expense.description;
+    this.editExpenseCategory = expense.category;
+    this.editExpenseDate = businessDateValue(new Date(expense.created_at));
+    this.editExpensePeriod = expense.expense_period;
+    this.expenseError.set('');
+    this.editingExpense.set(expense);
+  }
+
+  protected closeEditExpense(): void {
+    if (this.savingExpenseEdit()) return;
+    this.editingExpense.set(null);
+  }
+
+  protected async saveExpenseEdit(): Promise<void> {
+    const expense = this.editingExpense();
+    const description = this.editExpenseDescription.trim();
+    if (!expense || !description || !Number.isFinite(this.editExpenseAmount) || this.editExpenseAmount <= 0) {
+      this.expenseError.set('Ingresa un monto válido y una descripción para el egreso.');
+      return;
+    }
+
+    this.savingExpenseEdit.set(true);
+    this.expenseError.set('');
+    try {
+      await this.salesService.updateExpense(
+        expense.id,
+        this.editExpenseAmount,
+        description,
+        this.editExpenseCategory,
+        this.editExpenseDate,
+        this.editExpensePeriod,
+      );
+      this.editingExpense.set(null);
+      await this.loadExpenses();
+    } catch (error) {
+      this.expenseError.set(error instanceof Error ? error.message : 'No se pudo actualizar el egreso.');
+    } finally {
+      this.savingExpenseEdit.set(false);
     }
   }
 
@@ -740,19 +973,21 @@ export class SalesPage implements OnDestroy, OnInit {
         this.closureSplitTenders.set([]);
         this.closureExpenses.set([]);
         this.countedCashValue.set(null);
+        this.additionalCashIncomeValue.set(0);
+        this.additionalTransferIncomeValue.set(0);
         return;
       }
       const now = new Date().toISOString();
       const [paidOrders, expenses, splitTenders] = await Promise.all([
         this.salesService.listPaidOrders(open.opened_at, now),
-        this.salesService.listExpenses(open.opened_at, now),
+        this.salesService.listExpenses(open.opened_at, now, ['day']),
         this.salesService.listSplitPaymentTenders(open.opened_at, now),
       ]);
       this.closurePaidOrders.set(paidOrders);
       this.closureExpenses.set(expenses);
       this.closureSplitTenders.set(splitTenders);
     } catch (error) {
-      this.closureError.set(error instanceof Error ? error.message : 'No se pudo consultar la caja.');
+      this.closureError.set(cashRegisterErrorMessage(error));
     } finally {
       this.closureLoading.set(false);
     }
@@ -776,6 +1011,19 @@ export class SalesPage implements OnDestroy, OnInit {
   protected updateCountedCash(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.countedCashValue.set(input.value === '' ? null : input.valueAsNumber);
+  }
+
+  protected updateAdditionalIncome(event: Event, method: 'efectivo' | 'transferencia'): void {
+    const input = event.target as HTMLInputElement;
+    const amount = input.value === '' ? 0 : input.valueAsNumber;
+    const normalizedAmount = Number.isFinite(amount) && amount >= 0 ? this.roundMoney(amount) : 0;
+    this.closureError.set('');
+    this.closureSuccess.set('');
+    if (method === 'efectivo') {
+      this.additionalCashIncomeValue.set(normalizedAmount);
+    } else {
+      this.additionalTransferIncomeValue.set(normalizedAmount);
+    }
   }
 
   protected async openRegister(): Promise<void> {
@@ -823,8 +1071,52 @@ export class SalesPage implements OnDestroy, OnInit {
       this.closureError.set('El monto contado no puede ser negativo.');
       return;
     }
+    if (!Number.isFinite(this.additionalCashIncomeValue()) || this.additionalCashIncomeValue() < 0
+      || !Number.isFinite(this.additionalTransferIncomeValue()) || this.additionalTransferIncomeValue() < 0) {
+      this.closureError.set('Los ingresos adicionales deben ser montos válidos y no negativos.');
+      return;
+    }
     this.closureError.set('');
+    this.closureSuccess.set('');
     this.showCloseConfirm.set(true);
+  }
+
+  protected async recordAdditionalIncome(): Promise<void> {
+    const cashIncome = this.additionalCashIncomeValue();
+    const transferIncome = this.additionalTransferIncomeValue();
+    if (!this.openClosure()) {
+      this.closureError.set('No hay una caja abierta para registrar estos ingresos.');
+      return;
+    }
+    if (!Number.isFinite(cashIncome) || cashIncome < 0
+      || !Number.isFinite(transferIncome) || transferIncome < 0) {
+      this.closureError.set('Los ingresos adicionales deben ser montos válidos y no negativos.');
+      return;
+    }
+    if (cashIncome === 0 && transferIncome === 0) {
+      this.closureError.set('Ingresa un monto en efectivo o transferencia para registrar.');
+      return;
+    }
+
+    this.closureBusy.set(true);
+    this.closureError.set('');
+    this.closureSuccess.set('');
+    try {
+      await this.salesService.recordAdditionalClosureIncome(cashIncome, transferIncome);
+      this.openClosure.update((closure) => closure ? {
+        ...closure,
+        additional_cash_income: this.roundMoney(closure.additional_cash_income + cashIncome),
+        additional_transfer_income: this.roundMoney(closure.additional_transfer_income + transferIncome),
+      } : closure);
+      this.additionalCashIncomeValue.set(0);
+      this.additionalTransferIncomeValue.set(0);
+      await this.loadCashRegister();
+      this.closureSuccess.set('Ingresos adicionales registrados en la caja abierta.');
+    } catch (error) {
+      this.closureError.set(error instanceof Error ? error.message : 'No se pudieron registrar los ingresos adicionales.');
+    } finally {
+      this.closureBusy.set(false);
+    }
   }
 
   protected cancelCloseRegister(): void {
@@ -839,12 +1131,26 @@ export class SalesPage implements OnDestroy, OnInit {
       this.closureError.set('Ingresa un monto válido de efectivo contado antes de cerrar la caja.');
       return;
     }
+    if (!Number.isFinite(this.additionalCashIncomeValue()) || this.additionalCashIncomeValue() < 0
+      || !Number.isFinite(this.additionalTransferIncomeValue()) || this.additionalTransferIncomeValue() < 0) {
+      this.showCloseConfirm.set(false);
+      this.closureError.set('Los ingresos adicionales deben ser montos válidos y no negativos.');
+      return;
+    }
     this.closureBusy.set(true);
     this.closureError.set('');
+    this.closureSuccess.set('');
     try {
-      await this.salesService.closeClosure(this.countedCashValue()!, this.closingNotes.trim() || null);
+      await this.salesService.closeClosure(
+        this.countedCashValue()!,
+        this.closingNotes.trim() || null,
+        this.additionalCashIncomeValue(),
+        this.additionalTransferIncomeValue(),
+      );
       this.showCloseConfirm.set(false);
       this.countedCashValue.set(null);
+      this.additionalCashIncomeValue.set(0);
+      this.additionalTransferIncomeValue.set(0);
       this.closingNotes = '';
       await this.loadCashRegister();
     } catch (error) {
@@ -859,6 +1165,7 @@ export class SalesPage implements OnDestroy, OnInit {
     const user = firstRelation(order.users);
     await this.loadDetails({
       id: order.id,
+      orderNumber: this.servedOrderNumber(order),
       totalAmount: order.total_amount,
       date: order.created_at,
       paymentMethod: null,
@@ -873,6 +1180,7 @@ export class SalesPage implements OnDestroy, OnInit {
     const user = firstRelation(sale.users);
     await this.loadDetails({
       id: sale.id,
+      orderNumber: this.paidOrderNumber(sale),
       totalAmount: sale.total_amount,
       date: sale.paid_at,
       paymentMethod: sale.payment_method,
@@ -883,6 +1191,7 @@ export class SalesPage implements OnDestroy, OnInit {
   }
 
   protected closeDetails(): void {
+    if (this.paymentCorrectionSaving()) return;
     this.selectedDetail.set(null);
     this.detailItems.set([]);
     this.detailError.set('');
@@ -893,6 +1202,169 @@ export class SalesPage implements OnDestroy, OnInit {
     this.paymentGroups.set([]);
     this.savedPaymentGroups.set([]);
     this.paymentError.set('');
+    this.paymentCorrectionMode.set(false);
+    this.paymentCorrectionSaving.set(false);
+    this.paymentCorrectionError.set('');
+    this.correctionTenders.set([]);
+    this.paymentCorrectionReason = '';
+  }
+
+  protected startPaymentCorrection(): void {
+    const order = this.selectedDetail();
+    if (!order || order.status !== 'Pagado' || !this.isAdmin()) return;
+    if (this.paymentDetailError()) {
+      this.paymentCorrectionError.set('No se puede corregir sin cargar el desglose de pagos. Revisa la conexión e inténtalo de nuevo.');
+      this.paymentCorrectionMode.set(true);
+      return;
+    }
+    if (order.paymentMethod === 'mixto' && this.savedPaymentGroups().length === 0) {
+      this.paymentCorrectionError.set('No se encontró el desglose original de este cobro mixto.');
+      this.paymentCorrectionMode.set(true);
+      return;
+    }
+
+    const existingTenders = this.savedPaymentGroups().flatMap((group) => group.order_payment_tenders);
+    const byMethod = new Map<SalePaymentMethod, number>();
+    if (existingTenders.length > 0) {
+      for (const tender of existingTenders) {
+        byMethod.set(tender.payment_method, this.roundMoney((byMethod.get(tender.payment_method) ?? 0) + tender.amount));
+      }
+    } else if (order.paymentMethod === 'efectivo' || order.paymentMethod === 'tarjeta' || order.paymentMethod === 'transferencia') {
+      byMethod.set(order.paymentMethod, order.totalAmount);
+    }
+
+    this.nextCorrectionTenderId = 1;
+    this.correctionTenders.set([...byMethod.entries()].map(([payment_method, amount]) => ({
+      id: this.nextCorrectionTenderId++,
+      payment_method,
+      amount,
+    })));
+    this.paymentCorrectionReason = '';
+    this.paymentCorrectionError.set('');
+    this.paymentCorrectionMode.set(true);
+  }
+
+  protected cancelPaymentCorrection(): void {
+    if (this.paymentCorrectionSaving()) return;
+    this.paymentCorrectionMode.set(false);
+    this.paymentCorrectionError.set('');
+    this.correctionTenders.set([]);
+    this.paymentCorrectionReason = '';
+  }
+
+  protected addCorrectionTender(): void {
+    const tenders = this.correctionTenders();
+    if (tenders.length >= 3) return;
+    const method = (['efectivo', 'transferencia', 'tarjeta'] as const)
+      .find((candidate) => !tenders.some((tender) => tender.payment_method === candidate));
+    if (!method) return;
+    const currentTotal = tenders.reduce((total, tender) => total + tender.amount, 0);
+    const amount = this.roundMoney(Math.max((this.selectedDetail()?.totalAmount ?? 0) - currentTotal, 0));
+    this.correctionTenders.set([...tenders, { id: this.nextCorrectionTenderId++, payment_method: method, amount }]);
+  }
+
+  protected removeCorrectionTender(tenderId: number): void {
+    if (this.correctionTenders().length <= 1) return;
+    this.correctionTenders.update((tenders) => tenders.filter((tender) => tender.id !== tenderId));
+  }
+
+  protected updateCorrectionTenderMethod(tenderId: number, method: SalePaymentMethod): void {
+    this.correctionTenders.update((tenders) => {
+      if (tenders.some((tender) => tender.id !== tenderId && tender.payment_method === method)) return tenders;
+      return tenders.map((tender) => tender.id === tenderId ? { ...tender, payment_method: method } : tender);
+    });
+  }
+
+  protected updateCorrectionTenderAmount(tenderId: number, value: number | string): void {
+    const amount = Number(value);
+    this.correctionTenders.update((tenders) => tenders.map((tender) => tender.id === tenderId
+      ? { ...tender, amount: Number.isFinite(amount) && amount >= 0 ? this.roundMoney(amount) : 0 }
+      : tender));
+  }
+
+  protected correctionTenderTotal(): number {
+    return this.roundMoney(this.correctionTenders().reduce((total, tender) => total + tender.amount, 0));
+  }
+
+  protected paymentCorrectionValidation(): string {
+    const order = this.selectedDetail();
+    if (!order) return 'No se encontró el pedido que se va a corregir.';
+    const tenders = this.correctionTenders();
+    if (tenders.length === 0 || tenders.some((tender) => tender.amount <= 0)) {
+      return 'Cada método de pago debe tener un monto mayor a cero.';
+    }
+    if (new Set(tenders.map((tender) => tender.payment_method)).size !== tenders.length) {
+      return 'No se puede repetir el mismo método de pago.';
+    }
+    if (this.toCents(this.correctionTenderTotal()) !== this.toCents(order.totalAmount)) {
+      return `Los métodos deben sumar exactamente ${this.formatCurrency(order.totalAmount)}.`;
+    }
+    if (!this.paymentCorrectionReason.trim()) return 'Ingresa el motivo de la corrección.';
+    return '';
+  }
+
+  protected async savePaymentCorrection(): Promise<void> {
+    const order = this.selectedDetail();
+    const validation = this.paymentCorrectionValidation();
+    if (!order || validation || this.paymentCorrectionSaving()) {
+      this.paymentCorrectionError.set(validation || 'No se encontró el pedido que se va a corregir.');
+      return;
+    }
+
+    this.paymentCorrectionSaving.set(true);
+    this.paymentCorrectionError.set('');
+    try {
+      await this.salesService.correctPaidOrderPayment(
+        order.id,
+        this.correctionTenders().map(({ payment_method, amount }) => ({ payment_method, amount })),
+        this.paymentCorrectionReason,
+      );
+      const methods = new Set(this.correctionTenders().map((tender) => tender.payment_method));
+      const paymentMethod = methods.size === 1 ? this.correctionTenders()[0].payment_method : 'mixto';
+      const updatedOrder = { ...order, paymentMethod };
+      this.paymentCorrectionMode.set(false);
+      this.paymentCorrectionReason = '';
+      this.correctionTenders.set([]);
+      await this.loadSales();
+      await this.loadDetails(updatedOrder);
+    } catch (error) {
+      this.paymentCorrectionError.set(paymentCorrectionErrorMessage(error));
+    } finally {
+      this.paymentCorrectionSaving.set(false);
+    }
+  }
+
+  protected servedOrderNumber(order: ServedOrder): number {
+    return this.dailyOrderNumbers().get(order.id) ?? order.id;
+  }
+
+  protected paidOrderNumber(sale: SaleRecord): number {
+    return this.paidDailyOrderNumbers().get(sale.id) ?? sale.id;
+  }
+
+  private async loadDailyOrderNumbers(): Promise<void> {
+    const { start, end } = localDayRange(localDateValue(new Date()));
+    try {
+      const dailyOrders = await this.salesService.listDailyOrderNumbers(start, end);
+      this.dailyOrderNumbers.set(new Map(dailyOrders.map((order, index) => [order.id, index + 1])));
+    } catch (error) {
+      this.errorMessage.set(
+        `Se cargaron los pedidos por cobrar, pero no su numeración diaria. ${error instanceof Error ? error.message : ''}`.trim(),
+      );
+    }
+  }
+
+  private async loadPaidDailyOrderNumbers(dateValue: string): Promise<void> {
+    this.paidDailyOrderNumbers.set(new Map());
+    const { start, end } = localDayRange(dateValue);
+    try {
+      const dailyOrders = await this.salesService.listDailyOrderNumbers(start, end);
+      this.paidDailyOrderNumbers.set(new Map(dailyOrders.map((order, index) => [order.id, index + 1])));
+    } catch (error) {
+      this.errorMessage.set(
+        `Se cargaron las ventas, pero no su numeración diaria. ${error instanceof Error ? error.message : ''}`.trim(),
+      );
+    }
   }
 
   protected productName(item: OrderItemDetail): string {

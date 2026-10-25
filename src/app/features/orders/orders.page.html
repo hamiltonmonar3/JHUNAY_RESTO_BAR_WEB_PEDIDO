@@ -363,6 +363,7 @@
         @if (isOrderEditable(order)) { <span></span> }
       </div>
       @for (item of detailItems(); track item.id) {
+      @for (unitIndex of itemUnitIndexes(item.quantity); track unitIndex; let lastUnit = $last) {
       <div class="detail-line">
         <span class="detail-product">
           {{ productName(item) }}
@@ -371,28 +372,37 @@
           }
         </span>
         @if (isOrderEditable(order)) {
+        @if (lastUnit) {
         <span class="qty-stepper">
           <button type="button" (click)="decrementItem(item)"
             [disabled]="updatingItemId() === item.id || removingItemId() === item.id"
             aria-label="Disminuir cantidad">−</button>
-          <strong>{{ item.quantity }}</strong>
+          <strong>1</strong>
           <button type="button" (click)="incrementItem(item)"
             [disabled]="updatingItemId() === item.id || removingItemId() === item.id"
             aria-label="Aumentar cantidad">+</button>
         </span>
         } @else {
-        <span>{{ item.quantity }}</span>
+        <span>1</span>
+        }
+        } @else {
+        <span>1</span>
         }
         <span>{{ formatCurrency(item.unit_price) }}</span>
-        <strong>{{ formatCurrency(item.subtotal) }}</strong>
+        <strong>{{ formatCurrency(item.unit_price) }}</strong>
         @if (isOrderEditable(order)) {
+        @if (lastUnit) {
         <button class="remove-item-btn" type="button" (click)="deleteItem(item)"
           [disabled]="removingItemId() === item.id || detailItems().length <= 1" aria-label="Quitar producto del pedido"
           title="Quitar producto">
           {{ removingItemId() === item.id ? '…' : '×' }}
         </button>
+        } @else {
+        <span></span>
+        }
         }
       </div>
+      }
       }
     </div>
     }
@@ -480,10 +490,26 @@
 </div>
 }
 
+@if (printChoice(); as choice) {
+  <div class="modal-backdrop confirm-backdrop" (click)="cancelPrintChoice()">
+    <section class="confirm-modal print-choice-modal" role="dialog" aria-modal="true"
+      aria-labelledby="print-choice-title" (click)="$event.stopPropagation()">
+      <button class="print-choice-close" type="button" (click)="cancelPrintChoice()"
+        aria-label="Cerrar ventana">×</button>
+      <div class="confirm-icon" aria-hidden="true">▣</div>
+      <h3 id="print-choice-title">¿Qué deseas imprimir?</h3>
+      <p>Este pedido ya fue servido y tiene productos agregados después.</p>
+      <div class="confirm-actions print-choice-actions">
+        <button class="secondary-button" type="button" (click)="printChosenItems(true)">Solo lo nuevo</button>
+        <button class="primary-button" type="button" (click)="printChosenItems(false)">Todo el pedido</button>
+      </div>
+    </section>
+  </div>
+}
+
 @if (printJob(); as job) {
   <main id="order-print-root" class="order-print-root">
     <header class="receipt-header">
-      <h1>COMANDA</h1>
       <strong>Pedido N.° {{ dailyOrderNumber(job.order) }}</strong>
       <span>{{ formatDate(job.order.created_at) }}</span>
     </header>
@@ -497,20 +523,21 @@
 
     <div class="receipt-divider"></div>
     <section class="receipt-items" aria-label="Productos del pedido">
-      @for (item of job.items; track item.id) {
+      @for (unit of printableUnits(job.items); track unit.item.id + '-' + unit.unitIndex; let last = $last) {
         <article class="receipt-item">
           <div class="receipt-item-heading">
-            <strong>{{ item.quantity }} × {{ productName(item) }}</strong>
-            <strong>{{ formatCurrency(item.subtotal) }}</strong>
+            <strong>1 × {{ productName(unit.item) }}</strong>
+            <strong>{{ formatCurrency(unit.item.unit_price) }}</strong>
           </div>
-          @if (item.notes) { <p class="receipt-note">Nota: {{ item.notes }}</p> }
+          @if (unit.item.notes) { <p class="receipt-note">Nota: {{ unit.item.notes }}</p> }
         </article>
+        @if (!last) { <div class="receipt-divider"></div> }
       }
     </section>
     <div class="receipt-divider"></div>
     <footer class="receipt-total">
       <span>TOTAL</span>
-      <strong>{{ formatCurrency(job.order.total_amount) }}</strong>
+      <strong>{{ formatCurrency(printItemsTotal(job.items)) }}</strong>
     </footer>
     <p class="receipt-footer">Gracias</p>
   </main>

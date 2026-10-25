@@ -15,8 +15,8 @@
   @if (activeTab() === 'products') {
     <section class="admin-section" aria-label="Productos del menú">
       <div class="admin-toolbar">
-        <input type="search" aria-label="Buscar productos" placeholder="Buscar producto" [ngModel]="search()" (ngModelChange)="search.set($event)" />
-        <select aria-label="Filtrar por categoría" [ngModel]="categoryFilter()" (ngModelChange)="categoryFilter.set($event)">
+        <input type="search" aria-label="Buscar productos" placeholder="Buscar producto" [ngModel]="search()" (ngModelChange)="onSearchChange($event)" />
+        <select aria-label="Filtrar por categoría" [ngModel]="categoryFilter()" (ngModelChange)="onCategoryFilterChange($event)">
           <option value="">Todas las categorías</option>
           @for (category of categories(); track category.id) { <option [value]="category.id">{{ category.name }}</option> }
         </select>
@@ -29,7 +29,7 @@
         <div class="table-scroll"><table>
           <thead><tr><th>Producto</th><th>Categoría</th><th class="numeric">Precio</th><th>Disponible</th><th>Existencia</th><th>Acciones</th></tr></thead>
           <tbody>
-            @for (product of filteredProducts(); track product.id) {
+            @for (product of productsPagination.visible(filteredProducts()); track product.id) {
               <tr>
                 <td><strong>{{ product.name }}</strong><small class="cell-description">{{ product.description || 'Sin descripción' }}</small></td>
                 <td>{{ categoryNameFor(product.category_id) }}</td>
@@ -41,6 +41,10 @@
             }
           </tbody>
         </table></div>
+        <app-table-pagination [totalItems]="filteredProducts().length"
+          [page]="productsPagination.currentPage(filteredProducts().length)" [pageSize]="productsPagination.pageSize()"
+          (pageChange)="productsPagination.setPage($event, filteredProducts().length)"
+          (pageSizeChange)="productsPagination.setPageSize($event)" />
       }
     </section>
   } @else if (activeTab() === 'categories') {
@@ -51,11 +55,15 @@
         <div class="table-scroll"><table>
           <thead><tr><th>Categoría</th><th>Descripción</th><th>Acciones</th></tr></thead>
           <tbody>
-            @for (category of categories(); track category.id) {
+            @for (category of categoriesPagination.visible(categories()); track category.id) {
               <tr><td><strong>{{ category.name }}</strong></td><td>{{ category.description || '—' }}</td><td class="admin-actions"><button class="detail-button" type="button" (click)="openCategoryForm(category)">Editar</button><button class="detail-button danger-action" type="button" (click)="deleteCategory(category)">Eliminar</button></td></tr>
             } @empty { <tr><td colspan="3" class="empty-cell">Aún no hay categorías.</td></tr> }
           </tbody>
         </table></div>
+        <app-table-pagination [totalItems]="categories().length"
+          [page]="categoriesPagination.currentPage(categories().length)" [pageSize]="categoriesPagination.pageSize()"
+          (pageChange)="categoriesPagination.setPage($event, categories().length)"
+          (pageSizeChange)="categoriesPagination.setPageSize($event)" />
       }
     </section>
   } @else {
@@ -67,7 +75,7 @@
         <div class="table-scroll"><table>
           <thead><tr><th>Promoción</th><th>Aplica a</th><th class="numeric">Descuento</th><th>Vigencia</th><th>Activa</th><th>Acciones</th></tr></thead>
           <tbody>
-            @for (promotion of promotions(); track promotion.id) {
+            @for (promotion of promotionsPagination.visible(promotions()); track promotion.id) {
               <tr>
                 <td><strong>{{ promotion.name }}</strong><small class="cell-description">{{ promotion.description || 'Sin descripción' }}</small></td>
                 <td>{{ promotionTargetLabel(promotion) }}</td>
@@ -79,6 +87,10 @@
             }
           </tbody>
         </table></div>
+        <app-table-pagination [totalItems]="promotions().length"
+          [page]="promotionsPagination.currentPage(promotions().length)" [pageSize]="promotionsPagination.pageSize()"
+          (pageChange)="promotionsPagination.setPage($event, promotions().length)"
+          (pageSizeChange)="promotionsPagination.setPageSize($event)" />
       }
     </section>
   }

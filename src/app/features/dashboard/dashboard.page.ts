@@ -11,6 +11,7 @@ import {
 import { ProductsService } from '../products/products.service';
 import { ExpenseRecord, SaleRecord, SalesService, SplitTenderSale } from '../sales/sales.service';
 import { TablesService } from '../tables/tables.service';
+import { TablePaginationComponent, TablePaginationState } from '../../shared/table-pagination';
 
 type DatabaseStatus = 'not-configured' | 'checking' | 'connected' | 'error';
 type DashboardPeriod = 'day' | 'week' | 'month' | 'custom';
@@ -58,7 +59,7 @@ function isDashboardPaymentMethod(method: string | null): method is DashboardPay
 }
 
 @Component({
-  imports: [RouterLink],
+  imports: [RouterLink, TablePaginationComponent],
   selector: 'app-dashboard-page',
   templateUrl: './dashboard.page.html',
 })
@@ -93,6 +94,7 @@ export class DashboardPage implements OnInit {
   protected readonly occupiedTableCount = signal<number | null>(null);
   protected readonly recentOrders = signal<OrderSummary[]>([]);
   protected readonly paidOrders = signal<SaleRecord[]>([]);
+  protected readonly paidOrdersPagination = new TablePaginationState();
   protected readonly expenses = signal<ExpenseRecord[]>([]);
   protected readonly splitTenders = signal<SplitTenderSale[]>([]);
   protected readonly topProducts = signal<ProductSalesSummary[]>([]);
@@ -355,9 +357,15 @@ export class DashboardPage implements OnInit {
     try {
       const start = range.start.toISOString();
       const end = range.end.toISOString();
+      const expensePeriods: ExpenseRecord['expense_period'][] =
+        this.selectedPeriod() === 'day'
+          ? ['day']
+          : this.selectedPeriod() === 'week'
+            ? ['day', 'week']
+            : ['day', 'week', 'month'];
       const [paidOrders, expenses, splitTenders, topProducts] = await Promise.all([
         this.sales.listPaidOrders(start, end),
-        this.sales.listExpenses(start, end),
+        this.sales.listExpenses(start, end, expensePeriods),
         this.sales.listSplitPaymentTenders(start, end),
         this.orders.listTopProducts(start, end),
       ]);

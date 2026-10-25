@@ -1,11 +1,12 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MenuCategory, MenuProduct, MenuPromotion, MenuService, PromotionDiscountType } from './menu.service';
+import { TablePaginationComponent, TablePaginationState } from '../../shared/table-pagination';
 
 type MenuTab = 'products' | 'categories' | 'promotions';
 
 @Component({
-  imports: [FormsModule],
+  imports: [FormsModule, TablePaginationComponent],
   selector: 'app-menu-page',
   styleUrl: './menu.page.scss',
   templateUrl: './menu.page.html',
@@ -18,6 +19,9 @@ export class MenuPage implements OnInit {
   protected readonly categories = signal<MenuCategory[]>([]);
   protected readonly products = signal<MenuProduct[]>([]);
   protected readonly promotions = signal<MenuPromotion[]>([]);
+  protected readonly productsPagination = new TablePaginationState();
+  protected readonly categoriesPagination = new TablePaginationState();
+  protected readonly promotionsPagination = new TablePaginationState();
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly errorMessage = signal('');
@@ -48,6 +52,16 @@ export class MenuPage implements OnInit {
   protected categoryId: number | null = null;
   protected categoryName = '';
   protected categoryDescription = '';
+
+  protected onSearchChange(value: string): void {
+    this.search.set(value);
+    this.productsPagination.page.set(1);
+  }
+
+  protected onCategoryFilterChange(value: string): void {
+    this.categoryFilter.set(value);
+    this.productsPagination.page.set(1);
+  }
 
   protected promotionId: number | null = null;
   protected promotionName = '';

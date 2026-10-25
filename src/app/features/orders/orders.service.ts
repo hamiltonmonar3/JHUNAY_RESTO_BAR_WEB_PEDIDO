@@ -23,6 +23,7 @@ export interface OrderItemDetail {
   unit_price: number;
   subtotal: number;
   notes: string | null;
+  added_after_served: boolean;
   products: { name: string } | { name: string }[] | null;
 }
 
@@ -40,6 +41,13 @@ export interface NewOrderItem {
 }
 
 const ORDER_PAGE_SIZE = 1000;
+
+export class OrderWaiterNamesUnavailableError extends Error {
+  constructor(readonly orders: OrderSummary[]) {
+    super('No se pudo consultar el nombre de los meseros.');
+    this.name = 'OrderWaiterNamesUnavailableError';
+  }
+}
 
 @Injectable({ providedIn: 'root' })
 export class OrdersService {
@@ -87,7 +95,9 @@ export class OrdersService {
 
     if (error) throw error;
     const orders = data as unknown as OrderSummary[];
-    return (orders ?? []).map((order) => ({ ...order, total_amount: Number(order.total_amount) }));
+    return this.attachOrderWaiterNames(
+      (orders ?? []).map((order) => ({ ...order, total_amount: Number(order.total_amount) })),
+    );
   }
 
   async listForDay(startIso: string, endIso: string): Promise<OrderSummary[]> {
@@ -110,7 +120,35 @@ export class OrdersService {
       orders.push(...(page ?? []).map((order) => ({ ...order, total_amount: Number(order.total_amount) })));
       if (!page || page.length < ORDER_PAGE_SIZE) break;
     }
-    return orders;
+    return this.attachOrderWaiterNames(orders);
+  }
+
+  private async attachOrderWaiterNames(orders: OrderSummary[]): Promise<OrderSummary[]> {
+    if (orders.length === 0) return orders;
+
+    const client = this.supabase.client;
+    if (!client) throw new Error('Configura la publishable key de Supabase antes de consultar pedidos.');
+
+    const { data, error } = await client.rpc('get_order_waiter_names', {
+      p_order_ids: orders.map((order) => order.id),
+    });
+    if (error) {
+      if (['PGRST202', '42883', '404'].includes(error.code)) {
+        throw new OrderWaiterNamesUnavailableError(orders);
+      }
+      throw error;
+    }
+
+    const waiterNames = new Map(
+      ((data ?? []) as { order_id: number; full_name: string }[])
+        .map(({ order_id, full_name }) => [order_id, full_name]),
+    );
+    return orders.map((order) => {
+      const fullName = waiterNames.get(order.id);
+      return fullName
+        ? { ...order, users: { full_name: fullName } }
+        : order;
+    });
   }
 
   async listItems(orderId: number): Promise<OrderItemDetail[]> {
@@ -119,7 +157,7 @@ export class OrdersService {
 
     const { data, error } = await client
       .from('order_items')
-      .select('id, product_id, quantity, unit_price, subtotal, notes, products(name)')
+      .select('id, product_id, quantity, unit_price, subtotal, notes, added_after_served, products(name)')
       .eq('order_id', orderId)
       .order('id');
 

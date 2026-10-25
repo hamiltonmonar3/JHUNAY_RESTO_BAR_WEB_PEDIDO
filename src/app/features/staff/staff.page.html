@@ -16,10 +16,14 @@
       @if (loading()) { <div class="empty-state">Cargando personal…</div> }
       @else {
         <div class="table-scroll"><table><thead><tr><th>Empleado</th><th>Usuario</th><th>Rol</th><th>Auth</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
-          @for (person of people(); track person.id) {
+          @for (person of peoplePagination.visible(people()); track person.id) {
             <tr><td><strong>{{ person.full_name }}</strong><small class="cell-description">{{ person.email }}</small></td><td>{{ person.username }}</td><td>{{ roleNameFor(person.role_id) }}</td><td><span class="auth-link-status" [class.pending-auth]="!person.auth_user_id">{{ person.auth_user_id ? 'Vinculada' : 'Pendiente' }}</span></td><td>{{ person.is_active ? 'Activo' : 'Inactivo' }}</td><td class="admin-actions"><button class="detail-button" type="button" (click)="openPersonForm(person)">Editar</button><button class="detail-button" type="button" (click)="toggleActive(person)">{{ person.is_active ? 'Desactivar' : 'Activar' }}</button></td></tr>
           } @empty { <tr><td colspan="6" class="empty-cell">Aún no hay empleados.</td></tr> }
         </tbody></table></div>
+        <app-table-pagination [totalItems]="people().length"
+          [page]="peoplePagination.currentPage(people().length)" [pageSize]="peoplePagination.pageSize()"
+          (pageChange)="peoplePagination.setPage($event, people().length)"
+          (pageSizeChange)="peoplePagination.setPageSize($event)" />
       }
     </section>
   } @else {
@@ -28,10 +32,14 @@
       @if (loading()) { <div class="empty-state">Cargando roles…</div> }
       @else {
         <div class="table-scroll"><table><thead><tr><th>Rol</th><th>Descripción</th><th>Acciones</th></tr></thead><tbody>
-          @for (role of roles(); track role.id) {
+          @for (role of rolesPagination.visible(roles()); track role.id) {
             <tr><td><strong>{{ role.name }}</strong></td><td>{{ role.description || '—' }}</td><td class="admin-actions"><button class="detail-button" type="button" (click)="openRoleForm(role)">Editar</button><button class="detail-button danger-action" type="button" (click)="deleteRole(role)">Eliminar</button></td></tr>
           }
         </tbody></table></div>
+        <app-table-pagination [totalItems]="roles().length"
+          [page]="rolesPagination.currentPage(roles().length)" [pageSize]="rolesPagination.pageSize()"
+          (pageChange)="rolesPagination.setPage($event, roles().length)"
+          (pageSizeChange)="rolesPagination.setPageSize($event)" />
       }
     </section>
   }

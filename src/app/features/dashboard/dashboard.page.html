@@ -343,7 +343,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (order of paidOrders().slice(0, 8); track order.id) {
+            @for (order of paidOrdersPagination.visible(paidOrders()); track order.id) {
               <tr>
                 <td class="order-number">#{{ order.id }}</td>
                 <td>{{ orderLocation(order) }}</td>
@@ -356,6 +356,10 @@
           </tbody>
         </table>
       </div>
+      <app-table-pagination [totalItems]="paidOrders().length"
+        [page]="paidOrdersPagination.currentPage(paidOrders().length)" [pageSize]="paidOrdersPagination.pageSize()"
+        (pageChange)="paidOrdersPagination.setPage($event, paidOrders().length)"
+        (pageSizeChange)="paidOrdersPagination.setPageSize($event)" />
     }
   </section>
 

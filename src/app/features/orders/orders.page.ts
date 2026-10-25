@@ -2,7 +2,14 @@ import { ChangeDetectorRef, Component, computed, HostListener, inject, OnInit, s
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 import { ProductOption, ProductsService } from '../products/products.service';
-import { NewOrderItem, OrderItemDetail, OrderStatus, OrderSummary, OrdersService } from './orders.service';
+import {
+    NewOrderItem,
+    OrderItemDetail,
+    OrderStatus,
+    OrderSummary,
+    OrdersService,
+    OrderWaiterNamesUnavailableError,
+} from './orders.service';
 import { RestaurantTable, TablesService } from '../tables/tables.service';
 
 interface CartLine {
@@ -78,6 +85,7 @@ export class OrdersPage implements OnInit {
     protected readonly showCancelConfirm = signal(false);
     protected readonly orderToCancel = signal<OrderSummary | null>(null);
     protected readonly printJob = signal<{ order: OrderSummary; items: OrderItemDetail[] } | null>(null);
+    protected readonly printChoice = signal<{ order: OrderSummary; items: OrderItemDetail[] } | null>(null);
     protected readonly printingOrderId = signal<number | null>(null);
 
     // Computed
@@ -157,7 +165,7 @@ export class OrdersPage implements OnInit {
             const { start, end } = localDayRange(new Date());
             this.orders.set(await this.ordersService.listForDay(start, end));
         } catch (error) {
-            this.errorMessage.set(this.readableError(error));
+            this.setOrderListError(error);
         } finally {
             this.loading.set(false);
         }
@@ -365,15 +373,51 @@ export class OrdersPage implements OnInit {
             const items = await this.ordersService.listItems(order.id);
             if (items.length === 0) throw new Error('Este pedido no tiene productos para imprimir.');
 
-            this.printJob.set({ order, items });
-            this.changeDetector.detectChanges();
-            window.print();
+            if (order.status === 'servido' && items.some((item) => item.added_after_served)) {
+                this.printChoice.set({ order, items });
+                return;
+            }
+            this.startPrinting(order, items);
         } catch (error) {
             this.errorMessage.set(this.readableError(error));
         } finally {
-            this.printJob.set(null);
             this.printingOrderId.set(null);
         }
+    }
+
+    protected printChosenItems(onlyAdditional: boolean): void {
+        const choice = this.printChoice();
+        if (!choice) return;
+        this.printChoice.set(null);
+        const items = onlyAdditional
+            ? choice.items.filter((item) => item.added_after_served)
+            : choice.items;
+        this.startPrinting(choice.order, items);
+    }
+
+    protected printItemsTotal(items: OrderItemDetail[]): number {
+        return items.reduce((total, item) => total + item.subtotal, 0);
+    }
+
+    protected itemUnitIndexes(quantity: number): number[] {
+        return Array.from({ length: Math.max(0, Math.floor(quantity)) }, (_, index) => index);
+    }
+
+    protected printableUnits(items: OrderItemDetail[]): { item: OrderItemDetail; unitIndex: number }[] {
+        return items.flatMap((item) =>
+            this.itemUnitIndexes(item.quantity).map((unitIndex) => ({ item, unitIndex })),
+        );
+    }
+
+    protected cancelPrintChoice(): void {
+        this.printChoice.set(null);
+    }
+
+    private startPrinting(order: OrderSummary, items: OrderItemDetail[]): void {
+        this.printingOrderId.set(order.id);
+        this.printJob.set({ order, items });
+        this.changeDetector.detectChanges();
+        window.print();
     }
 
     @HostListener('window:afterprint')
@@ -473,7 +517,7 @@ export class OrdersPage implements OnInit {
             const { start, end } = localDayRange(new Date());
             this.orders.set(await this.ordersService.listForDay(start, end));
         } catch (error) {
-            this.errorMessage.set(this.readableError(error));
+            this.setOrderListError(error);
         }
         this.selectedOrder.set(this.orders().find((candidate) => candidate.id === orderId) ?? null);
         try {
@@ -487,6 +531,17 @@ export class OrdersPage implements OnInit {
         this.detailProductRowDrafts.set({});
         this.detailProductSearch.set('');
         this.detailProductPickerOpen.set(false);
+    }
+
+    private setOrderListError(error: unknown): void {
+        if (error instanceof OrderWaiterNamesUnavailableError) {
+            this.orders.set(error.orders);
+            this.errorMessage.set(
+                'Los pedidos se cargaron, pero falta aplicar en Supabase la migración 202610251600_order_waiter_names_for_staff.sql para ver el nombre de todos los meseros.',
+            );
+            return;
+        }
+        this.errorMessage.set(this.readableError(error));
     }
 
     protected nextStatusLabel(status: OrderStatus): string {

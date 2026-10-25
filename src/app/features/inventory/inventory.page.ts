@@ -1,9 +1,10 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { InventoryMovement, InventoryProduct, InventoryService } from './inventory.service';
+import { TablePaginationComponent, TablePaginationState } from '../../shared/table-pagination';
 
 @Component({
-  imports: [FormsModule],
+  imports: [FormsModule, TablePaginationComponent],
   selector: 'app-inventory-page',
   styleUrl: './inventory.page.scss',
   templateUrl: './inventory.page.html',
@@ -13,6 +14,8 @@ export class InventoryPage implements OnInit {
   private readonly dateTime = new Intl.DateTimeFormat('es-EC', { dateStyle: 'short', timeStyle: 'short' });
   protected readonly products = signal<InventoryProduct[]>([]);
   protected readonly movements = signal<InventoryMovement[]>([]);
+  protected readonly productsPagination = new TablePaginationState();
+  protected readonly movementsPagination = new TablePaginationState();
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly showForm = signal(false);

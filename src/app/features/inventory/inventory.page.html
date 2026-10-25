@@ -17,10 +17,14 @@
     @else if (products().length === 0) { <div class="empty-state">Activa “Controlar existencia” en un producto del menú para comenzar.</div> }
     @else {
       <div class="table-scroll"><table><thead><tr><th>Producto</th><th class="numeric">Existencia</th><th class="numeric">Mínimo</th><th>Estado</th><th>Acción</th></tr></thead><tbody>
-        @for (product of products(); track product.id) {
+        @for (product of productsPagination.visible(products()); track product.id) {
           <tr><td><strong>{{ product.name }}</strong></td><td class="numeric amount">{{ product.current_stock }}</td><td class="numeric">{{ product.min_stock }}</td><td><span class="stock-pill" [class.stock-low]="product.current_stock <= product.min_stock">{{ product.current_stock <= product.min_stock ? 'Reponer' : 'En stock' }}</span></td><td><button class="detail-button" type="button" (click)="openMovement(product)">Movimiento</button></td></tr>
         }
       </tbody></table></div>
+      <app-table-pagination [totalItems]="products().length"
+        [page]="productsPagination.currentPage(products().length)" [pageSize]="productsPagination.pageSize()"
+        (pageChange)="productsPagination.setPage($event, products().length)"
+        (pageSizeChange)="productsPagination.setPageSize($event)" />
     }
   </section>
 
@@ -30,10 +34,14 @@
     @else if (movements().length === 0) { <div class="empty-state">Aún no hay movimientos registrados.</div> }
     @else {
       <div class="table-scroll"><table><thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th class="numeric">Cantidad</th><th>Motivo</th><th>Usuario</th></tr></thead><tbody>
-        @for (movement of movements(); track movement.id) {
+        @for (movement of movementsPagination.visible(movements()); track movement.id) {
           <tr><td>{{ formatDate(movement.created_at) }}</td><td>{{ movementProductName(movement) }}</td><td>{{ movementLabel(movement.movement_type) }}</td><td class="numeric">{{ movement.quantity }}</td><td>{{ movement.reason || '—' }}</td><td>{{ movementUserName(movement) }}</td></tr>
         }
       </tbody></table></div>
+      <app-table-pagination [totalItems]="movements().length"
+        [page]="movementsPagination.currentPage(movements().length)" [pageSize]="movementsPagination.pageSize()"
+        (pageChange)="movementsPagination.setPage($event, movements().length)"
+        (pageSizeChange)="movementsPagination.setPageSize($event)" />
     }
   </section>
 </section>

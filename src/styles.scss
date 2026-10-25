@@ -636,7 +636,7 @@ td { height: 48px; padding: 6px 13px; border-top: 1px solid #302720; color: #d5c
 	.receipt-item-heading { display: flex; justify-content: space-between; gap: 1mm; align-items: start; font-size: 10pt; }
 	.receipt-item-heading strong:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 	.receipt-item-heading strong:last-child { white-space: nowrap; }
-	.receipt-note { margin: 1mm 0 0; font-size: 12pt; overflow-wrap: anywhere; }
+	.receipt-note { margin: 1mm 0 0; font-size: 10pt; font-weight: 400; overflow-wrap: anywhere; }
 	.receipt-total { display: flex; justify-content: space-between; gap: 2mm; padding-top: 2mm; font-size: 16pt; font-weight: 800; }
 	.receipt-total strong { white-space: nowrap; }
 	.receipt-footer { margin: 4mm 0 0; text-align: center; font-size: 12pt; }
@@ -924,6 +924,62 @@ td { height: 48px; padding: 6px 13px; border-top: 1px solid #302720; color: #d5c
 	gap: 15px;
 }
 
+.admin-backdrop .expense-edit-modal {
+	width: min(100%, 600px);
+	padding: 22px;
+}
+
+.admin-backdrop .expense-edit-form {
+	gap: 18px;
+}
+
+.admin-backdrop .expense-edit-form .expense-edit-row {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 18px;
+}
+
+.admin-backdrop .expense-edit-form label {
+	display: grid;
+	min-width: 0;
+	gap: 8px;
+	color: var(--muted);
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.admin-backdrop .expense-edit-form input,
+.admin-backdrop .expense-edit-form select {
+	width: 100%;
+	min-width: 0;
+	height: 44px;
+	font-size: 14px;
+}
+
+.admin-backdrop .expense-edit-form .expense-period-field {
+	width: calc((100% - 18px) / 2);
+}
+
+.admin-backdrop .expense-edit-form .modal-footer {
+	justify-content: flex-end;
+	gap: 12px;
+	margin-top: 2px;
+}
+
+@media (max-width: 560px) {
+	.admin-backdrop .expense-edit-modal {
+		padding: 20px 17px;
+	}
+
+	.admin-backdrop .expense-edit-form .expense-edit-row {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.admin-backdrop .expense-edit-form .expense-period-field {
+		width: 100%;
+	}
+}
+
 .admin-backdrop .admin-form label {
 	color: var(--muted);
 	font-size: 11px;
@@ -1190,6 +1246,55 @@ td { height: 48px; padding: 6px 13px; border-top: 1px solid #302720; color: #d5c
 :root .workspace .admin-backdrop .admin-modal .modal-heading .quiet-button.close-top:hover {
 	transform: rotate(90deg);
 	background: color-mix(in srgb, var(--orange) 10%, var(--paper));
+}
+
+.payment-correction-panel {
+	padding: 14px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: color-mix(in srgb, var(--orange) 4%, var(--paper));
+}
+
+.payment-correction-panel .correction-total {
+	padding: 10px 12px;
+	border-radius: 8px;
+	background: var(--paper);
+}
+
+.payment-correction-panel .correction-total.correction-invalid strong {
+	color: #b73527;
+}
+
+.payment-correction-panel .correction-reason {
+	display: grid;
+	gap: 6px;
+	color: var(--muted);
+	font-size: 11px;
+	font-weight: 700;
+}
+
+.payment-correction-panel .correction-reason textarea {
+	box-sizing: border-box;
+	width: 100%;
+	padding: 10px;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: var(--paper);
+	color: var(--ink);
+	font: inherit;
+	resize: vertical;
+}
+
+.payment-correction-panel .correction-audit-note {
+	margin: 0;
+	color: var(--muted);
+	font-size: 11px;
+	line-height: 1.45;
+}
+
+.payment-correction-action {
+	display: flex;
+	justify-content: flex-end;
 }
 
 @media (max-width: 640px) {

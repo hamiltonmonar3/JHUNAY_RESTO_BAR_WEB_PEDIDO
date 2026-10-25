@@ -1,11 +1,12 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { StaffRecord, StaffRole, StaffService } from './staff.service';
+import { TablePaginationComponent, TablePaginationState } from '../../shared/table-pagination';
 
 type StaffTab = 'people' | 'roles';
 
 @Component({
-  imports: [FormsModule],
+  imports: [FormsModule, TablePaginationComponent],
   selector: 'app-staff-page',
   styleUrl: './staff.page.scss',
   templateUrl: './staff.page.html',
@@ -14,6 +15,8 @@ export class StaffPage implements OnInit {
   private readonly staffService = inject(StaffService);
   protected readonly people = signal<StaffRecord[]>([]);
   protected readonly roles = signal<StaffRole[]>([]);
+  protected readonly peoplePagination = new TablePaginationState();
+  protected readonly rolesPagination = new TablePaginationState();
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly errorMessage = signal('');

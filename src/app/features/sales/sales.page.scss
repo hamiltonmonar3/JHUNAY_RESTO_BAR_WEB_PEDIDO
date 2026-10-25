@@ -1762,7 +1762,29 @@
   overflow: auto;
 
   table {
-    min-width: 660px;
+    min-width: 760px;
+  }
+}
+
+.expense-sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--orange);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--orange);
+    outline-offset: 3px;
+    border-radius: 2px;
   }
 }
 
@@ -1778,6 +1800,16 @@
   font-weight: 700;
 }
 
+.expense-delete-backdrop {
+  z-index: 1510;
+}
+
+.expense-delete-modal {
+  .closure-confirm-actions {
+    margin-top: 22px;
+  }
+}
+
 .expense-entry {
   align-self: start;
   padding: 15px;
@@ -1787,6 +1819,16 @@
     color: var(--ink);
     font-family: 'Manrope', sans-serif;
     font-size: 15px;
+  }
+
+  .expense-entry-date {
+    margin: -4px 0 12px;
+    color: var(--muted);
+    font-size: 11px;
+
+    strong {
+      color: var(--ink);
+    }
   }
 
   form {
@@ -2060,6 +2102,15 @@
     color: var(--ink);
   }
 
+  tfoot th {
+    height: 32px;
+    border-top: 2px solid var(--line);
+    border-bottom: 0;
+    color: var(--ink);
+    font-size: 10px;
+    font-weight: 800;
+  }
+
   tr:last-child td {
     border-bottom: 0;
   }
@@ -2079,7 +2130,7 @@
 
 .closure-count-form {
   display: grid;
-  grid-template-columns: minmax(190px, 1fr) minmax(190px, 0.8fr) minmax(180px, 1fr) auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: end;
   gap: 14px;
   padding: 12px 18px 16px;
@@ -2123,6 +2174,47 @@
     min-height: 42px;
     border-radius: 8px;
   }
+}
+
+.closure-additional-entry {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: 14px;
+
+  label {
+    display: grid;
+    gap: 6px;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  label > span {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+    font: inherit;
+    font-size: 12px;
+  }
+}
+
+.closure-register-income {
+  min-height: 40px;
+  white-space: nowrap;
 }
 
 .closure-difference {
@@ -2220,6 +2312,11 @@
   }
 
   .closure-count-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .closure-additional-entry {
+    grid-column: auto;
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -2838,6 +2935,7 @@
     border-radius: 8px;
     font-weight: 700;
   }
+
 }
 
 @media (max-width: 700px) {
