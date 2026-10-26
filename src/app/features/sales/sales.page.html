@@ -287,8 +287,8 @@
           <section class="opening-count-section">
             <h3>Confirmar efectivo de fondo</h3>
             <label>Monto en efectivo contado
-              <input name="openingCountedCash" type="number" min="0" step="0.01" required
-                [value]="openingCountedCashValue() ?? ''" (input)="updateOpeningCountedCash($event)" placeholder="0,00" />
+              <input name="openingCountedCash" type="text" inputmode="decimal" required
+                [value]="openingCountedCashInput()" (input)="updateOpeningCountedCash($event)" placeholder="0.00" />
               <small>Verifica físicamente el efectivo antes de confirmar.</small>
             </label>
           </section>
@@ -363,13 +363,13 @@
             </div>
           </section>
 
-          <section class="closure-method-card" aria-label="Resumen de métodos de pago">
-            <h3>Resumen de métodos de pago</h3>
+          <section class="closure-method-card" aria-label="Resumen de caja y métodos de pago">
+            <h3>Resumen de caja y métodos de pago</h3>
             @if (closurePaymentSummary().length === 0) {
-              <p class="closure-no-payments">Aún no hay pagos en esta caja.</p>
+              <p class="closure-no-payments">Aún no hay pagos registrados.</p>
             }
             <table>
-              <thead><tr><th>Método</th><th class="numeric">Total</th><th class="numeric">Movimientos</th></tr></thead>
+              <thead><tr><th>Método</th><th class="numeric">Total</th><th class="numeric">Movimientos de pago</th></tr></thead>
               <tbody>
                 @for (method of closurePaymentSummary(); track method.method) {
                   <tr>
@@ -381,7 +381,7 @@
               </tbody>
               <tfoot>
                 <tr>
-                  <th>Total acumulado</th>
+                  <th>Total efectivo + transferencias</th>
                   <th class="numeric">{{ formatCurrency(closurePaymentTotal()) }}</th>
                   <th class="numeric">{{ closurePaymentCount() }}</th>
                 </tr>
@@ -393,19 +393,19 @@
         <form class="closure-count-form" (ngSubmit)="closeRegister()">
           <label class="closure-count-input">Arqueo de efectivo
             <span>Monto en efectivo contado</span>
-            <input name="countedCash" type="number" min="0" step="0.01" required
-              [value]="countedCashValue() ?? ''" (input)="updateCountedCash($event)" placeholder="0,00" />
+            <input name="countedCash" type="text" inputmode="decimal" required
+              [value]="countedCashInput()" (input)="updateCountedCash($event)" placeholder="0.00" />
           </label>
           <div class="closure-additional-entry">
             <label>Ingreso adicional en efectivo
               <span>Se suma al efectivo esperado</span>
-              <input name="additionalCashIncome" type="number" min="0" step="0.01"
-                [value]="additionalCashIncomeValue() || ''" (input)="updateAdditionalIncome($event, 'efectivo')" placeholder="0,00" />
+              <input name="additionalCashIncome" type="text" inputmode="decimal"
+                [value]="additionalCashIncomeInput()" (input)="updateAdditionalIncome($event, 'efectivo')" placeholder="0.00" />
             </label>
             <label>Ingreso adicional por transferencia
               <span>Se suma al total de transferencias</span>
-              <input name="additionalTransferIncome" type="number" min="0" step="0.01"
-                [value]="additionalTransferIncomeValue() || ''" (input)="updateAdditionalIncome($event, 'transferencia')" placeholder="0,00" />
+              <input name="additionalTransferIncome" type="text" inputmode="decimal"
+                [value]="additionalTransferIncomeInput()" (input)="updateAdditionalIncome($event, 'transferencia')" placeholder="0.00" />
             </label>
             <button class="secondary-button closure-register-income" type="button"
               (click)="recordAdditionalIncome()" [disabled]="closureBusy()">
@@ -441,18 +441,39 @@
       @if (closureHistory().length === 0) {
         <div class="empty-state compact">Aún no hay cierres registrados.</div>
       } @else {
+        <div class="closure-history-toolbar">
+          <label class="expense-calendar closure-history-search">
+            <span aria-hidden="true">⌕</span>
+            <input type="search" aria-label="Buscar en el historial de cierres"
+              placeholder="Buscar por fecha, responsable o monto"
+              [ngModel]="closureHistorySearch()" (ngModelChange)="updateClosureHistorySearch($event)" />
+          </label>
+        </div>
+        @if (filteredClosureHistory().length === 0) {
+          <div class="empty-state compact">No se encontraron cierres que coincidan con la búsqueda.</div>
+        } @else {
         <div class="table-scroll"><table>
-          <thead><tr><th>Cerrado</th><th>Apertura</th><th class="numeric">Esperado</th><th class="numeric">Contado</th><th class="numeric">Diferencia</th><th>Responsable</th></tr></thead>
+          <thead><tr>
+            <th [attr.aria-sort]="closureSortAria('closed_at')"><button class="expense-sort-button" type="button" (click)="toggleClosureSort('closed_at')">Cerrado <span aria-hidden="true">{{ closureSortIndicator('closed_at') }}</span></button></th>
+            <th [attr.aria-sort]="closureSortAria('opening_amount')"><button class="expense-sort-button" type="button" (click)="toggleClosureSort('opening_amount')">Apertura <span aria-hidden="true">{{ closureSortIndicator('opening_amount') }}</span></button></th>
+            <th class="numeric" [attr.aria-sort]="closureSortAria('expected_cash')"><button class="expense-sort-button" type="button" (click)="toggleClosureSort('expected_cash')">Esperado <span aria-hidden="true">{{ closureSortIndicator('expected_cash') }}</span></button></th>
+            <th class="numeric" [attr.aria-sort]="closureSortAria('counted_cash')"><button class="expense-sort-button" type="button" (click)="toggleClosureSort('counted_cash')">Contado <span aria-hidden="true">{{ closureSortIndicator('counted_cash') }}</span></button></th>
+            <th class="numeric" [attr.aria-sort]="closureSortAria('difference')"><button class="expense-sort-button" type="button" (click)="toggleClosureSort('difference')">Diferencia <span aria-hidden="true">{{ closureSortIndicator('difference') }}</span></button></th>
+            <th class="numeric" [attr.aria-sort]="closureSortAria('transfer')"><button class="expense-sort-button" type="button" (click)="toggleClosureSort('transfer')">Transferencia <span aria-hidden="true">{{ closureSortIndicator('transfer') }}</span></button></th>
+            <th class="numeric" [attr.aria-sort]="closureSortAria('total')"><button class="expense-sort-button" type="button" (click)="toggleClosureSort('total')">Total <span aria-hidden="true">{{ closureSortIndicator('total') }}</span></button></th>
+            <th [attr.aria-sort]="closureSortAria('responsible')"><button class="expense-sort-button" type="button" (click)="toggleClosureSort('responsible')">Responsable <span aria-hidden="true">{{ closureSortIndicator('responsible') }}</span></button></th>
+          </tr></thead>
           <tbody>
-            @for (closure of closureHistoryPagination.visible(closureHistory()); track closure.id) {
-              <tr><td>{{ closure.closed_at ? formatDate(closure.closed_at) : '—' }}</td><td>{{ formatCurrency(closure.opening_amount) }}</td><td class="numeric amount">{{ formatCurrency(closure.expected_cash) }}</td><td class="numeric amount">{{ formatCurrency(closure.counted_cash) }}</td><td class="numeric" [class.amount]="closure.difference === 0">{{ formatCurrency(closure.difference) }}</td><td>{{ closureAuthorName(closure) }}</td></tr>
+            @for (closure of closureHistoryPagination.visible(filteredClosureHistory()); track closure.id) {
+              <tr><td>{{ closure.closed_at ? formatDate(closure.closed_at) : '—' }}</td><td>{{ formatCurrency(closure.opening_amount) }}</td><td class="numeric amount">{{ formatCurrency(closure.expected_cash) }}</td><td class="numeric amount">{{ formatCurrency(closure.counted_cash) }}</td><td class="numeric" [class.amount]="closureDifference(closure) === 0">{{ formatCurrency(closureDifference(closure)) }}</td><td class="numeric amount">{{ formatCurrency(closure.total_other_sales) }}</td><td class="numeric amount">{{ formatCurrency(closureTotalWithTransfer(closure)) }}</td><td>{{ closureAuthorName(closure) }}</td></tr>
             }
           </tbody>
         </table></div>
-        <app-table-pagination [totalItems]="closureHistory().length"
-          [page]="closureHistoryPagination.currentPage(closureHistory().length)" [pageSize]="closureHistoryPagination.pageSize()"
-          (pageChange)="closureHistoryPagination.setPage($event, closureHistory().length)"
+        <app-table-pagination [totalItems]="filteredClosureHistory().length"
+          [page]="closureHistoryPagination.currentPage(filteredClosureHistory().length)" [pageSize]="closureHistoryPagination.pageSize()"
+          (pageChange)="closureHistoryPagination.setPage($event, filteredClosureHistory().length)"
           (pageSizeChange)="closureHistoryPagination.setPageSize($event)" />
+        }
       }
     </section>
   }

@@ -340,20 +340,25 @@ export class SalesService {
     return data ? this.normalizeClosure(data as unknown as CashClosure) : null;
   }
 
-  async listClosureHistory(limit = 20): Promise<CashClosure[]> {
+  async listClosureHistory(): Promise<CashClosure[]> {
     const client = this.supabase.client;
     if (!client) throw new Error('Configura Supabase antes de consultar la caja.');
 
-    const { data, error } = await client
-      .from('cash_closures')
-      .select('id, user_id, opening_amount, total_cash_sales, total_card_sales, total_other_sales, total_expenses, additional_cash_income, additional_transfer_income, expected_cash, counted_cash, difference, notes, status, opened_at, closed_at, users(full_name)')
-      .eq('status', 'cerrada')
-      .order('closed_at', { ascending: false })
-      .limit(limit);
+    const closures: CashClosure[] = [];
+    for (let offset = 0; ; offset += this.pageSize) {
+      const { data, error } = await client
+        .from('cash_closures')
+        .select('id, user_id, opening_amount, total_cash_sales, total_card_sales, total_other_sales, total_expenses, additional_cash_income, additional_transfer_income, expected_cash, counted_cash, difference, notes, status, opened_at, closed_at, users(full_name)')
+        .eq('status', 'cerrada')
+        .order('closed_at', { ascending: false })
+        .range(offset, offset + this.pageSize - 1);
 
-    if (error) throw error;
-    const closures = data as unknown as CashClosure[];
-    return (closures ?? []).map((closure) => this.normalizeClosure(closure));
+      if (error) throw error;
+      const page = data as unknown as CashClosure[];
+      closures.push(...(page ?? []).map((closure) => this.normalizeClosure(closure)));
+      if (!page || page.length < this.pageSize) break;
+    }
+    return closures;
   }
 
   async openClosure(openingAmount: number): Promise<void> {

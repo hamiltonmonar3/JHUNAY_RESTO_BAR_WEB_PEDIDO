@@ -1,14 +1,14 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TablePaginationComponent, TablePaginationState } from '../../shared/table-pagination';
-import { PersonMovement, PersonMovementType, PersonRecord, PersonasService } from './personas.service';
-
-type SummaryPeriod = 'today' | 'week' | 'month';
+import { PersonMovement, PersonMovementType, PersonRecord, PersonasService, WritablePersonMovementType } from './personas.service';
 
 const movementLabels: Record<PersonMovementType, string> = {
   por_cobrar: 'Por cobrar',
   por_pagar: 'Por pagar',
-  descuento: 'Descuento',
+  descuento: 'Descuento (histórico)',
+  cobrado: 'Cobrado',
+  pagado: 'Pagado',
 };
 
 function localDateValue(date: Date): string {
@@ -28,6 +28,11 @@ export class PersonasPage implements OnInit {
   private readonly financeService = inject(PersonasService);
   protected readonly people = signal<PersonRecord[]>([]);
   protected readonly searchQuery = signal('');
+  protected readonly movementHistorySearch = signal('');
+  protected readonly movementHistorySort = signal<{ key: 'date' | 'amount'; direction: 'asc' | 'desc' }>({
+    key: 'date',
+    direction: 'desc',
+  });
   protected readonly movements = signal<PersonMovement[]>([]);
   protected readonly pagination = new TablePaginationState();
   protected readonly loading = signal(true);
@@ -39,13 +44,7 @@ export class PersonasPage implements OnInit {
   protected readonly personToDelete = signal<PersonRecord | null>(null);
   protected readonly deleting = signal(false);
   protected readonly deleteError = signal('');
-  protected readonly selectedPeriod = signal<SummaryPeriod>('today');
-  protected readonly summaryPeriods: { value: SummaryPeriod; label: string }[] = [
-    { value: 'today', label: 'Hoy' },
-    { value: 'week', label: 'Esta semana' },
-    { value: 'month', label: 'Este mes' },
-  ];
-  protected readonly movementTypes: PersonMovementType[] = ['por_cobrar', 'por_pagar', 'descuento'];
+  protected readonly movementTypes: PersonMovementType[] = ['por_cobrar', 'por_pagar', 'cobrado', 'pagado'];
   protected readonly labels = movementLabels;
   protected personId: number | null = null;
   protected personFullName = '';
@@ -58,22 +57,6 @@ export class PersonasPage implements OnInit {
   protected movementDescription = '';
   protected movementDate = localDateValue(new Date());
 
-  protected readonly periodMovements = computed(() => {
-    const today = new Date();
-    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    if (this.selectedPeriod() === 'week') {
-      start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
-    } else if (this.selectedPeriod() === 'month') {
-      start.setDate(1);
-    }
-    const startValue = localDateValue(start);
-    const endValue = localDateValue(today);
-    return this.movements().filter((movement) =>
-      movement.movement_date >= startValue && movement.movement_date <= endValue,
-    );
-  });
-
-  protected readonly summaryTotals = computed(() => this.totalMovements(this.periodMovements()));
   protected readonly filteredPeople = computed(() => {
     const query = this.searchQuery().trim().toLocaleLowerCase('es');
     if (!query) return this.people();
@@ -81,29 +64,55 @@ export class PersonasPage implements OnInit {
       `${person.full_name} ${person.identification ?? ''}`.toLocaleLowerCase('es').includes(query),
     );
   });
-  protected readonly personPeriodTotals = computed(() => {
-    const totals = new Map<number, { receivable: number; payable: number; discounts: number }>();
-    for (const person of this.people()) totals.set(person.id, { receivable: 0, payable: 0, discounts: 0 });
-    for (const movement of this.periodMovements()) {
-      const total = totals.get(movement.persona_id);
-      if (!total) continue;
-      if (movement.movement_type === 'por_cobrar') total.receivable += movement.amount;
-      else if (movement.movement_type === 'por_pagar') total.payable += movement.amount;
-      else total.discounts += movement.amount;
-    }
-    return totals;
+  protected readonly filteredSortedMovements = computed(() => {
+    const query = this.movementHistorySearch().trim().toLocaleLowerCase('es');
+    const sort = this.movementHistorySort();
+    return this.movements()
+      .filter((movement) => {
+        if (!query) return true;
+        const searchableText = [
+          movement.movement_date,
+          this.formatDate(movement.movement_date),
+          this.movementPerson(movement),
+          this.labels[movement.movement_type],
+          this.movementStatus(movement.movement_type),
+          movement.description,
+          movement.amount.toFixed(2),
+          this.formatCurrency(movement.amount),
+        ].join(' ').toLocaleLowerCase('es');
+        return searchableText.includes(query);
+      })
+      .sort((left, right) => {
+        const comparison = sort.key === 'date'
+          ? left.movement_date.localeCompare(right.movement_date) || left.id - right.id
+          : left.amount - right.amount || left.id - right.id;
+        return sort.direction === 'asc' ? comparison : -comparison;
+      });
   });
   protected readonly personLifetimeTotals = computed(() => {
-    const totals = new Map<number, { receivable: number; payable: number; discounts: number }>();
-    for (const person of this.people()) totals.set(person.id, { receivable: 0, payable: 0, discounts: 0 });
+    const totals = new Map<number, { receivable: number; payable: number; collected: number; paid: number }>();
+    for (const person of this.people()) totals.set(person.id, { receivable: 0, payable: 0, collected: 0, paid: 0 });
     for (const movement of this.movements()) {
       const total = totals.get(movement.persona_id);
       if (!total) continue;
       if (movement.movement_type === 'por_cobrar') total.receivable += movement.amount;
       else if (movement.movement_type === 'por_pagar') total.payable += movement.amount;
-      else total.discounts += movement.amount;
+      else if (movement.movement_type === 'cobrado') total.collected += movement.amount;
+      else if (movement.movement_type === 'pagado') total.paid += movement.amount;
     }
     return totals;
+  });
+  protected readonly summaryTotals = computed(() => {
+    let receivable = 0;
+    let payable = 0;
+    let netPayable = 0;
+    for (const person of this.people()) {
+      const totals = this.personTotals(person);
+      receivable += totals.receivable;
+      payable += Math.max(totals.netPayable, 0);
+      netPayable += totals.netPayable;
+    }
+    return { receivable, payable, netPayable };
   });
 
   ngOnInit(): void {
@@ -131,9 +140,59 @@ export class PersonasPage implements OnInit {
     this.searchQuery.set(value);
   }
 
-  protected personTotals(person: PersonRecord): { receivable: number; payable: number; discounts: number; netPayable: number } {
-    const total = this.personLifetimeTotals().get(person.id) ?? { receivable: 0, payable: 0, discounts: 0 };
-    return { ...total, netPayable: total.payable - total.receivable - total.discounts };
+  protected onMovementHistorySearchChange(value: string): void {
+    this.movementHistorySearch.set(value);
+    this.pagination.setPage(1, this.filteredSortedMovements().length);
+  }
+
+  protected toggleMovementHistorySort(key: 'date' | 'amount'): void {
+    const current = this.movementHistorySort();
+    this.movementHistorySort.set({
+      key,
+      direction: current.key === key && current.direction === 'desc' ? 'asc' : 'desc',
+    });
+    this.pagination.setPage(1, this.filteredSortedMovements().length);
+  }
+
+  protected movementHistorySortIndicator(key: 'date' | 'amount'): string {
+    const sort = this.movementHistorySort();
+    if (sort.key !== key) return '↕';
+    return sort.direction === 'asc' ? '↑' : '↓';
+  }
+
+  protected movementHistorySortAria(key: 'date' | 'amount'): string {
+    const sort = this.movementHistorySort();
+    return sort.key === key ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none';
+  }
+
+  protected personTotals(person: PersonRecord): { receivable: number; payable: number; netPayable: number } {
+    const total = this.personLifetimeTotals().get(person.id) ?? { receivable: 0, payable: 0, collected: 0, paid: 0 };
+    const receivable = total.receivable - total.collected;
+    const payable = total.payable - total.paid;
+    return { receivable, payable, netPayable: payable - receivable };
+  }
+
+  protected movementStatus(type: PersonMovementType): string {
+    if (type === 'por_cobrar' || type === 'por_pagar') return 'Registrado';
+    if (type === 'descuento') return 'Histórico';
+    return this.labels[type];
+  }
+
+  protected openSettlementForm(person: PersonRecord, type: 'cobrado' | 'pagado'): void {
+    this.openMovementForm(type);
+    this.selectedPersonId = String(person.id);
+    const totals = this.personTotals(person);
+    this.movementAmount = type === 'cobrado' ? totals.receivable : Math.max(0, totals.netPayable);
+    this.movementDescription = type === 'cobrado' ? 'Cobro de saldo pendiente' : 'Pago de saldo pendiente';
+  }
+
+  protected settlementLimit(): number {
+    const person = this.people().find((item) => item.id === Number(this.selectedPersonId));
+    if (!person) return 0;
+    const totals = this.personTotals(person);
+    return this.movementType === 'cobrado' ? totals.receivable
+      : this.movementType === 'pagado' ? Math.max(0, totals.netPayable)
+        : 0;
   }
 
   protected movementPerson(movement: PersonMovement): string {
@@ -144,20 +203,6 @@ export class PersonasPage implements OnInit {
   protected movementPersonById(id: number): string {
     const movement = this.movements().find((item) => item.id === id);
     return movement ? this.movementPerson(movement) : 'Persona';
-  }
-
-  protected netPayable(): number {
-    const total = this.summaryTotals();
-    return total.payable - total.receivable - total.discounts;
-  }
-
-  private totalMovements(movements: PersonMovement[]): { receivable: number; payable: number; discounts: number } {
-    return movements.reduce((totals, movement) => {
-      if (movement.movement_type === 'por_cobrar') totals.receivable += movement.amount;
-      else if (movement.movement_type === 'por_pagar') totals.payable += movement.amount;
-      else totals.discounts += movement.amount;
-      return totals;
-    }, { receivable: 0, payable: 0, discounts: 0 });
   }
 
   protected openPersonForm(person?: PersonRecord): void {
@@ -219,7 +264,7 @@ export class PersonasPage implements OnInit {
     }
   }
 
-  protected openMovementForm(type: PersonMovementType = 'por_pagar'): void {
+  protected openMovementForm(type: WritablePersonMovementType = 'por_pagar'): void {
     this.movementId = null;
     this.selectedPersonId = this.people().find((person) => person.is_active)?.id.toString() ?? '';
     this.movementType = type;
@@ -247,8 +292,16 @@ export class PersonasPage implements OnInit {
 
   protected async saveMovement(): Promise<void> {
     const amount = Number(this.movementAmount);
+    if (this.movementType === 'descuento') {
+      this.movementFormError.set('Los descuentos ya no se pueden registrar.');
+      return;
+    }
     if ((!this.movementId && !this.selectedPersonId) || !this.movementDescription.trim() || !Number.isFinite(amount) || amount <= 0 || !this.movementDate) {
       this.movementFormError.set('Selecciona una persona e ingresa fecha, descripción y un monto mayor que cero.');
+      return;
+    }
+    if (!this.movementId && (this.movementType === 'cobrado' || this.movementType === 'pagado') && amount > this.settlementLimit()) {
+      this.movementFormError.set(`El monto no puede superar el saldo pendiente de ${this.formatCurrency(this.settlementLimit())}.`);
       return;
     }
     this.saving.set(true);

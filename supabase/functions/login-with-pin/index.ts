@@ -36,7 +36,7 @@ Deno.serve(async (request) => {
   });
   const { data: staff, error: staffError } = await adminClient
     .from('users')
-    .select('email, auth_user_id, is_active')
+    .select('id, full_name, email, auth_user_id, is_active, roles(name)')
     .eq('username', username)
     .maybeSingle();
 
@@ -63,9 +63,19 @@ Deno.serve(async (request) => {
     return respond({ error: 'Usuario o PIN incorrectos.' }, 401);
   }
 
+  const roleRelation = Array.isArray(staff.roles) ? staff.roles[0] : staff.roles;
+  const role = roleRelation?.name;
+  if (!role) return respond({ error: 'La cuenta no tiene un rol asignado.' }, 401);
+
   return new Response(JSON.stringify({
     access_token: authData.session.access_token,
     refresh_token: authData.session.refresh_token,
+    staff: {
+      id: staff.id,
+      full_name: staff.full_name,
+      email: staff.email,
+      role,
+    },
   }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });

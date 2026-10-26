@@ -11,7 +11,6 @@ import {
 import { ProductsService } from '../products/products.service';
 import { ExpenseRecord, SaleRecord, SalesService, SplitTenderSale } from '../sales/sales.service';
 import { TablesService } from '../tables/tables.service';
-import { TablePaginationComponent, TablePaginationState } from '../../shared/table-pagination';
 import { roundCurrencyForDisplay } from '../../shared/currency';
 
 type DatabaseStatus = 'not-configured' | 'checking' | 'connected' | 'error';
@@ -60,7 +59,7 @@ function isDashboardPaymentMethod(method: string | null): method is DashboardPay
 }
 
 @Component({
-  imports: [RouterLink, TablePaginationComponent],
+  imports: [RouterLink],
   selector: 'app-dashboard-page',
   templateUrl: './dashboard.page.html',
 })
@@ -95,19 +94,19 @@ export class DashboardPage implements OnInit {
   protected readonly occupiedTableCount = signal<number | null>(null);
   protected readonly recentOrders = signal<OrderSummary[]>([]);
   protected readonly paidOrders = signal<SaleRecord[]>([]);
-  protected readonly paidOrdersPagination = new TablePaginationState();
+  protected readonly recentPaidOrders = computed(() => this.paidOrders().slice(0, 20));
   protected readonly expenses = signal<ExpenseRecord[]>([]);
   protected readonly splitTenders = signal<SplitTenderSale[]>([]);
   protected readonly topProducts = signal<ProductSalesSummary[]>([]);
   protected readonly databaseError = signal('');
   protected readonly periodError = signal('');
   protected readonly loadingPeriod = signal(false);
-  protected readonly selectedPeriod = signal<DashboardPeriod>('month');
+  protected readonly selectedPeriod = signal<DashboardPeriod>('day');
   protected readonly customStart = signal(
     localDateValue(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
   );
   protected readonly customEnd = signal(localDateValue(new Date()));
-  protected readonly periodRange = signal<DateRange>(this.defaultRange('month'));
+  protected readonly periodRange = signal<DateRange>(this.defaultRange('day'));
   protected readonly today = new Intl.DateTimeFormat('es-EC', {
     weekday: 'long',
     day: 'numeric',
@@ -315,21 +314,24 @@ export class DashboardPage implements OnInit {
     try {
       const profile = await this.auth.getActiveStaffProfile();
       this.profile.set(profile);
+      const periodDataPromise = this.loadPeriodData();
       if (profile?.role === 'Auditor') {
-        await this.loadPeriodData();
+        await periodDataPromise;
         return;
       }
-      const [products, activeOrders, recentOrders, tables] = await Promise.all([
-        this.products.listAvailable(),
-        this.orders.countActive(),
-        this.orders.listRecent(),
-        this.tables.listAll(),
-      ]);
-      this.availableProductCount.set(products.length);
-      this.activeOrderCount.set(activeOrders);
-      this.recentOrders.set(recentOrders.slice(0, 5));
-      this.occupiedTableCount.set(tables.filter((table) => table.status === 'ocupada').length);
-      await this.loadPeriodData();
+      const operationsDataPromise = Promise.all([
+          this.products.listAvailable(),
+          this.orders.countActive(),
+          this.orders.listRecent(),
+          this.tables.listAll(),
+        ])
+        .then(([products, activeOrders, recentOrders, tables]) => {
+          this.availableProductCount.set(products.length);
+          this.activeOrderCount.set(activeOrders);
+          this.recentOrders.set(recentOrders.slice(0, 5));
+          this.occupiedTableCount.set(tables.filter((table) => table.status === 'ocupada').length);
+        });
+      await Promise.all([periodDataPromise, operationsDataPromise]);
     } catch (error) {
       this.databaseError.set(
         error instanceof Error ? error.message : 'No se pudo consultar el resumen.',

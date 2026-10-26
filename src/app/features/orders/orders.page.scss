@@ -1364,6 +1364,21 @@
       color: var(--orange);
     }
   }
+
+  .filter-count {
+    display: inline-flex;
+    min-width: 20px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+    margin-left: 4px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--line) 75%, transparent);
+    color: var(--ink);
+    font-size: 11px;
+    line-height: 1;
+  }
 }
 
 .search-field {

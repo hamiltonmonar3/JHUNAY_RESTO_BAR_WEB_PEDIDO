@@ -53,7 +53,7 @@
 
         <button class="btn-submit" type="submit" [disabled]="pending() || !loginForm.valid">
           @if (pending()) {
-            <span class="loader"></span> Validando...
+            Validando...
           } @else {
             Ingresar al Sistema <span class="arrow">→</span>
           }

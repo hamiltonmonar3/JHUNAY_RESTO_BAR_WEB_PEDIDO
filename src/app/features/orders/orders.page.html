@@ -24,8 +24,9 @@
       <div class="filter-list" role="group" aria-label="Filtrar pedidos">
         @for (filter of filters; track filter.value) {
         <button type="button" [class.active]="selectedFilter() === filter.value"
+          [attr.aria-pressed]="selectedFilter() === filter.value"
           (click)="selectedFilter.set(filter.value)">
-          {{ filter.label }}
+          {{ filter.label }} <span class="filter-count">{{ orderCount(filter.value) }}</span>
         </button>
         }
       </div>

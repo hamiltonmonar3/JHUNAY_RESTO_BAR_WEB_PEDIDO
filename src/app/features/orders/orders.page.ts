@@ -114,12 +114,28 @@ export class OrdersPage implements OnInit {
         );
     });
 
+    private readonly todaysOrders = computed(() =>
+        this.orders().filter((order) => this.isToday(order.created_at)),
+    );
+
+    protected readonly orderCountsByStatus = computed(() => {
+        const counts = new Map<OrderStatus, number>([
+            ['armado', 0],
+            ['en_preparacion', 0],
+            ['servido', 0],
+            ['pagado', 0],
+            ['cancelado', 0],
+        ]);
+        for (const order of this.todaysOrders()) {
+            counts.set(order.status, (counts.get(order.status) ?? 0) + 1);
+        }
+        return counts;
+    });
+
     protected readonly filteredOrders = computed(() => {
         const filter = this.selectedFilter();
         const query = this.searchQuery().trim().toLocaleLowerCase('es');
-
-        const todaysOrders = this.orders().filter((order) => this.isToday(order.created_at));
-        const byStatus = todaysOrders.filter((order) => order.status === filter);
+        const byStatus = this.todaysOrders().filter((order) => order.status === filter);
 
         if (!query) return byStatus;
         return byStatus.filter((order) => {
@@ -133,8 +149,7 @@ export class OrdersPage implements OnInit {
     });
 
     private readonly dailyOrderNumbers = computed(() => {
-        const todaysOrders = this.orders()
-            .filter((order) => this.isToday(order.created_at))
+        const todaysOrders = this.todaysOrders()
             .sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id - b.id);
         return new Map(todaysOrders.map((order, index) => [order.id, index + 1]));
     });
@@ -149,6 +164,7 @@ export class OrdersPage implements OnInit {
         { value: 'en_preparacion', label: '🔥  En cocina' },
         { value: 'servido', label: '✅  Servidos' },
         { value: 'pagado', label: '💰  Pagados' },
+        { value: 'cancelado', label: 'Cancelados' },
     ];
 
     // Form state
@@ -515,14 +531,15 @@ export class OrdersPage implements OnInit {
 
     private async refreshOrderDetails(orderId: number): Promise<void> {
         try {
-            const { start, end } = localDayRange(new Date());
-            this.orders.set(await this.ordersService.listForDay(start, end));
-        } catch (error) {
-            this.setOrderListError(error);
-        }
-        this.selectedOrder.set(this.orders().find((candidate) => candidate.id === orderId) ?? null);
-        try {
-            this.detailItems.set(await this.ordersService.listItems(orderId));
+            const items = await this.ordersService.listItems(orderId);
+            const totalAmount = items.reduce((total, item) => total + item.subtotal, 0);
+            this.detailItems.set(items);
+            this.orders.update((orders) => orders.map((order) => order.id === orderId
+                ? { ...order, total_amount: totalAmount }
+                : order));
+            this.selectedOrder.update((order) => order?.id === orderId
+                ? { ...order, total_amount: totalAmount }
+                : order);
         } catch (error) {
             this.detailError.set(this.readableError(error));
         }
@@ -585,6 +602,10 @@ export class OrdersPage implements OnInit {
 
     protected dailyOrderNumber(order: OrderSummary): number {
         return this.dailyOrderNumbers().get(order.id) ?? 0;
+    }
+
+    protected orderCount(status: OrderStatus): number {
+        return this.orderCountsByStatus().get(status) ?? 0;
     }
 
     private isToday(value: string): boolean {

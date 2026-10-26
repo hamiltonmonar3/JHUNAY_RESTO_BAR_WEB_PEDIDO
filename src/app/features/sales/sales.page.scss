@@ -2278,6 +2278,9 @@
   margin-top: 2px;
 }
 
+.closure-history-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+.closure-history-search { width: min(100%, 360px); }
+
 @media (max-width: 900px) {
   .closure-overview {
     grid-template-columns: minmax(0, 1fr);

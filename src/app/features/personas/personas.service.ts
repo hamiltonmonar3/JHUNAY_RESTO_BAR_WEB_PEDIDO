@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseService } from '../../core/supabase/supabase.service';
 
-export type PersonMovementType = 'por_cobrar' | 'por_pagar' | 'descuento';
+export type PersonMovementType = 'por_cobrar' | 'por_pagar' | 'descuento' | 'cobrado' | 'pagado';
+export type WritablePersonMovementType = Exclude<PersonMovementType, 'descuento'>;
 
 export interface PersonRecord {
   id: number;
@@ -70,7 +71,7 @@ export class PersonasService {
 
   async recordMovement(input: {
     personaId: number;
-    type: PersonMovementType;
+    type: WritablePersonMovementType;
     amount: number;
     description: string;
     date: string;
@@ -87,7 +88,7 @@ export class PersonasService {
 
   async updateMovement(input: {
     id: number;
-    type: PersonMovementType;
+    type: WritablePersonMovementType;
     amount: number;
     description: string;
     date: string;

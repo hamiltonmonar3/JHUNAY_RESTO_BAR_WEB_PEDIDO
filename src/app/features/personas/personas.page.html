@@ -1,6 +1,6 @@
 <section class="personas-page">
   <header class="module-heading">
-    <div><h1>Personas</h1><p>Administra personas y registra valores por cobrar, por pagar y descuentos.</p></div>
+    <div><h1>Personas</h1><p>Administra saldos pendientes, registra cobros y pagos, y consulta su historial.</p></div>
     <div class="staff-finance-header-actions">
       <button class="secondary-button" type="button" (click)="openPersonForm()">+ Agregar persona</button>
       <button class="quiet-button" type="button" (click)="loadData()" [disabled]="loading()" aria-label="Actualizar personas" title="Actualizar personas">↻</button>
@@ -10,38 +10,52 @@
 
   <section class="staff-finance-section executive-summary">
     <div class="staff-finance-toolbar summary-toolbar">
-      <div><h2>Resumen ejecutivo</h2><p>Los valores por cobrar y los descuentos se restan del valor por pagar.</p></div>
-      <div class="period-selector" role="group" aria-label="Período del resumen">
-        @for (period of summaryPeriods; track period.value) {
-          <button type="button" [class.active]="selectedPeriod() === period.value" (click)="selectedPeriod.set(period.value)">{{ period.label }}</button>
-        }
-      </div>
+      <div><h2>Resumen de saldos pendientes</h2><p>Acumulado actual. Por pagar muestra el neto positivo de cada persona; no se compensan saldos entre personas.</p></div>
     </div>
     <div class="executive-cards">
-      <article><span>Por cobrar</span><strong>{{ formatCurrency(summaryTotals().receivable) }}</strong></article>
-      <article><span>Por pagar</span><strong>{{ formatCurrency(summaryTotals().payable) }}</strong></article>
-      <article><span>Descuentos</span><strong>{{ formatCurrency(summaryTotals().discounts) }}</strong></article>
-      <article><span>Neto por pagar</span><strong>{{ formatCurrency(netPayable()) }}</strong></article>
+      <article class="balance-card balance-card--receivable">
+        <div class="balance-card-heading">
+          <span class="balance-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 17 17 7M8 7h9v9" />
+            </svg>
+          </span>
+          <span>Por cobrar</span>
+        </div>
+        <strong>{{ formatCurrency(summaryTotals().receivable) }}</strong>
+        <small>Saldo pendiente de cobro</small>
+      </article>
+      <article class="balance-card balance-card--payable">
+        <div class="balance-card-heading">
+          <span class="balance-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 7 17 17M8 17h9V8" />
+            </svg>
+          </span>
+          <span>Por pagar</span>
+        </div>
+        <strong>{{ formatCurrency(summaryTotals().payable) }}</strong>
+        <small>Saldo neto pendiente de pago</small>
+      </article>
     </div>
   </section>
 
   <section class="staff-finance-section">
     <div class="staff-finance-toolbar">
-      <div><h2>Personas</h2><p>Los saldos son acumulados; el resumen ejecutivo usa el período seleccionado.</p></div>
+      <div><h2>Personas</h2><p>Usa Cobrar o Pagar para registrar abonos o liquidar el saldo pendiente.</p></div>
       <div class="staff-finance-actions">
         <label class="person-search">
           <input type="search" aria-label="Buscar persona" placeholder="Buscar por nombre o identificación…" [ngModel]="searchQuery()" (ngModelChange)="onSearchChange($event)" />
         </label>
-        <button class="secondary-button" type="button" (click)="openMovementForm('por_cobrar')">+ Por cobrar</button>
-        <button class="secondary-button" type="button" (click)="openMovementForm('descuento')">+ Descuento</button>
-        <button class="primary-button" type="button" (click)="openMovementForm('por_pagar')">+ Por pagar</button>
+        <button class="secondary-button" type="button" (click)="openMovementForm('por_cobrar')">+ Registrar por cobrar</button>
+        <button class="primary-button" type="button" (click)="openMovementForm('por_pagar')">+ Registrar por pagar</button>
       </div>
     </div>
     @if (loading()) { <div class="empty-state">Cargando personas…</div> }
     @else {
       <div class="table-scroll">
         <table>
-          <thead><tr><th>Persona</th><th>Identificación</th><th class="numeric">Por cobrar</th><th class="numeric">Por pagar</th><th class="numeric">Descuentos</th><th class="numeric">Neto por pagar</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <thead><tr><th>Persona</th><th>Identificación</th><th class="numeric">Por cobrar</th><th class="numeric">Por pagar</th><th class="numeric">Neto por pagar</th><th>Estado</th><th>Acciones</th></tr></thead>
           <tbody>
             @for (person of filteredPeople(); track person.id) {
               @let total = personTotals(person);
@@ -50,16 +64,21 @@
                 <td>{{ person.identification || '—' }}</td>
                 <td class="numeric">{{ formatCurrency(total.receivable) }}</td>
                 <td class="numeric">{{ formatCurrency(total.payable) }}</td>
-                <td class="numeric">{{ formatCurrency(total.discounts) }}</td>
                 <td class="numeric"><strong>{{ formatCurrency(total.netPayable) }}</strong></td>
                 <td>{{ person.is_active ? 'Activa' : 'Inactiva' }}</td>
                 <td class="admin-actions">
+                  @if (person.is_active && total.receivable > 0) {
+                    <button class="detail-button settlement-action" type="button" (click)="openSettlementForm(person, 'cobrado')">Cobrar</button>
+                  }
+                  @if (person.is_active && total.netPayable > 0) {
+                    <button class="detail-button settlement-action" type="button" (click)="openSettlementForm(person, 'pagado')">Pagar</button>
+                  }
                   <button class="detail-button" type="button" (click)="openPersonForm(person)">Editar</button>
                   <button class="detail-button danger-action" type="button" (click)="requestDeletePerson(person)">Eliminar</button>
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="8" class="empty-cell">
+              <tr><td colspan="7" class="empty-cell">
                 {{ searchQuery().trim() ? 'No hay personas que coincidan con la búsqueda.' : 'Aún no hay personas registradas.' }}
               </td></tr>
             }
@@ -70,31 +89,60 @@
   </section>
 
   <section class="staff-finance-section">
-    <div class="staff-finance-toolbar"><div><h2>Historial de movimientos</h2><p>{{ movements().length }} registros</p></div></div>
+    <div class="staff-finance-toolbar movement-history-toolbar">
+      <div><h2>Historial de movimientos</h2><p>{{ filteredSortedMovements().length }} de {{ movements().length }} registros</p></div>
+      <label class="person-search movement-history-search">
+        <input type="search" aria-label="Buscar en el historial de movimientos"
+          placeholder="Buscar por fecha, persona, movimiento o monto…"
+          [ngModel]="movementHistorySearch()" (ngModelChange)="onMovementHistorySearchChange($event)" />
+      </label>
+    </div>
     @if (!loading()) {
       <div class="table-scroll">
         <table>
-          <thead><tr><th>Fecha</th><th>Persona</th><th>Movimiento</th><th>Descripción</th><th class="numeric">Monto</th><th>Acciones</th></tr></thead>
+          <thead>
+            <tr>
+              <th [attr.aria-sort]="movementHistorySortAria('date')">
+                <button class="movement-sort-button" type="button" (click)="toggleMovementHistorySort('date')">
+                  Fecha <span aria-hidden="true">{{ movementHistorySortIndicator('date') }}</span>
+                </button>
+              </th>
+              <th>Persona</th><th>Movimiento</th><th>Estado</th><th>Descripción</th>
+              <th class="numeric" [attr.aria-sort]="movementHistorySortAria('amount')">
+                <button class="movement-sort-button" type="button" (click)="toggleMovementHistorySort('amount')">
+                  Monto <span aria-hidden="true">{{ movementHistorySortIndicator('amount') }}</span>
+                </button>
+              </th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
           <tbody>
-            @for (movement of pagination.visible(movements()); track movement.id) {
+            @for (movement of pagination.visible(filteredSortedMovements()); track movement.id) {
               <tr>
                 <td>{{ formatDate(movement.movement_date) }}</td>
                 <td>{{ movementPerson(movement) }}</td>
                 <td>{{ labels[movement.movement_type] }}</td>
+                <td>{{ movementStatus(movement.movement_type) }}</td>
                 <td>{{ movement.description }}</td>
                 <td class="numeric">{{ formatCurrency(movement.amount) }}</td>
                 <td class="admin-actions">
-                  <button class="detail-button" type="button" (click)="openEditMovement(movement)">Editar</button>
+                  @if (movement.movement_type !== 'descuento') {
+                    <button class="detail-button" type="button" (click)="openEditMovement(movement)">Editar</button>
+                  }
                 </td>
               </tr>
-            } @empty { <tr><td colspan="6" class="empty-cell">Aún no hay movimientos registrados.</td></tr> }
+            } @empty {
+              <tr><td colspan="7" class="empty-cell">
+                {{ movementHistorySearch().trim() ? 'No se encontraron movimientos que coincidan con la búsqueda.' : 'Aún no hay movimientos registrados.' }}
+              </td></tr>
+            }
           </tbody>
         </table>
       </div>
-      @if (movements().length > 0) {
-        <app-table-pagination [totalItems]="movements().length"
-          [page]="pagination.currentPage(movements().length)" [pageSize]="pagination.pageSize()"
-          (pageChange)="pagination.setPage($event, movements().length)"
+      @if (filteredSortedMovements().length > 0) {
+        <app-table-pagination [totalItems]="filteredSortedMovements().length"
+          [page]="pagination.currentPage(filteredSortedMovements().length)" [pageSize]="pagination.pageSize()"
+          (pageChange)="pagination.setPage($event, filteredSortedMovements().length)"
           (pageSizeChange)="pagination.setPageSize($event)" />
       }
     }
@@ -147,6 +195,9 @@
           </select>
         </label>
         <label>Monto<input name="amount" type="number" min="0.01" step="0.01" required [(ngModel)]="movementAmount" /></label>
+        @if (movementType === 'cobrado' || movementType === 'pagado') {
+          <p class="settlement-balance">Saldo pendiente: <strong>{{ formatCurrency(settlementLimit()) }}</strong></p>
+        }
         <label>Fecha<input name="date" type="date" required [(ngModel)]="movementDate" /></label>
         <label>Descripción<input name="description" maxlength="250" required [(ngModel)]="movementDescription" placeholder="Motivo del movimiento" /></label>
         @if (movementFormError()) {

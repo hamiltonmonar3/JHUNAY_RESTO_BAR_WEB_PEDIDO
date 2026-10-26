@@ -5,6 +5,12 @@
 .staff-finance-toolbar p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
 .staff-finance-header-actions { display: flex; align-items: center; gap: 8px; }
 .staff-finance-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.movement-history-toolbar { flex-wrap: wrap; }
+.movement-history-search { margin-inline-start: auto; }
+.movement-history-search input { width: min(360px, 42vw); }
+.movement-sort-button { display: inline-flex; min-height: 28px; align-items: center; gap: 6px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.movement-sort-button span { color: var(--orange); font-size: 13px; }
+.movement-sort-button:hover { color: var(--orange); }
 .person-search { display: flex; align-items: center; }
 .person-search input { width: min(260px, 30vw); min-width: 190px; height: 38px; padding: 8px 11px; border: 1px solid var(--control-border); border-radius: 3px; background: var(--control-bg); color: var(--control-text); font: inherit; font-size: 12px; }
 .person-search input:focus { outline: 2px solid color-mix(in srgb, var(--orange) 35%, transparent); outline-offset: 1px; }
@@ -15,12 +21,45 @@
 .period-selector { display: flex; gap: 4px; padding: 3px; border: 1px solid var(--line); background: var(--paper); }
 .period-selector button { min-height: 32px; padding: 0 12px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 11px; cursor: pointer; }
 .period-selector button.active { background: var(--orange); color: #fff; }
-.executive-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 14px; }
-.executive-cards article { display: grid; gap: 8px; min-width: 0; padding: 14px; border: 1px solid var(--line); background: var(--paper); }
-.executive-cards article span { color: var(--muted); font-size: 11px; }
-.executive-cards article strong { overflow-wrap: anywhere; font-size: clamp(16px, 2vw, 23px); }
-.personas-page .table-scroll table { min-width: 940px; }
+.executive-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 16px; }
+.executive-cards .balance-card {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  overflow: hidden;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--paper) 88%, var(--orange)), var(--paper) 72%);
+  box-shadow: 0 5px 16px #00000012;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+.executive-cards .balance-card::after {
+  position: absolute;
+  top: -34px;
+  right: -28px;
+  width: 112px;
+  height: 112px;
+  border: 1px solid color-mix(in srgb, var(--orange) 22%, transparent);
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
+}
+.executive-cards .balance-card:hover { transform: translateY(-2px); box-shadow: 0 9px 22px #0000001c; }
+.balance-card--receivable { border-inline-start: 4px solid var(--orange) !important; }
+.balance-card--payable { border-inline-start: 4px solid var(--lime) !important; }
+.balance-card-heading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; letter-spacing: .04em; }
+.balance-card-icon { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--orange) 14%, transparent); color: var(--orange); }
+.balance-card--payable .balance-card-icon { background: color-mix(in srgb, var(--lime) 16%, transparent); color: var(--lime); }
+.balance-card-icon svg { width: 18px; height: 18px; }
+.executive-cards .balance-card strong { overflow-wrap: anywhere; font-family: 'Manrope', sans-serif; font-size: clamp(23px, 3vw, 32px); font-weight: 800; letter-spacing: -.04em; line-height: 1.1; }
+.executive-cards .balance-card small { color: var(--muted); font-size: 11px; }
+.personas-page .table-scroll table { min-width: 1040px; }
 .personas-page td { height: 52px; }
+.personas-page .settlement-action { color: var(--orange); font-weight: 700; }
+.settlement-balance { margin: 0; color: var(--muted); font-size: 12px; }
+.settlement-balance strong { color: var(--ink); }
 .staff-inactive { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
 .staff-finance-modal { width: min(100%, 460px); max-height: 90dvh; overflow-y: auto; padding: 22px; border: 1px solid var(--line); background: var(--paper); box-shadow: 0 18px 60px #0008; }
 .staff-finance-modal .admin-form { display: grid; gap: 12px; }
@@ -44,18 +83,20 @@
 .person-delete-button:hover:not(:disabled) { background: #a23d2b; }
 
 @media (max-width: 1000px) {
-  .executive-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .executive-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 760px) {
   .staff-finance-toolbar { align-items: flex-start; flex-direction: column; }
   .staff-finance-actions { width: 100%; }
   .person-search, .person-search input { width: 100%; }
+  .movement-history-search { margin-inline-start: 0; }
   .executive-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .summary-toolbar { flex-direction: column; align-items: flex-start; }
 }
 
 @media (max-width: 460px) {
+  .executive-cards { grid-template-columns: 1fr; }
   .staff-finance-modal { width: 100%; max-height: 94dvh; padding: 18px; border-radius: 8px 8px 0 0; }
   .admin-backdrop { align-items: end; padding: 0; }
   .person-delete-backdrop.admin-backdrop { align-items: center; padding: 20px; }

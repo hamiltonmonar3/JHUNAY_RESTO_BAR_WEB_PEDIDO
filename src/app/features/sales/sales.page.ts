@@ -9,6 +9,8 @@ import { roundCurrencyForDisplay } from '../../shared/currency';
 type SalesTab = 'ventas' | 'egresos' | 'apertura' | 'cierre';
 type ExpensePeriod = 'day' | 'yesterday' | 'week' | 'month';
 type ExpenseAmountSort = 'none' | 'ascending' | 'descending';
+type ClosureSortKey = 'closed_at' | 'opening_amount' | 'expected_cash' | 'counted_cash' | 'difference' | 'transfer' | 'total' | 'responsible';
+type SortDirection = 'ascending' | 'descending';
 type ExpenseCategory = 'insumos' | 'personal' | 'otros' | 'servicios' | 'inmueble' | 'apertura_caja';
 
 interface DraftTender {
@@ -51,6 +53,13 @@ function localDateValue(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+function parseMoneyInput(value: string): number | null {
+  const normalized = value.trim().replace(',', '.');
+  if (!normalized) return null;
+  if (!/^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$/.test(normalized)) return Number.NaN;
+  return Number(normalized);
+}
+
 function businessDateValue(date: Date): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Guayaquil',
@@ -62,10 +71,11 @@ function businessDateValue(date: Date): string {
   return `${values['year']}-${values['month']}-${values['day']}`;
 }
 
-function businessDayEndIso(date: Date): string {
-  const end = new Date(`${businessDateValue(date)}T00:00:00-05:00`);
+function businessDayRange(date: Date): { start: string; end: string } {
+  const start = new Date(`${businessDateValue(date)}T00:00:00-05:00`);
+  const end = new Date(start);
   end.setUTCDate(end.getUTCDate() + 1);
-  return end.toISOString();
+  return { start: start.toISOString(), end: end.toISOString() };
 }
 
 function localDayRange(dateValue: string): { start: string; end: string } {
@@ -77,6 +87,10 @@ function localDayRange(dateValue: string): { start: string; end: string } {
 
 function localDateRange(start: Date, end: Date): { start: string; end: string } {
   return { start: start.toISOString(), end: end.toISOString() };
+}
+
+function normalizeSearchText(value: string): string {
+  return value.toLocaleLowerCase('es-EC').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
 function paymentErrorMessage(error: unknown): string {
@@ -192,7 +206,8 @@ export class SalesPage implements OnDestroy, OnInit {
   });
   protected readonly paymentBreakdown = computed(() => {
     const groups = new Map<string, { orderIds: Set<number>; total: number }>();
-    for (const sale of this.paidOrders().filter((record) => record.payment_method !== 'mixto')) {
+    for (const sale of this.paidOrders()) {
+      if (sale.payment_method === 'mixto') continue;
       const method = sale.payment_method || 'sin método';
       const group = groups.get(method) ?? { orderIds: new Set<number>(), total: 0 };
       group.orderIds.add(sale.id);
@@ -250,6 +265,40 @@ export class SalesPage implements OnDestroy, OnInit {
 
   protected readonly openClosure = signal<CashClosure | null>(null);
   protected readonly closureHistory = signal<CashClosure[]>([]);
+  private readonly closureHistorySearchIndex = computed(() => new Map(this.closureHistory().map((closure) => {
+    const searchableValues = [
+      closure.closed_at ? this.formatDate(closure.closed_at) : '',
+      closure.closed_at ?? '',
+      this.formatCurrency(closure.opening_amount),
+      this.formatCurrency(closure.expected_cash),
+      this.formatCurrency(closure.counted_cash),
+      this.formatCurrency(this.closureDifference(closure)),
+      this.formatCurrency(closure.total_other_sales),
+      this.formatCurrency(this.closureTotalWithTransfer(closure)),
+      this.closureAuthorName(closure),
+    ];
+    return [closure.id, normalizeSearchText(searchableValues.join(' '))] as const;
+  })));
+  protected readonly closureHistorySearch = signal('');
+  protected readonly closureHistorySort = signal<{ key: ClosureSortKey; direction: SortDirection } | null>(null);
+  protected readonly filteredClosureHistory = computed(() => {
+    const query = normalizeSearchText(this.closureHistorySearch().trim());
+    const searchIndex = this.closureHistorySearchIndex();
+    const closures = this.closureHistory().filter((closure) => {
+      if (!query) return true;
+      return searchIndex.get(closure.id)?.includes(query) ?? false;
+    });
+    const sort = this.closureHistorySort();
+    if (!sort) return closures;
+    return closures.sort((a, b) => {
+      const left = this.closureSortValue(a, sort.key);
+      const right = this.closureSortValue(b, sort.key);
+      const comparison = typeof left === 'number' && typeof right === 'number'
+        ? left - right
+        : String(left).localeCompare(String(right), 'es-EC', { numeric: true });
+      return sort.direction === 'ascending' ? comparison : -comparison;
+    });
+  });
   protected readonly openingAlreadyDoneToday = computed(() => {
     const today = businessDateValue(new Date());
     return this.closureHistory().some((closure) => businessDateValue(new Date(closure.opened_at)) === today)
@@ -261,7 +310,7 @@ export class SalesPage implements OnDestroy, OnInit {
   protected readonly closureExpenses = signal<ExpenseRecord[]>([]);
   protected readonly closurePaymentSummary = computed(() => {
     const methods = new Map<string, { label: string; total: number; orderIds: Set<number> }>([
-      ['efectivo', { label: 'Efectivo', total: 0, orderIds: new Set() }],
+      ['efectivo', { label: 'Efectivo esperado', total: 0, orderIds: new Set() }],
       ['transferencia', { label: 'Transferencia', total: 0, orderIds: new Set() }],
     ]);
     const splitOrderIds = new Set(
@@ -287,11 +336,12 @@ export class SalesPage implements OnDestroy, OnInit {
     return [...methods.entries()].map(([method, value]) => ({
       method,
       label: value.label,
-      total: this.roundMoney(value.total),
+      total: method === 'efectivo' ? this.expectedClosureCash() : this.roundMoney(value.total),
       count: value.orderIds.size
         + (method === 'efectivo' && additionalCashIncome > 0 ? 1 : 0)
         + (method === 'transferencia' && additionalTransferIncome > 0 ? 1 : 0),
-    })).filter((method) => method.count > 0);
+    })).filter((method) => method.count > 0
+      || (method.method === 'efectivo' && this.openClosure() !== null));
   });
   protected readonly closurePaymentTotal = computed(() =>
     this.roundMoney(this.closurePaymentSummary().reduce((total, method) => total + method.total, 0)),
@@ -307,8 +357,12 @@ export class SalesPage implements OnDestroy, OnInit {
   );
   protected readonly closureCashSales = computed(() =>
     this.roundMoney(
-      (this.closurePaymentSummary().find((method) => method.method === 'efectivo')?.total ?? 0)
-      - this.closureAdditionalCashIncome(),
+      this.closurePaidOrders()
+        .filter((order) => order.payment_method === 'efectivo')
+        .reduce((total, order) => total + order.total_amount, 0)
+      + this.closureSplitTenders()
+        .filter((tender) => tender.payment_method === 'efectivo')
+        .reduce((total, tender) => total + tender.amount, 0),
     ),
   );
   protected readonly closureExpenseTotal = computed(() =>
@@ -332,10 +386,14 @@ export class SalesPage implements OnDestroy, OnInit {
   protected readonly closureSuccess = signal('');
   protected readonly showCloseConfirm = signal(false);
   protected readonly openingAmountValue = signal(0);
-  protected readonly openingCountedCashValue = signal<number | null>(null);
-  protected readonly countedCashValue = signal<number | null>(null);
-  protected readonly additionalCashIncomeValue = signal(0);
-  protected readonly additionalTransferIncomeValue = signal(0);
+  protected readonly openingCountedCashInput = signal('');
+  protected readonly openingCountedCashValue = computed(() => parseMoneyInput(this.openingCountedCashInput()));
+  protected readonly countedCashInput = signal('');
+  protected readonly countedCashValue = computed(() => parseMoneyInput(this.countedCashInput()));
+  protected readonly additionalCashIncomeInput = signal('');
+  protected readonly additionalCashIncomeValue = computed(() => parseMoneyInput(this.additionalCashIncomeInput()) ?? 0);
+  protected readonly additionalTransferIncomeInput = signal('');
+  protected readonly additionalTransferIncomeValue = computed(() => parseMoneyInput(this.additionalTransferIncomeInput()) ?? 0);
   protected closingNotes = '';
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private paymentMessageTimer: ReturnType<typeof setTimeout> | null = null;
@@ -411,7 +469,7 @@ export class SalesPage implements OnDestroy, OnInit {
         );
         return [];
       });
-      const expensesPromise = this.loadExpenses();
+      void this.loadExpenses();
       const [profile, paidOrders, servedOrders, splitPaymentTenders] = await Promise.all([
         this.auth.getActiveStaffProfile(),
         this.salesService.listPaidOrders(start, end),
@@ -419,7 +477,6 @@ export class SalesPage implements OnDestroy, OnInit {
         splitPaymentTendersPromise,
         dailyOrderNumbersPromise,
         paidDailyOrderNumbersPromise,
-        expensesPromise,
       ]);
       this.profile.set(profile);
       this.canCollect.set(profile?.role === 'Administrador' || profile?.role === 'Operador');
@@ -984,15 +1041,16 @@ export class SalesPage implements OnDestroy, OnInit {
         this.closurePaidOrders.set([]);
         this.closureSplitTenders.set([]);
         this.closureExpenses.set([]);
-        this.countedCashValue.set(null);
-        this.additionalCashIncomeValue.set(0);
-        this.additionalTransferIncomeValue.set(0);
+        this.countedCashInput.set('');
+        this.additionalCashIncomeInput.set('');
+        this.additionalTransferIncomeInput.set('');
         return;
       }
       const now = new Date().toISOString();
+      const businessDay = businessDayRange(new Date(open.opened_at));
       const [paidOrders, expenses, splitTenders] = await Promise.all([
         this.salesService.listPaidOrders(open.opened_at, now),
-        this.salesService.listExpenses(open.opened_at, businessDayEndIso(new Date()), ['day']),
+        this.salesService.listExpenses(businessDay.start, businessDay.end, ['day']),
         this.salesService.listSplitPaymentTenders(open.opened_at, now),
       ]);
       this.closurePaidOrders.set(paidOrders);
@@ -1010,6 +1068,49 @@ export class SalesPage implements OnDestroy, OnInit {
     return relation?.full_name ?? '—';
   }
 
+  protected closureDifference(closure: CashClosure): number {
+    return this.roundMoney(closure.counted_cash - closure.expected_cash);
+  }
+
+  protected closureTotalWithTransfer(closure: CashClosure): number {
+    return this.roundMoney(closure.expected_cash + closure.total_other_sales);
+  }
+
+  protected updateClosureHistorySearch(value: string): void {
+    this.closureHistorySearch.set(value);
+    this.closureHistoryPagination.page.set(1);
+  }
+
+  protected toggleClosureSort(key: ClosureSortKey): void {
+    this.closureHistorySort.update((sort) => ({
+      key,
+      direction: sort?.key === key && sort.direction === 'ascending' ? 'descending' : 'ascending',
+    }));
+    this.closureHistoryPagination.page.set(1);
+  }
+
+  protected closureSortAria(key: ClosureSortKey): string {
+    return this.closureHistorySort()?.key === key ? this.closureHistorySort()!.direction : 'none';
+  }
+
+  protected closureSortIndicator(key: ClosureSortKey): string {
+    const sort = this.closureHistorySort();
+    return sort?.key === key ? sort.direction === 'ascending' ? '↑' : '↓' : '↕';
+  }
+
+  private closureSortValue(closure: CashClosure, key: ClosureSortKey): string | number {
+    switch (key) {
+      case 'closed_at': return closure.closed_at ? new Date(closure.closed_at).getTime() : 0;
+      case 'opening_amount': return closure.opening_amount;
+      case 'expected_cash': return closure.expected_cash;
+      case 'counted_cash': return closure.counted_cash;
+      case 'difference': return this.closureDifference(closure);
+      case 'transfer': return closure.total_other_sales;
+      case 'total': return this.closureTotalWithTransfer(closure);
+      case 'responsible': return this.closureAuthorName(closure);
+    }
+  }
+
   protected updateOpeningAmount(event: Event): void {
     const amount = (event.target as HTMLInputElement).valueAsNumber;
     this.openingAmountValue.set(Number.isFinite(amount) ? amount : 0);
@@ -1017,24 +1118,22 @@ export class SalesPage implements OnDestroy, OnInit {
 
   protected updateOpeningCountedCash(event: Event): void {
     const input = event.target as HTMLInputElement;
-    this.openingCountedCashValue.set(input.value === '' ? null : input.valueAsNumber);
+    this.openingCountedCashInput.set(input.value);
   }
 
   protected updateCountedCash(event: Event): void {
     const input = event.target as HTMLInputElement;
-    this.countedCashValue.set(input.value === '' ? null : input.valueAsNumber);
+    this.countedCashInput.set(input.value);
   }
 
   protected updateAdditionalIncome(event: Event, method: 'efectivo' | 'transferencia'): void {
     const input = event.target as HTMLInputElement;
-    const amount = input.value === '' ? 0 : input.valueAsNumber;
-    const normalizedAmount = Number.isFinite(amount) && amount >= 0 ? this.roundMoney(amount) : 0;
     this.closureError.set('');
     this.closureSuccess.set('');
     if (method === 'efectivo') {
-      this.additionalCashIncomeValue.set(normalizedAmount);
+      this.additionalCashIncomeInput.set(input.value);
     } else {
-      this.additionalTransferIncomeValue.set(normalizedAmount);
+      this.additionalTransferIncomeInput.set(input.value);
     }
   }
 
@@ -1064,8 +1163,8 @@ export class SalesPage implements OnDestroy, OnInit {
     try {
       await this.salesService.openClosure(this.openingAmountValue());
       this.openingAmountValue.set(0);
-      this.openingCountedCashValue.set(null);
-      this.countedCashValue.set(null);
+      this.openingCountedCashInput.set('');
+      this.countedCashInput.set('');
       await this.loadCashRegister();
     } catch (error) {
       this.closureError.set(cashOpeningErrorMessage(error));
@@ -1120,8 +1219,8 @@ export class SalesPage implements OnDestroy, OnInit {
         additional_cash_income: this.roundMoney(closure.additional_cash_income + cashIncome),
         additional_transfer_income: this.roundMoney(closure.additional_transfer_income + transferIncome),
       } : closure);
-      this.additionalCashIncomeValue.set(0);
-      this.additionalTransferIncomeValue.set(0);
+      this.additionalCashIncomeInput.set('');
+      this.additionalTransferIncomeInput.set('');
       await this.loadCashRegister();
       this.closureSuccess.set('Ingresos adicionales registrados en la caja abierta.');
     } catch (error) {
@@ -1160,9 +1259,9 @@ export class SalesPage implements OnDestroy, OnInit {
         this.additionalTransferIncomeValue(),
       );
       this.showCloseConfirm.set(false);
-      this.countedCashValue.set(null);
-      this.additionalCashIncomeValue.set(0);
-      this.additionalTransferIncomeValue.set(0);
+      this.countedCashInput.set('');
+      this.additionalCashIncomeInput.set('');
+      this.additionalTransferIncomeInput.set('');
       this.closingNotes = '';
       await this.loadCashRegister();
     } catch (error) {
