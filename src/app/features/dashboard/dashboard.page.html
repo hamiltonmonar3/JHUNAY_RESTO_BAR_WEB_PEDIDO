@@ -16,9 +16,11 @@
       >
         {{ loadingPeriod() ? '…' : '↻' }}
       </button>
-      <a class="primary-action" routerLink="/pedidos"
-        ><span aria-hidden="true">+</span> Nuevo pedido</a
-      >
+      @if (profile()?.role === 'Administrador' || profile()?.role === 'Operador') {
+        <a class="primary-action" routerLink="/pedidos"
+          ><span aria-hidden="true">+</span> Nuevo pedido</a
+        >
+      }
     </div>
   </header>
 
@@ -295,6 +297,7 @@
     </article>
   </section>
 
+  @if (profile()?.role === 'Administrador' || profile()?.role === 'Operador') {
   <section class="operations-strip" aria-label="Actividad actual del restaurante">
     <article>
       <span class="operation-icon" aria-hidden="true">◷</span><span>Pedidos activos</span
@@ -312,7 +315,9 @@
       ><small>Activos en el menú</small>
     </article>
   </section>
+  }
 
+  @if (profile()?.role === 'Administrador' || profile()?.role === 'Operador') {
   <section class="orders-panel" aria-labelledby="orders-heading">
     <div class="section-heading">
       <div>
@@ -382,4 +387,5 @@
       }
     </nav>
   </aside>
+  }
 </section>

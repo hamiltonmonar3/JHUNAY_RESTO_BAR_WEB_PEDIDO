@@ -61,7 +61,16 @@ export class StaffService {
 
   async saveRole(input: { id: number | null; name: string; description: string }): Promise<void> {
     const client = this.requireClient();
-    const values = { name: input.name.trim().toLowerCase(), description: input.description.trim() || null };
+    const name = input.name.trim();
+    const standardNames: Record<string, string> = {
+      administrador: 'Administrador',
+      auditor: 'Auditor',
+      operador: 'Operador',
+    };
+    const values = {
+      name: standardNames[name.toLocaleLowerCase('es')] ?? name,
+      description: input.description.trim() || null,
+    };
     const { error } = input.id
       ? await client.from('roles').update(values).eq('id', input.id)
       : await client.from('roles').insert(values);

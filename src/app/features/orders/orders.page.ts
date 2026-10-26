@@ -11,6 +11,7 @@ import {
     OrderWaiterNamesUnavailableError,
 } from './orders.service';
 import { RestaurantTable, TablesService } from '../tables/tables.service';
+import { roundCurrencyForDisplay } from '../../shared/currency';
 
 interface CartLine {
     product: ProductOption;
@@ -602,7 +603,7 @@ export class OrdersPage implements OnInit {
     }
 
     protected formatCurrency(value: number): string {
-        return this.money.format(value);
+        return this.money.format(roundCurrencyForDisplay(value));
     }
 
     protected lineTotal(line: CartLine): number {

@@ -36,10 +36,12 @@ export class AppShell implements OnDestroy, OnInit {
     { label: 'Menú', path: '/productos', adminOnly: true },
     { label: 'Mesas', path: '/mesas', adminOnly: true },
     { label: 'Inventario', path: '/inventario', adminOnly: true },
+    { label: 'Usuarios', path: '/usuarios', adminOnly: true },
     { label: 'Personal', path: '/personal', adminOnly: true },
   ];
   protected readonly visibleNavigation = computed(() =>
-    this.navigation.filter((item) => !item.adminOnly || this.profile()?.role === 'Administrador'),
+    this.navigation.filter((item) => this.profile()?.role === 'Administrador'
+      || (this.profile()?.role === 'Auditor' ? ['Resumen', 'Personal'].includes(item.label) : !item.adminOnly)),
   );
   protected readonly displayName = computed(() => this.profile()?.full_name || this.profile()?.email || 'Personal');
   protected readonly displayRole = computed(() => this.profile()?.role ?? '');
@@ -49,8 +51,6 @@ export class AppShell implements OnDestroy, OnInit {
 
   ngOnInit(): void {
     void this.loadProfile();
-    void this.refreshNavigationCounts();
-    this.refreshTimer = setInterval(() => void this.refreshNavigationCounts(), 30_000);
   }
 
   ngOnDestroy(): void {
@@ -76,12 +76,21 @@ export class AppShell implements OnDestroy, OnInit {
   private async loadProfile(): Promise<void> {
     try {
       this.profile.set(await this.auth.getActiveStaffProfile());
+      if (this.profile()?.role !== 'Auditor') {
+        void this.refreshNavigationCounts();
+        this.refreshTimer = setInterval(() => void this.refreshNavigationCounts(), 30_000);
+      }
     } catch {
       this.profile.set(null);
     }
   }
 
   private async refreshNavigationCounts(): Promise<void> {
+    if (this.profile()?.role === 'Auditor') {
+      this.todayOrderCount.set(null);
+      this.freeTableCount.set(null);
+      return;
+    }
     try {
       const [todayOrders, freeTables] = await Promise.all([
         this.ordersService.countToday(),

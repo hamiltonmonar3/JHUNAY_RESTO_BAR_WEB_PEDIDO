@@ -12,6 +12,7 @@ import { ProductsService } from '../products/products.service';
 import { ExpenseRecord, SaleRecord, SalesService, SplitTenderSale } from '../sales/sales.service';
 import { TablesService } from '../tables/tables.service';
 import { TablePaginationComponent, TablePaginationState } from '../../shared/table-pagination';
+import { roundCurrencyForDisplay } from '../../shared/currency';
 
 type DatabaseStatus = 'not-configured' | 'checking' | 'connected' | 'error';
 type DashboardPeriod = 'day' | 'week' | 'month' | 'custom';
@@ -197,7 +198,7 @@ export class DashboardPage implements OnInit {
   }
 
   protected formatCurrency(value: number): string {
-    return this.currency.format(value);
+    return this.currency.format(roundCurrencyForDisplay(value));
   }
 
   protected formatPercent(value: number): string {
@@ -314,6 +315,10 @@ export class DashboardPage implements OnInit {
     try {
       const profile = await this.auth.getActiveStaffProfile();
       this.profile.set(profile);
+      if (profile?.role === 'Auditor') {
+        await this.loadPeriodData();
+        return;
+      }
       const [products, activeOrders, recentOrders, tables] = await Promise.all([
         this.products.listAvailable(),
         this.orders.countActive(),

@@ -1,6 +1,6 @@
 <section class="admin-page">
   <header class="module-heading">
-    <div><h1>Personal</h1><p>Gestiona perfiles, roles y estado de acceso.</p></div>
+    <div><h1>Usuarios</h1><p>Gestiona usuarios, roles y estado de acceso.</p></div>
     <button class="quiet-button" type="button" (click)="loadStaff()" [disabled]="loading()" aria-label="Actualizar personal" title="Actualizar personal">↻</button>
   </header>
   @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }

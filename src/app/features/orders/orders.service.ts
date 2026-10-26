@@ -180,12 +180,13 @@ export class OrdersService {
       product_id: number;
       quantity: number;
       subtotal: number | string;
-      products: { name: string } | { name: string }[] | null;
+      products: { name: string; top_viewer: boolean } | { name: string; top_viewer: boolean }[] | null;
     }[] = [];
     for (let offset = 0; ; offset += pageSize) {
       const { data, error } = await client
         .from('order_items')
-        .select('id, product_id, quantity, subtotal, products(name), orders!inner(status, paid_at)')
+        .select('id, product_id, quantity, subtotal, products!inner(name, top_viewer), orders!inner(status, paid_at)')
+        .eq('products.top_viewer', true)
         .eq('orders.status', 'pagado')
         .gte('orders.paid_at', startIso)
         .lt('orders.paid_at', endIso)

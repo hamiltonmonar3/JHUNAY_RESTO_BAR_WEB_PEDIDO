@@ -44,7 +44,12 @@ export class LoginPage {
       const profile = await this.auth.signIn(this.username.trim(), this.pin);
       const requestedUrl = this.route.snapshot.queryParamMap.get('returnUrl');
       const returnUrl = requestedUrl?.startsWith('/') && !requestedUrl.startsWith('//') ? requestedUrl : null;
-      await this.router.navigateByUrl(returnUrl ?? (profile.role === 'Operador' ? '/pedidos' : '/ventas'));
+      const homePath = profile.role === 'Operador'
+        ? '/pedidos'
+        : profile.role === 'Auditor'
+          ? '/dashboard'
+          : '/ventas';
+      await this.router.navigateByUrl(returnUrl ?? homePath);
     } catch (error) {
       this.errorMessage.set(error instanceof Error ? error.message : 'No se pudo iniciar sesión.');
     } finally {

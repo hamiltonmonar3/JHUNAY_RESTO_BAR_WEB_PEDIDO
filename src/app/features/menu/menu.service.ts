@@ -15,6 +15,7 @@ export interface MenuProduct {
   price: number;
   image_url: string | null;
   is_available: boolean;
+  top_viewer: boolean;
   track_stock: boolean;
   current_stock: number;
   min_stock: number;
@@ -50,7 +51,7 @@ export class MenuService {
     const client = this.requireClient();
     const { data, error } = await client
       .from('products')
-      .select('id, category_id, name, description, price, image_url, is_available, track_stock, current_stock, min_stock')
+      .select('id, category_id, name, description, price, image_url, is_available, top_viewer, track_stock, current_stock, min_stock')
       .order('name');
     if (error) throw error;
     const products = data as unknown as MenuProduct[];
@@ -85,6 +86,7 @@ export class MenuService {
       price: input.price,
       image_url: input.image_url?.trim() || null,
       is_available: input.is_available,
+      top_viewer: input.top_viewer,
       track_stock: input.track_stock,
       min_stock: input.min_stock,
     };

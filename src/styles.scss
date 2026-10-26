@@ -930,13 +930,17 @@ td { height: 48px; padding: 6px 13px; border-top: 1px solid #302720; color: #d5c
 }
 
 .admin-backdrop .expense-edit-form {
-	gap: 18px;
+	gap: 22px;
 }
 
 .admin-backdrop .expense-edit-form .expense-edit-row {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 18px;
+	gap: 20px;
+}
+
+.admin-backdrop .expense-edit-form .expense-edit-row + .expense-edit-row {
+	margin-top: 10px;
 }
 
 .admin-backdrop .expense-edit-form label {
@@ -957,7 +961,8 @@ td { height: 48px; padding: 6px 13px; border-top: 1px solid #302720; color: #d5c
 }
 
 .admin-backdrop .expense-edit-form .expense-period-field {
-	width: calc((100% - 18px) / 2);
+	width: calc((100% - 20px) / 2);
+	margin-top: 10px;
 }
 
 .admin-backdrop .expense-edit-form .modal-footer {

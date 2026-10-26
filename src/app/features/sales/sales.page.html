@@ -494,7 +494,7 @@
     <section class="admin-modal expense-edit-modal" role="dialog" aria-modal="true"
       [attr.aria-labelledby]="'expense-edit-title-' + expense.id" (click)="$event.stopPropagation()">
       <header class="modal-heading">
-        <div><p class="eyebrow">CONTROL DE GASTOS</p><h2 [id]="'expense-edit-title-' + expense.id">Editar egreso</h2></div>
+        <div><h2 [id]="'expense-edit-title-' + expense.id">Editar egreso</h2></div>
         <button class="quiet-button close-top" type="button" (click)="closeEditExpense()" aria-label="Cerrar" [disabled]="savingExpenseEdit()">×</button>
       </header>
       @if (expenseError()) { <div class="error-banner" role="alert">{{ expenseError() }}</div> }

@@ -34,10 +34,28 @@ export const adminGuard: CanActivateFn = async () => {
   }
 };
 
-export const nonOperatorGuard: CanActivateFn = async () => {
+export const adminOrAuditorGuard: CanActivateFn = async () => {
   const auth = inject(AuthService);
   const router = inject(Router);
-  const profile = await auth.getActiveStaffProfile();
 
-  return profile?.role === 'Operador' ? router.parseUrl('/pedidos') : true;
+  try {
+    const profile = await auth.getActiveStaffProfile();
+    return profile?.role === 'Administrador' || profile?.role === 'Auditor'
+      ? true
+      : router.parseUrl('/dashboard');
+  } catch {
+    return router.parseUrl('/dashboard');
+  }
+};
+
+export const nonAuditorGuard: CanActivateFn = async () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  try {
+    const profile = await auth.getActiveStaffProfile();
+    return profile?.role === 'Auditor' ? router.parseUrl('/dashboard') : true;
+  } catch {
+    return router.parseUrl('/dashboard');
+  }
 };

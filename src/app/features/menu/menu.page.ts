@@ -2,6 +2,7 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MenuCategory, MenuProduct, MenuPromotion, MenuService, PromotionDiscountType } from './menu.service';
 import { TablePaginationComponent, TablePaginationState } from '../../shared/table-pagination';
+import { roundCurrencyForDisplay } from '../../shared/currency';
 
 type MenuTab = 'products' | 'categories' | 'promotions';
 
@@ -46,6 +47,7 @@ export class MenuPage implements OnInit {
   protected productPrice = 0;
   protected productImage = '';
   protected productAvailable = true;
+  protected productTopViewer = true;
   protected productTracksStock = false;
   protected productStock = 0;
   protected productMinStock = 0;
@@ -105,6 +107,7 @@ export class MenuPage implements OnInit {
     this.productPrice = product?.price ?? 0;
     this.productImage = product?.image_url ?? '';
     this.productAvailable = product?.is_available ?? true;
+    this.productTopViewer = product?.top_viewer ?? true;
     this.productTracksStock = product?.track_stock ?? false;
     this.productStock = product?.current_stock ?? 0;
     this.productMinStock = product?.min_stock ?? 0;
@@ -124,6 +127,7 @@ export class MenuPage implements OnInit {
         price: Number(this.productPrice),
         image_url: this.productImage,
         is_available: this.productAvailable,
+        top_viewer: this.productTopViewer,
         track_stock: this.productTracksStock,
         current_stock: Number(this.productStock),
         min_stock: Number(this.productMinStock),
@@ -254,7 +258,7 @@ export class MenuPage implements OnInit {
   }
 
   protected formatCurrency(value: number): string {
-    return this.money.format(value);
+    return this.money.format(roundCurrencyForDisplay(value));
   }
 
   protected closeForms(): void {

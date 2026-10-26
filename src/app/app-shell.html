@@ -45,49 +45,55 @@
     <div class="nav-category-group">
       <div class="nav-label">Operación Diaria</div>
       <nav class="primary-nav" aria-label="Navegación Operación Diaria">
-        @if (profile() && profile()?.role !== 'Operador') {
+        @if (profile()?.role === 'Administrador' || profile()?.role === 'Auditor') {
           <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
             <span class="nav-icon" aria-hidden="true">📊</span>
             <span class="nav-text">Resumen</span>
           </a>
         }
-        <!-- Pedidos con Badge -->
-        <a routerLink="/pedidos" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-          <span class="nav-icon" aria-hidden="true">🛍️</span>
-          <span class="nav-text">Pedidos</span>
-          @if (todayOrderCount() !== null) {
-            <span class="nav-badge accent">{{ todayOrderCount() }}</span>
-          }
-        </a>
-        <!-- Ventas -->
-        <a class="sales-nav-link" routerLink="/ventas" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-          <span class="nav-icon" aria-hidden="true">💳</span>
-          <span class="nav-text">Ventas</span>
-        </a>
+        @if (profile()?.role === 'Administrador' || profile()?.role === 'Operador') {
+          <a routerLink="/pedidos" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            <span class="nav-icon" aria-hidden="true">🛍️</span>
+            <span class="nav-text">Pedidos</span>
+            @if (todayOrderCount() !== null) {
+              <span class="nav-badge accent">{{ todayOrderCount() }}</span>
+            }
+          </a>
+          <a class="sales-nav-link" routerLink="/ventas" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+            <span class="nav-icon" aria-hidden="true">💳</span>
+            <span class="nav-text">Ventas</span>
+          </a>
+        }
       </nav>
     </div>
 
-    @if (profile() && profile()?.role !== 'Operador') {
+    @if (profile()?.role === 'Administrador' || profile()?.role === 'Auditor') {
       <div class="nav-category-group" style="margin-top: 18px;">
-        <div class="nav-label">Administración</div>
+        <div class="nav-label">{{ profile()?.role === 'Auditor' ? 'Gestión' : 'Administración' }}</div>
         <nav class="primary-nav" aria-label="Navegación Administración">
-          <a routerLink="/mesas" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-            <span class="nav-icon" aria-hidden="true">🪑</span>
-            <span class="nav-text">Mesas</span>
-            @if (freeTableCount() !== null) {
-              <span class="nav-badge success">{{ freeTableCount() }} libres</span>
-            }
-          </a>
-          <a routerLink="/productos" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-            <span class="nav-icon" aria-hidden="true">🍔</span>
-            <span class="nav-text">Menú</span>
-          </a>
-          <a routerLink="/inventario" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-            <span class="nav-icon" aria-hidden="true">📦</span>
-            <span class="nav-text">Inventario</span>
-          </a>
+          @if (profile()?.role === 'Administrador') {
+            <a routerLink="/mesas" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+              <span class="nav-icon" aria-hidden="true">🪑</span>
+              <span class="nav-text">Mesas</span>
+              @if (freeTableCount() !== null) {
+                <span class="nav-badge success">{{ freeTableCount() }} libres</span>
+              }
+            </a>
+            <a routerLink="/productos" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+              <span class="nav-icon" aria-hidden="true">🍔</span>
+              <span class="nav-text">Menú</span>
+            </a>
+            <a routerLink="/inventario" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+              <span class="nav-icon" aria-hidden="true">📦</span>
+              <span class="nav-text">Inventario</span>
+            </a>
+            <a routerLink="/usuarios" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+              <span class="nav-icon" aria-hidden="true">👥</span>
+              <span class="nav-text">Usuarios</span>
+            </a>
+          }
           <a routerLink="/personal" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-            <span class="nav-icon" aria-hidden="true">👥</span>
+            <span class="nav-icon" aria-hidden="true">{{ profile()?.role === 'Auditor' ? '👤' : '💵' }}</span>
             <span class="nav-text">Personal</span>
           </a>
         </nav>
@@ -98,7 +104,7 @@
       <span class="status-indicator" [class.is-configured]="supabaseConfigured" aria-hidden="true"></span>
       <span>
         <strong>{{ supabaseConfigured ? 'Supabase configurado' : 'Modo de configuración' }}</strong>
-        <small>{{ navigationCountError() ? 'No se actualizaron los indicadores' : (supabaseConfigured ? 'Pedidos y ventas requieren sesión' : 'Conexión pendiente') }}</small>
+        <small>{{ profile()?.role === 'Auditor' ? 'Acceso a Resumen y Personal' : (navigationCountError() ? 'No se actualizaron los indicadores' : (supabaseConfigured ? 'Pedidos y ventas requieren sesión' : 'Conexión pendiente')) }}</small>
       </span>
     </div>
   </aside>

@@ -4,6 +4,7 @@ import { AuthService, StaffProfile } from '../../core/auth/auth.service';
 import { CashClosure, ExpenseRecord, OrderPaymentGroup, PaymentCorrectionTender, SalePaymentMethod, SalesService, SaleRecord, ServedOrder, SplitPaymentInput, SplitTenderSale } from './sales.service';
 import { OrderItemDetail, OrdersService } from '../orders/orders.service';
 import { TablePaginationComponent, TablePaginationState } from '../../shared/table-pagination';
+import { roundCurrencyForDisplay } from '../../shared/currency';
 
 type SalesTab = 'ventas' | 'egresos' | 'apertura' | 'cierre';
 type ExpensePeriod = 'day' | 'yesterday' | 'week' | 'month';
@@ -59,6 +60,12 @@ function businessDateValue(date: Date): string {
   }).formatToParts(date);
   const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
   return `${values['year']}-${values['month']}-${values['day']}`;
+}
+
+function businessDayEndIso(date: Date): string {
+  const end = new Date(`${businessDateValue(date)}T00:00:00-05:00`);
+  end.setUTCDate(end.getUTCDate() + 1);
+  return end.toISOString();
 }
 
 function localDayRange(dateValue: string): { start: string; end: string } {
@@ -391,29 +398,34 @@ export class SalesPage implements OnDestroy, OnInit {
     this.loading.set(true);
     this.errorMessage.set('');
     try {
-      const profile = await this.auth.getActiveStaffProfile();
-      this.profile.set(profile);
-      this.canCollect.set(profile?.role === 'Administrador' || profile?.role === 'Operador');
-      const { start, end } = localDayRange(this.selectedDate());
-      const [paidOrders, servedOrders] = await Promise.all([
-        this.salesService.listPaidOrders(start, end),
-        this.salesService.listServedOrders(),
-      ]);
-      this.paidOrders.set(paidOrders);
-      this.servedOrders.set(servedOrders);
-      await Promise.all([
-        this.loadDailyOrderNumbers(),
-        this.loadPaidDailyOrderNumbers(this.selectedDate()),
-      ]);
-      try {
-        this.splitPaymentTenders.set(await this.salesService.listSplitPaymentTenders(start, end));
-      } catch (error) {
-        this.splitPaymentTenders.set([]);
+      const selectedDate = this.selectedDate();
+      const today = localDateValue(new Date());
+      const { start, end } = localDayRange(selectedDate);
+      const dailyOrderNumbersPromise = this.loadDailyOrderNumbers();
+      const paidDailyOrderNumbersPromise = selectedDate === today
+        ? dailyOrderNumbersPromise.then(() => this.paidDailyOrderNumbers.set(new Map(this.dailyOrderNumbers())))
+        : this.loadPaidDailyOrderNumbers(selectedDate);
+      const splitPaymentTendersPromise = this.salesService.listSplitPaymentTenders(start, end).catch((error: unknown) => {
         this.errorMessage.set(
           `Se cargaron los pedidos, pero no el detalle de pagos divididos. Verifica que esté aplicada la migración de pagos divididos en Supabase. ${error instanceof Error ? error.message : ''}`.trim(),
         );
-      }
-      await this.loadExpenses();
+        return [];
+      });
+      const expensesPromise = this.loadExpenses();
+      const [profile, paidOrders, servedOrders, splitPaymentTenders] = await Promise.all([
+        this.auth.getActiveStaffProfile(),
+        this.salesService.listPaidOrders(start, end),
+        this.salesService.listServedOrders(),
+        splitPaymentTendersPromise,
+        dailyOrderNumbersPromise,
+        paidDailyOrderNumbersPromise,
+        expensesPromise,
+      ]);
+      this.profile.set(profile);
+      this.canCollect.set(profile?.role === 'Administrador' || profile?.role === 'Operador');
+      this.paidOrders.set(paidOrders);
+      this.servedOrders.set(servedOrders);
+      this.splitPaymentTenders.set(splitPaymentTenders);
     } catch (error) {
       this.errorMessage.set(error instanceof Error ? error.message : 'No se pudieron cargar las ventas.');
     } finally {
@@ -881,7 +893,7 @@ export class SalesPage implements OnDestroy, OnInit {
       this.expenseAmountValue = 0;
       this.expenseDescription = '';
       this.expenseCategory = 'insumos';
-      await this.loadExpenses();
+      await Promise.all([this.loadExpenses(), this.loadCashRegister()]);
     } catch (error) {
       this.expenseError.set(error instanceof Error ? error.message : 'No se pudo registrar el egreso.');
     } finally {
@@ -907,7 +919,7 @@ export class SalesPage implements OnDestroy, OnInit {
     try {
       await this.salesService.deleteExpense(expense.id);
       this.deletingExpense.set(null);
-      await this.loadExpenses();
+      await Promise.all([this.loadExpenses(), this.loadCashRegister()]);
     } catch (error) {
       this.expenseError.set(error instanceof Error ? error.message : 'No se pudo eliminar el egreso.');
     } finally {
@@ -950,7 +962,7 @@ export class SalesPage implements OnDestroy, OnInit {
         this.editExpensePeriod,
       );
       this.editingExpense.set(null);
-      await this.loadExpenses();
+      await Promise.all([this.loadExpenses(), this.loadCashRegister()]);
     } catch (error) {
       this.expenseError.set(error instanceof Error ? error.message : 'No se pudo actualizar el egreso.');
     } finally {
@@ -980,7 +992,7 @@ export class SalesPage implements OnDestroy, OnInit {
       const now = new Date().toISOString();
       const [paidOrders, expenses, splitTenders] = await Promise.all([
         this.salesService.listPaidOrders(open.opened_at, now),
-        this.salesService.listExpenses(open.opened_at, now, ['day']),
+        this.salesService.listExpenses(open.opened_at, businessDayEndIso(new Date()), ['day']),
         this.salesService.listSplitPaymentTenders(open.opened_at, now),
       ]);
       this.closurePaidOrders.set(paidOrders);
@@ -1523,7 +1535,7 @@ export class SalesPage implements OnDestroy, OnInit {
   }
 
   protected formatCurrency(value: number): string {
-    return this.money.format(value);
+    return this.money.format(roundCurrencyForDisplay(value));
   }
 
   protected formatDate(value: string): string {

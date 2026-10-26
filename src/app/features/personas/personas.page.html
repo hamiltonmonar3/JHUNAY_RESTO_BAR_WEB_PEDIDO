@@ -1,0 +1,191 @@
+<section class="personas-page">
+  <header class="module-heading">
+    <div><h1>Personas</h1><p>Administra personas y registra valores por cobrar, por pagar y descuentos.</p></div>
+    <div class="staff-finance-header-actions">
+      <button class="secondary-button" type="button" (click)="openPersonForm()">+ Agregar persona</button>
+      <button class="quiet-button" type="button" (click)="loadData()" [disabled]="loading()" aria-label="Actualizar personas" title="Actualizar personas">↻</button>
+    </div>
+  </header>
+  @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
+
+  <section class="staff-finance-section executive-summary">
+    <div class="staff-finance-toolbar summary-toolbar">
+      <div><h2>Resumen ejecutivo</h2><p>Los valores por cobrar y los descuentos se restan del valor por pagar.</p></div>
+      <div class="period-selector" role="group" aria-label="Período del resumen">
+        @for (period of summaryPeriods; track period.value) {
+          <button type="button" [class.active]="selectedPeriod() === period.value" (click)="selectedPeriod.set(period.value)">{{ period.label }}</button>
+        }
+      </div>
+    </div>
+    <div class="executive-cards">
+      <article><span>Por cobrar</span><strong>{{ formatCurrency(summaryTotals().receivable) }}</strong></article>
+      <article><span>Por pagar</span><strong>{{ formatCurrency(summaryTotals().payable) }}</strong></article>
+      <article><span>Descuentos</span><strong>{{ formatCurrency(summaryTotals().discounts) }}</strong></article>
+      <article><span>Neto por pagar</span><strong>{{ formatCurrency(netPayable()) }}</strong></article>
+    </div>
+  </section>
+
+  <section class="staff-finance-section">
+    <div class="staff-finance-toolbar">
+      <div><h2>Personas</h2><p>Los saldos son acumulados; el resumen ejecutivo usa el período seleccionado.</p></div>
+      <div class="staff-finance-actions">
+        <label class="person-search">
+          <input type="search" aria-label="Buscar persona" placeholder="Buscar por nombre o identificación…" [ngModel]="searchQuery()" (ngModelChange)="onSearchChange($event)" />
+        </label>
+        <button class="secondary-button" type="button" (click)="openMovementForm('por_cobrar')">+ Por cobrar</button>
+        <button class="secondary-button" type="button" (click)="openMovementForm('descuento')">+ Descuento</button>
+        <button class="primary-button" type="button" (click)="openMovementForm('por_pagar')">+ Por pagar</button>
+      </div>
+    </div>
+    @if (loading()) { <div class="empty-state">Cargando personas…</div> }
+    @else {
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Persona</th><th>Identificación</th><th class="numeric">Por cobrar</th><th class="numeric">Por pagar</th><th class="numeric">Descuentos</th><th class="numeric">Neto por pagar</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody>
+            @for (person of filteredPeople(); track person.id) {
+              @let total = personTotals(person);
+              <tr>
+                <td><strong>{{ person.full_name }}</strong></td>
+                <td>{{ person.identification || '—' }}</td>
+                <td class="numeric">{{ formatCurrency(total.receivable) }}</td>
+                <td class="numeric">{{ formatCurrency(total.payable) }}</td>
+                <td class="numeric">{{ formatCurrency(total.discounts) }}</td>
+                <td class="numeric"><strong>{{ formatCurrency(total.netPayable) }}</strong></td>
+                <td>{{ person.is_active ? 'Activa' : 'Inactiva' }}</td>
+                <td class="admin-actions">
+                  <button class="detail-button" type="button" (click)="openPersonForm(person)">Editar</button>
+                  <button class="detail-button danger-action" type="button" (click)="requestDeletePerson(person)">Eliminar</button>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="8" class="empty-cell">
+                {{ searchQuery().trim() ? 'No hay personas que coincidan con la búsqueda.' : 'Aún no hay personas registradas.' }}
+              </td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  <section class="staff-finance-section">
+    <div class="staff-finance-toolbar"><div><h2>Historial de movimientos</h2><p>{{ movements().length }} registros</p></div></div>
+    @if (!loading()) {
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Fecha</th><th>Persona</th><th>Movimiento</th><th>Descripción</th><th class="numeric">Monto</th><th>Acciones</th></tr></thead>
+          <tbody>
+            @for (movement of pagination.visible(movements()); track movement.id) {
+              <tr>
+                <td>{{ formatDate(movement.movement_date) }}</td>
+                <td>{{ movementPerson(movement) }}</td>
+                <td>{{ labels[movement.movement_type] }}</td>
+                <td>{{ movement.description }}</td>
+                <td class="numeric">{{ formatCurrency(movement.amount) }}</td>
+                <td class="admin-actions">
+                  <button class="detail-button" type="button" (click)="openEditMovement(movement)">Editar</button>
+                </td>
+              </tr>
+            } @empty { <tr><td colspan="6" class="empty-cell">Aún no hay movimientos registrados.</td></tr> }
+          </tbody>
+        </table>
+      </div>
+      @if (movements().length > 0) {
+        <app-table-pagination [totalItems]="movements().length"
+          [page]="pagination.currentPage(movements().length)" [pageSize]="pagination.pageSize()"
+          (pageChange)="pagination.setPage($event, movements().length)"
+          (pageSizeChange)="pagination.setPageSize($event)" />
+      }
+    }
+  </section>
+</section>
+
+@if (showPersonForm()) {
+  <div class="modal-backdrop admin-backdrop" (click)="showPersonForm.set(false)">
+    <section class="admin-modal staff-finance-modal" role="dialog" aria-modal="true" aria-labelledby="person-form-title" (click)="$event.stopPropagation()">
+      <header class="modal-heading">
+        <div><h2 id="person-form-title">{{ personId ? 'Editar persona' : 'Nueva persona' }}</h2></div>
+        <button class="quiet-button close-top" type="button" (click)="showPersonForm.set(false)" aria-label="Cerrar">×</button>
+      </header>
+      <form class="admin-form" (ngSubmit)="savePerson()">
+        <label>Nombre completo<input name="personFullName" required maxlength="150" [(ngModel)]="personFullName" /></label>
+        <label>Identificación<input name="personIdentification" maxlength="30" [(ngModel)]="personIdentification" /></label>
+        <label class="admin-check"><input name="personActive" type="checkbox" [(ngModel)]="personActive" /> Persona activa</label>
+        <footer class="modal-footer">
+          <button class="secondary-button" type="button" (click)="showPersonForm.set(false)">Cancelar</button>
+          <button class="primary-button" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar persona' }}</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (showMovementForm()) {
+  <div class="modal-backdrop admin-backdrop" (click)="closeMovementForm()">
+    <section class="admin-modal staff-finance-modal" role="dialog" aria-modal="true" aria-labelledby="movement-form-title" (click)="$event.stopPropagation()">
+      <header class="modal-heading">
+        <div><h2 id="movement-form-title">{{ movementId ? 'Editar movimiento' : labels[movementType] }}</h2></div>
+        <button class="quiet-button close-top" type="button" (click)="closeMovementForm()" aria-label="Cerrar">×</button>
+      </header>
+      <form class="admin-form" (ngSubmit)="saveMovement()">
+        @if (movementId) {
+          <label>Persona
+            <input [value]="movementPersonById(movementId)" readonly />
+          </label>
+        } @else {
+        <label>Persona
+          <select name="persona" required [(ngModel)]="selectedPersonId">
+            <option value="" disabled>Seleccionar persona</option>
+            @for (person of people(); track person.id) { <option [value]="person.id" [disabled]="!person.is_active">{{ person.full_name }}{{ person.is_active ? '' : ' (inactiva)' }}</option> }
+          </select>
+        </label>
+        }
+        <label>Tipo de movimiento
+          <select name="movementType" required [(ngModel)]="movementType">
+            @for (type of movementTypes; track type) { <option [value]="type">{{ labels[type] }}</option> }
+          </select>
+        </label>
+        <label>Monto<input name="amount" type="number" min="0.01" step="0.01" required [(ngModel)]="movementAmount" /></label>
+        <label>Fecha<input name="date" type="date" required [(ngModel)]="movementDate" /></label>
+        <label>Descripción<input name="description" maxlength="250" required [(ngModel)]="movementDescription" placeholder="Motivo del movimiento" /></label>
+        @if (movementFormError()) {
+          <div class="error-banner" role="alert">{{ movementFormError() }}</div>
+        }
+        <footer class="modal-footer">
+          <button class="secondary-button" type="button" (click)="closeMovementForm()">Cancelar</button>
+          <button class="primary-button" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : movementId ? 'Guardar cambios' : 'Guardar movimiento' }}</button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (personToDelete(); as person) {
+  <div class="modal-backdrop admin-backdrop person-delete-backdrop" (click)="cancelDeletePerson()">
+    <section class="person-delete-modal" role="alertdialog" aria-modal="true"
+      aria-labelledby="person-delete-title" aria-describedby="person-delete-description"
+      (click)="$event.stopPropagation()">
+      <div class="person-delete-icon" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+        </svg>
+      </div>
+      <h2 id="person-delete-title">Eliminar persona</h2>
+      <p id="person-delete-description">
+        ¿Eliminar a <strong>{{ person.full_name }}</strong>? Solo se puede eliminar si no tiene movimientos.
+      </p>
+      @if (deleteError()) {
+        <div class="error-banner" role="alert">{{ deleteError() }}</div>
+      }
+      <div class="person-delete-actions">
+        <button class="secondary-button" type="button" (click)="cancelDeletePerson()" [disabled]="deleting()">
+          Cancelar
+        </button>
+        <button class="person-delete-button" type="button" (click)="confirmDeletePerson()" [disabled]="deleting()">
+          {{ deleting() ? 'Eliminando…' : 'Sí, eliminar' }}
+        </button>
+      </div>
+    </section>
+  </div>
+}
