@@ -9,13 +9,14 @@ import {
   ProductSalesSummary,
 } from '../orders/orders.service';
 import { ProductsService } from '../products/products.service';
-import { ExpenseRecord, SaleRecord, SalesService, SplitTenderSale } from '../sales/sales.service';
+import { CashClosure, CashClosureIncomeEntry, ExpenseRecord, SaleRecord, SalesService, SplitTenderSale } from '../sales/sales.service';
 import { TablesService } from '../tables/tables.service';
 import { roundCurrencyForDisplay } from '../../shared/currency';
 
 type DatabaseStatus = 'not-configured' | 'checking' | 'connected' | 'error';
 type DashboardPeriod = 'day' | 'week' | 'month' | 'custom';
 type DashboardPaymentMethod = 'efectivo' | 'transferencia';
+type MonthlyComparisonBucket = ChartBucket;
 
 interface DateRange {
   start: Date;
@@ -27,12 +28,14 @@ interface ChartBucket {
   label: string;
   sales: number;
   expenses: number;
+  net: number;
 }
 
 interface ChartPoint extends ChartBucket {
   x: number;
   salesY: number;
   expensesY: number;
+  netY: number;
   showLabel: boolean;
 }
 
@@ -71,6 +74,7 @@ export class DashboardPage implements OnInit {
   private readonly sales = inject(SalesService);
   private readonly tables = inject(TablesService);
   private periodRequestId = 0;
+  private monthlyComparisonRequestId = 0;
   private readonly currency = new Intl.NumberFormat('es-EC', {
     style: 'currency',
     currency: 'USD',
@@ -95,12 +99,21 @@ export class DashboardPage implements OnInit {
   protected readonly recentOrders = signal<OrderSummary[]>([]);
   protected readonly paidOrders = signal<SaleRecord[]>([]);
   protected readonly recentPaidOrders = computed(() => this.paidOrders().slice(0, 20));
+  protected readonly additionalIncome = signal<CashClosureIncomeEntry[]>([]);
+  private readonly chartCashClosure = signal<CashClosure | null>(null);
   protected readonly expenses = signal<ExpenseRecord[]>([]);
   protected readonly splitTenders = signal<SplitTenderSale[]>([]);
   protected readonly topProducts = signal<ProductSalesSummary[]>([]);
   protected readonly databaseError = signal('');
   protected readonly periodError = signal('');
   protected readonly loadingPeriod = signal(false);
+  protected readonly showIncomeSeries = signal(true);
+  protected readonly showExpenseSeries = signal(true);
+  protected readonly showNetSeries = signal(true);
+  protected readonly monthlyMonthsBack = signal(6);
+  protected readonly monthlyComparison = signal<MonthlyComparisonBucket[]>([]);
+  protected readonly monthlyComparisonLoading = signal(false);
+  protected readonly monthlyComparisonError = signal('');
   protected readonly selectedPeriod = signal<DashboardPeriod>('day');
   protected readonly customStart = signal(
     localDateValue(new Date(new Date().getFullYear(), new Date().getMonth(), 1)),
@@ -116,15 +129,19 @@ export class DashboardPage implements OnInit {
   protected readonly totalSales = computed(() =>
     this.paidOrders().reduce((total, sale) => total + sale.total_amount, 0),
   );
+  protected readonly totalAdditionalIncome = computed(() =>
+    this.additionalIncome().reduce((total, entry) => total + entry.amount, 0),
+  );
+  protected readonly totalIncome = computed(() => this.totalSales() + this.totalAdditionalIncome());
   protected readonly totalExpenses = computed(() =>
     this.expenses().reduce((total, expense) => total + expense.amount, 0),
   );
-  protected readonly netBalance = computed(() => this.totalSales() - this.totalExpenses());
+  protected readonly netBalance = computed(() => this.totalIncome() - this.totalExpenses());
   protected readonly averageTicket = computed(() =>
     this.paidOrders().length ? this.totalSales() / this.paidOrders().length : 0,
   );
   protected readonly profitMargin = computed(() =>
-    this.totalSales() ? (this.netBalance() / this.totalSales()) * 100 : 0,
+    this.totalIncome() ? (this.netBalance() / this.totalIncome()) * 100 : 0,
   );
   protected readonly paymentBreakdown = computed(() => {
     const groups = new Map<DashboardPaymentMethod, { orderIds: Set<number>; total: number }>();
@@ -154,18 +171,85 @@ export class DashboardPage implements OnInit {
       .sort((first, second) => second.total - first.total);
   });
   protected readonly chartBuckets = computed(() => this.buildChartBuckets());
+  protected readonly chartValues = computed(() => {
+    const values = this.chartBuckets().flatMap((bucket) => [
+      ...(this.showIncomeSeries() ? [bucket.sales] : []),
+      ...(this.showExpenseSeries() ? [bucket.expenses] : []),
+      ...(this.showNetSeries() ? [bucket.net] : []),
+    ]);
+    return values;
+  });
+  protected readonly chartMaximum = computed(() => Math.max(1, ...this.chartValues()));
+  protected readonly chartMinimum = computed(() => Math.min(0, ...this.chartValues()));
+  protected readonly chartZeroY = computed(() => {
+    const min = this.chartMinimum();
+    const max = this.chartMaximum();
+    return 218 - ((0 - min) / (max - min)) * 178;
+  });
+  protected readonly chartAxisLabels = computed(() => {
+    const min = this.chartMinimum();
+    const max = this.chartMaximum();
+    return [max, min + (max - min) * (2 / 3), min + (max - min) / 3, min]
+      .map((value, index) => ({ value, y: [40, 99, 159, 218][index] }));
+  });
   protected readonly chartPoints = computed<ChartPoint[]>(() => {
     const buckets = this.chartBuckets();
-    const maxValue = Math.max(1, ...buckets.flatMap((bucket) => [bucket.sales, bucket.expenses]));
+    const maxValue = this.chartMaximum();
+    const minValue = this.chartMinimum();
+    const valueRange = maxValue - minValue;
     const labelInterval = Math.max(1, Math.ceil(buckets.length / 8));
+    const yForValue = (value: number) => 218 - ((value - minValue) / valueRange) * 178;
     return buckets.map((bucket, index) => ({
       ...bucket,
       x: buckets.length === 1 ? 500 : 42 + (index / (buckets.length - 1)) * 916,
-      salesY: 218 - (bucket.sales / maxValue) * 178,
-      expensesY: 218 - (bucket.expenses / maxValue) * 178,
+      salesY: yForValue(bucket.sales),
+      expensesY: yForValue(bucket.expenses),
+      netY: yForValue(bucket.net),
       showLabel: index % labelInterval === 0 || index === buckets.length - 1,
     }));
   });
+  protected readonly monthlyChartValues = computed(() => this.monthlyComparison().flatMap((bucket) => [
+    bucket.sales,
+    bucket.expenses,
+    bucket.net,
+  ]));
+  protected readonly monthlyChartMaximum = computed(() => Math.max(1, ...this.monthlyChartValues()));
+  protected readonly monthlyChartMinimum = computed(() => Math.min(0, ...this.monthlyChartValues()));
+  protected readonly monthlyChartZeroY = computed(() => {
+    const min = this.monthlyChartMinimum();
+    const max = this.monthlyChartMaximum();
+    return 218 - ((0 - min) / (max - min)) * 178;
+  });
+  protected readonly monthlyChartAxisLabels = computed(() => {
+    const min = this.monthlyChartMinimum();
+    const max = this.monthlyChartMaximum();
+    return [max, min + (max - min) * (2 / 3), min + (max - min) / 3, min]
+      .map((value, index) => ({ value, y: [40, 99, 159, 218][index] }));
+  });
+  protected readonly monthlyChartPoints = computed<ChartPoint[]>(() => {
+    const buckets = this.monthlyComparison();
+    const minValue = this.monthlyChartMinimum();
+    const valueRange = this.monthlyChartMaximum() - minValue;
+    const labelInterval = Math.max(1, Math.ceil(buckets.length / 8));
+    const yForValue = (value: number) => 218 - ((value - minValue) / valueRange) * 178;
+    return buckets.map((bucket, index) => ({
+      ...bucket,
+      x: buckets.length === 1 ? 500 : 70 + (index / (buckets.length - 1)) * 888,
+      salesY: yForValue(bucket.sales),
+      expensesY: yForValue(bucket.expenses),
+      netY: yForValue(bucket.net),
+      showLabel: index % labelInterval === 0 || index === buckets.length - 1,
+    }));
+  });
+  protected readonly monthlyIncomePath = computed(() =>
+    this.monthlyChartPoints().map((point) => `${point.x},${point.salesY}`).join(' '),
+  );
+  protected readonly monthlyExpensesPath = computed(() =>
+    this.monthlyChartPoints().map((point) => `${point.x},${point.expensesY}`).join(' '),
+  );
+  protected readonly monthlyNetPath = computed(() =>
+    this.monthlyChartPoints().map((point) => `${point.x},${point.netY}`).join(' '),
+  );
   protected readonly salesPath = computed(() =>
     this.chartPoints()
       .map((point) => `${point.x},${point.salesY}`)
@@ -176,14 +260,17 @@ export class DashboardPage implements OnInit {
       .map((point) => `${point.x},${point.expensesY}`)
       .join(' '),
   );
+  protected readonly netPath = computed(() =>
+    this.chartPoints()
+      .map((point) => `${point.x},${point.netY}`)
+      .join(' '),
+  );
   protected readonly salesAreaPath = computed(() => {
     const points = this.chartPoints();
     if (!points.length) return '';
-    return `M ${points[0].x},218 L ${points.map((point) => `${point.x},${point.salesY}`).join(' L ')} L ${points[points.length - 1].x},218 Z`;
+    const baseline = this.chartZeroY();
+    return `M ${points[0].x},${baseline} L ${points.map((point) => `${point.x},${point.salesY}`).join(' L ')} L ${points[points.length - 1].x},${baseline} Z`;
   });
-  protected readonly chartMaximum = computed(() =>
-    Math.max(1, ...this.chartBuckets().flatMap((bucket) => [bucket.sales, bucket.expenses])),
-  );
   protected readonly periodLabel = computed(() => {
     const range = this.periodRange();
     if (this.selectedPeriod() === 'day') return this.compactDate.format(range.start);
@@ -193,7 +280,10 @@ export class DashboardPage implements OnInit {
   });
 
   ngOnInit(): void {
-    if (this.supabase.isConfigured) void this.loadDashboard();
+    if (this.supabase.isConfigured) {
+      void this.loadDashboard();
+      void this.loadMonthlyComparison();
+    }
   }
 
   protected formatCurrency(value: number): string {
@@ -202,6 +292,12 @@ export class DashboardPage implements OnInit {
 
   protected formatPercent(value: number): string {
     return `${new Intl.NumberFormat('es-EC', { maximumFractionDigits: 1 }).format(value)}%`;
+  }
+
+  protected toggleChartSeries(series: 'income' | 'expenses' | 'net'): void {
+    if (series === 'income') this.showIncomeSeries.update((visible) => !visible);
+    else if (series === 'expenses') this.showExpenseSeries.update((visible) => !visible);
+    else this.showNetSeries.update((visible) => !visible);
   }
 
   protected formatDate(value: string): string {
@@ -259,7 +355,16 @@ export class DashboardPage implements OnInit {
   }
 
   protected async refresh(): Promise<void> {
-    await this.loadDashboard();
+    await Promise.all([this.loadDashboard(), this.loadMonthlyComparison()]);
+  }
+
+  protected updateMonthlyMonthsBack(event: Event): void {
+    const target = event.target;
+    if (!(target instanceof HTMLSelectElement)) return;
+    const months = Number(target.value);
+    if (!Number.isInteger(months) || months < 3 || months > 24) return;
+    this.monthlyMonthsBack.set(months);
+    void this.loadMonthlyComparison();
   }
 
   private defaultRange(period: DashboardPeriod): DateRange {
@@ -290,7 +395,7 @@ export class DashboardPage implements OnInit {
       case 'month':
         return {
           start: new Date(today.getFullYear(), today.getMonth(), 1),
-          end: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1),
+          end: new Date(today.getFullYear(), today.getMonth() + 1, 1),
         };
       case 'custom': {
         const start = dateFromValue(this.customStart());
@@ -345,9 +450,11 @@ export class DashboardPage implements OnInit {
     const range = this.getSelectedRange();
     if (!range) {
       this.paidOrders.set([]);
+      this.additionalIncome.set([]);
       this.expenses.set([]);
       this.splitTenders.set([]);
       this.topProducts.set([]);
+      this.chartCashClosure.set(null);
       this.loadingPeriod.set(false);
       return;
     }
@@ -356,28 +463,50 @@ export class DashboardPage implements OnInit {
     this.loadingPeriod.set(true);
     this.databaseError.set('');
     this.paidOrders.set([]);
+    this.additionalIncome.set([]);
     this.expenses.set([]);
     this.splitTenders.set([]);
     this.topProducts.set([]);
+    this.chartCashClosure.set(null);
     if (this.supabase.isConfigured) this.databaseStatus.set('checking');
 
     try {
       const start = range.start.toISOString();
       const end = range.end.toISOString();
+      const selectedDate = new Date(range.start);
+      const isLastDayOfMonth = selectedDate.getDate()
+        === new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
       const expensePeriods: ExpenseRecord['expense_period'][] =
-        this.selectedPeriod() === 'day'
-          ? ['day']
+        this.selectedPeriod() === 'month' || this.selectedPeriod() === 'custom'
+          ? ['day', 'week', 'month']
           : this.selectedPeriod() === 'week'
             ? ['day', 'week']
-            : ['day', 'week', 'month'];
-      const [paidOrders, expenses, splitTenders, topProducts] = await Promise.all([
+            : [
+              'day',
+              ...(selectedDate.getDay() === 0 ? ['week' as const] : []),
+              ...(isLastDayOfMonth ? ['month' as const] : []),
+            ];
+      const additionalIncomePeriods: CashClosureIncomeEntry['expense_period'][] = expensePeriods;
+      const today = new Date();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const rangeIncludesToday = range.start <= todayStart && range.end > todayStart;
+      const [paidOrders, expenses, splitTenders, topProducts, openClosure] = await Promise.all([
         this.sales.listPaidOrders(start, end),
         this.sales.listExpenses(start, end, expensePeriods),
         this.sales.listSplitPaymentTenders(start, end),
         this.orders.listTopProducts(start, end),
+        rangeIncludesToday ? this.sales.getOpenClosure() : Promise.resolve(null),
       ]);
+      const additionalIncome = await this.sales.listAdditionalIncome(
+        start,
+        end,
+        additionalIncomePeriods,
+        this.selectedPeriod() === 'day' ? openClosure?.id : undefined,
+      );
       if (requestId !== this.periodRequestId) return;
       this.paidOrders.set(paidOrders);
+      this.additionalIncome.set(additionalIncome);
+      this.chartCashClosure.set(openClosure);
       this.expenses.set(expenses);
       this.splitTenders.set(splitTenders);
       this.topProducts.set(topProducts);
@@ -387,7 +516,7 @@ export class DashboardPage implements OnInit {
       this.databaseError.set(
         error instanceof Error
           ? error.message
-          : 'No se pudo consultar ventas, egresos y productos.',
+          : 'No se pudo consultar ventas, ingresos adicionales, egresos y productos.',
       );
       this.databaseStatus.set('error');
     } finally {
@@ -395,11 +524,96 @@ export class DashboardPage implements OnInit {
     }
   }
 
+  private async loadMonthlyComparison(): Promise<void> {
+    const requestId = ++this.monthlyComparisonRequestId;
+    const months = this.monthlyMonthsBack();
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth() - months + 1, 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    this.monthlyComparisonLoading.set(true);
+    this.monthlyComparisonError.set('');
+    this.monthlyComparison.set([]);
+
+    try {
+      const startIso = start.toISOString();
+      const endIso = end.toISOString();
+      const [sales, expenses, additionalIncome, openClosure] = await Promise.all([
+        this.sales.listPaidOrders(startIso, endIso),
+        this.sales.listExpenses(startIso, endIso, ['day', 'week', 'month']),
+        this.sales.listAdditionalIncome(startIso, endIso, ['day', 'week', 'month']),
+        this.sales.getOpenClosure(),
+      ]);
+      if (requestId !== this.monthlyComparisonRequestId) return;
+
+      const todayKey = localDateValue(now);
+      const currentDayClosure = openClosure && localDateValue(new Date(openClosure.opened_at)) === todayKey
+        ? openClosure
+        : null;
+      const monthlyTotals = new Map<string, { income: number; expenses: number }>();
+      for (let monthOffset = 0; monthOffset < months; monthOffset++) {
+        const month = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
+        const key = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
+        monthlyTotals.set(key, { income: 0, expenses: 0 });
+      }
+
+      for (const sale of sales) {
+        const paidAt = new Date(sale.paid_at);
+        if (currentDayClosure && localDateValue(paidAt) === todayKey
+          && paidAt < new Date(currentDayClosure.opened_at)) continue;
+        const key = localDateValue(paidAt).slice(0, 7);
+        const bucket = monthlyTotals.get(key);
+        if (bucket) bucket.income += sale.total_amount;
+      }
+      for (const entry of additionalIncome) {
+        const createdAt = new Date(entry.created_at);
+        if (entry.expense_period === 'day' && currentDayClosure && localDateValue(createdAt) === todayKey
+          && entry.cash_closure_id !== currentDayClosure.id) continue;
+        const key = localDateValue(createdAt).slice(0, 7);
+        const bucket = monthlyTotals.get(key);
+        if (bucket) bucket.income += entry.amount;
+      }
+      for (const expense of expenses) {
+        const key = localDateValue(new Date(expense.created_at)).slice(0, 7);
+        const bucket = monthlyTotals.get(key);
+        if (bucket) bucket.expenses += expense.amount;
+      }
+
+      const monthFormatter = new Intl.DateTimeFormat('es-EC', { month: 'short', year: '2-digit' });
+      this.monthlyComparison.set([...monthlyTotals.entries()]
+        .sort(([first], [second]) => first.localeCompare(second))
+        .map(([key, totals]) => {
+          const [year, month] = key.split('-').map(Number);
+          const income = totals.income;
+          const expenseTotal = totals.expenses;
+          return {
+            key,
+            label: monthFormatter.format(new Date(year, month - 1, 1)).replace('.', ''),
+            sales: income,
+            expenses: expenseTotal,
+            net: income - expenseTotal,
+          };
+        }));
+    } catch (error) {
+      if (requestId !== this.monthlyComparisonRequestId) return;
+      this.monthlyComparisonError.set(
+        error instanceof Error ? error.message : 'No se pudo cargar la comparación mensual.',
+      );
+    } finally {
+      if (requestId === this.monthlyComparisonRequestId) this.monthlyComparisonLoading.set(false);
+    }
+  }
+
   private buildChartBuckets(): ChartBucket[] {
     const { start, end } = this.periodRange();
     const isDay = this.selectedPeriod() === 'day';
     const salesByBucket = new Map<string, number>();
+    const additionalIncomeByBucket = new Map<string, number>();
     const expensesByBucket = new Map<string, number>();
+    const todayKey = localDateValue(new Date());
+    const closure = this.chartCashClosure();
+    const currentDayClosure = closure && localDateValue(new Date(closure.opened_at)) === todayKey
+      ? closure
+      : null;
     const bucketKey = (date: Date): string =>
       isDay
         ? `${localDateValue(date)}T${String(date.getHours()).padStart(2, '0')}`
@@ -407,8 +621,17 @@ export class DashboardPage implements OnInit {
 
     for (const sale of this.paidOrders()) {
       const date = new Date(sale.paid_at);
+      if (currentDayClosure && localDateValue(date) === todayKey
+        && date < new Date(currentDayClosure.opened_at)) continue;
       const key = bucketKey(date);
       salesByBucket.set(key, (salesByBucket.get(key) ?? 0) + sale.total_amount);
+    }
+    for (const entry of this.additionalIncome()) {
+      const date = new Date(entry.created_at);
+      if (entry.expense_period === 'day' && currentDayClosure && localDateValue(date) === todayKey
+        && entry.cash_closure_id !== currentDayClosure.id) continue;
+      const key = bucketKey(date);
+      additionalIncomeByBucket.set(key, (additionalIncomeByBucket.get(key) ?? 0) + entry.amount);
     }
     for (const expense of this.expenses()) {
       const date = new Date(expense.created_at);
@@ -420,11 +643,14 @@ export class DashboardPage implements OnInit {
     if (isDay) {
       for (let hour = 0; hour < 24; hour++) {
         const key = `${localDateValue(start)}T${String(hour).padStart(2, '0')}`;
+        const sales = (salesByBucket.get(key) ?? 0) + (additionalIncomeByBucket.get(key) ?? 0);
+        const expenses = expensesByBucket.get(key) ?? 0;
         buckets.push({
           key,
           label: `${String(hour).padStart(2, '0')}:00`,
-          sales: salesByBucket.get(key) ?? 0,
-          expenses: expensesByBucket.get(key) ?? 0,
+          sales,
+          expenses,
+          net: sales - expenses,
         });
       }
       return buckets;
@@ -436,11 +662,14 @@ export class DashboardPage implements OnInit {
         this.selectedPeriod() === 'week'
           ? this.shortWeekday.format(date).replace('.', '')
           : this.compactDate.format(date).replace('.', '');
+      const sales = (salesByBucket.get(key) ?? 0) + (additionalIncomeByBucket.get(key) ?? 0);
+      const expenses = expensesByBucket.get(key) ?? 0;
       buckets.push({
         key,
         label,
-        sales: salesByBucket.get(key) ?? 0,
-        expenses: expensesByBucket.get(key) ?? 0,
+        sales,
+        expenses,
+        net: sales - expenses,
       });
     }
     return buckets;

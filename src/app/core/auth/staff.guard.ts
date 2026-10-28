@@ -34,6 +34,20 @@ export const adminGuard: CanActivateFn = async () => {
   }
 };
 
+export const adminOrOperatorGuard: CanActivateFn = async () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  try {
+    const profile = await auth.getActiveStaffProfile();
+    return profile?.role === 'Administrador' || profile?.role === 'Operador'
+      ? true
+      : router.parseUrl('/dashboard');
+  } catch {
+    return router.parseUrl('/dashboard');
+  }
+};
+
 export const adminOrAuditorGuard: CanActivateFn = async () => {
   const auth = inject(AuthService);
   const router = inject(Router);

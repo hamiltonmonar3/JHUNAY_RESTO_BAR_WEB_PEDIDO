@@ -3,6 +3,8 @@
 .admin-tabs button { min-height: 40px; padding: 0 13px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
 .admin-tabs button.active { border-bottom-color: var(--orange); color: var(--ink); }
 .admin-tabs span { margin-left: 5px; color: #ffad74; font-size: 10px; }
+.admin-tabs .tab-icon { margin: 0 6px 0 0; color: inherit; font-size: 12px; }
+.admin-tabs .tab-count { margin-left: 5px; }
 .admin-tabs .open-dot { display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: #4caf72; }
 .admin-actions { display: flex; gap: 12px; }
 .danger-action { color: #e98f75; }
@@ -13,8 +15,21 @@
 .closure-status article { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--line); background: var(--surface, #211a16); }
 .closure-status article span { color: var(--muted); font-size: 10px; }
 .closure-status article strong { font-family: 'Manrope', sans-serif; font-size: 17px; }
+.additional-income-form { display: grid; gap: 14px; padding: 18px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--paper); }
+.additional-income-form-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.additional-income-form-heading h3 { margin: 0; font-size: 16px; }
+.additional-income-cash-status { padding: 5px 9px; border: 1px solid #36784d; border-radius: 20px; color: #63bd7d; font-size: 11px; }
+.additional-income-cash-status.is-closed { border-color: var(--line); color: var(--muted); }
+.additional-income-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; align-items: end; gap: 12px; }
+.additional-income-fields label { display: grid; gap: 6px; color: var(--muted); font-size: 11px; font-weight: 600; }
+.additional-income-fields input { width: 100%; height: 38px; padding: 0 10px; border: 1px solid var(--control-border); border-radius: 3px; background: var(--control-bg); color: var(--control-text); font: inherit; font-size: 12px; }
+.additional-income-hint { margin: 0; color: var(--muted); font-size: 11px; }
+.additional-income-form-heading small { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; }
 // ... existing code ...
 @media (max-width: 640px) {
+  .additional-income-fields { grid-template-columns: 1fr; }
+  .additional-income-form-heading { align-items: flex-start; }
+  .sales-tabs { flex-wrap: wrap; }
   .orders-page { padding: 16px; }
   
   .orders-grid {
@@ -1952,7 +1967,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.9fr);
   gap: 12px;
-  padding: 14px 18px;
+  padding: 12px 14px;
 }
 
 .closure-summary-card,
@@ -1966,7 +1981,7 @@
 .closure-card-heading {
   display: grid;
   gap: 3px;
-  padding: 11px 14px;
+  padding: 10px 13px;
   border-bottom: 1px solid var(--line);
 
   span {
@@ -1986,14 +2001,14 @@
   display: grid;
   grid-template-columns: minmax(125px, 0.8fr) minmax(200px, 1.2fr) minmax(145px, 0.85fr);
   align-items: center;
-  gap: 12px;
-  padding: 13px;
+  gap: 10px;
+  padding: 11px;
 }
 
 .closure-opening {
   display: grid;
   gap: 5px;
-  padding: 11px;
+  padding: 10px;
   border: 1px solid var(--line);
   border-radius: 9px;
   background: color-mix(in srgb, var(--orange) 5%, var(--paper));
@@ -2002,6 +2017,22 @@
     color: var(--muted);
     font-size: 10px;
     font-weight: 700;
+  }
+
+  .closure-opening-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .closure-opening-label svg {
+    width: 14px;
+    height: 14px;
+    color: var(--orange);
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   strong {
@@ -2017,15 +2048,20 @@
 
 .closure-cash-movements {
   display: grid;
-  gap: 9px;
 
   p {
     display: flex;
     justify-content: space-between;
     gap: 8px;
     margin: 0;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--line);
     color: var(--ink);
     font-size: 10px;
+  }
+
+  p:last-child {
+    border-bottom: 0;
   }
 
   p > span {
@@ -2053,6 +2089,10 @@
 .closure-expected {
   display: grid;
   gap: 5px;
+  min-height: 100%;
+  align-content: center;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
 
   span {
     color: var(--muted);
@@ -2064,7 +2104,7 @@
   strong {
     color: var(--ink);
     font-family: 'Manrope', sans-serif;
-    font-size: 24px;
+    font-size: 25px;
   }
 }
 
@@ -2087,7 +2127,7 @@
 
   th,
   td {
-    height: 28px;
+    height: 30px;
     padding: 4px 6px;
     border-bottom: 1px solid var(--line);
     text-align: left;
@@ -2130,18 +2170,25 @@
 
 .closure-count-form {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: end;
-  gap: 14px;
-  padding: 12px 18px 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 10px;
+  padding: 8px 14px 14px;
   border-bottom: 1px solid var(--line);
 
   > label {
     display: grid;
     gap: 6px;
     color: var(--ink);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
+  }
+
+  .closure-control-card {
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--paper) 78%, #fff);
   }
 
   > label > span {
@@ -2155,122 +2202,91 @@
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
-    min-height: 40px;
-    padding: 8px 10px;
+    min-height: 38px;
+    padding: 7px 9px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--paper);
     color: var(--ink);
     font: inherit;
-    font-size: 12px;
+    font-size: 11px;
   }
 
   textarea {
-    min-height: 66px;
+    min-height: 50px;
     resize: vertical;
   }
 
   .closure-submit {
-    min-height: 42px;
+    grid-column: 1 / -1;
+    justify-self: end;
+    min-height: 38px;
     border-radius: 8px;
   }
 }
 
-.closure-additional-entry {
+.closure-comparison-card {
   display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
-  align-items: end;
-  gap: 14px;
-
-  label {
-    display: grid;
-    gap: 6px;
-    color: var(--ink);
-    font-size: 12px;
-    font-weight: 700;
-  }
-
-  label > span {
-    color: var(--muted);
-    font-size: 10px;
-    font-weight: 600;
-  }
-
-  input {
-    box-sizing: border-box;
-    width: 100%;
-    min-width: 0;
-    min-height: 40px;
-    padding: 8px 10px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--paper);
-    color: var(--ink);
-    font: inherit;
-    font-size: 12px;
-  }
-}
-
-.closure-register-income {
-  min-height: 40px;
-  white-space: nowrap;
-}
-
-.closure-difference {
-  display: grid;
-  min-height: 72px;
-  align-content: center;
-  justify-items: center;
-  gap: 4px;
-  padding: 8px;
+  align-content: start;
+  gap: 8px;
+  padding: 10px;
   border: 1px solid var(--line);
   border-radius: 9px;
-  background: color-mix(in srgb, var(--orange) 5%, var(--paper));
-  text-align: center;
+  background: color-mix(in srgb, var(--paper) 78%, #fff);
 
-  > span {
+  h3 {
+    margin: 0;
+    color: var(--ink);
+    font-family: 'Manrope', sans-serif;
+    font-size: 12px;
+  }
+}
+
+.closure-comparison-values {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+
+  article {
+    display: grid;
+    min-height: 52px;
+    align-content: center;
+    justify-items: center;
+    gap: 3px;
+    padding: 6px 4px;
+    border-right: 1px solid var(--line);
+    background: color-mix(in srgb, var(--orange) 3%, var(--paper));
+    text-align: center;
+  }
+
+  article:last-child {
+    border-right: 0;
+  }
+
+  span {
     color: var(--muted);
     font-size: 10px;
     font-weight: 700;
   }
 
-  > strong {
-    display: flex;
-    align-items: center;
-    gap: 5px;
+  strong {
     color: var(--ink);
-    font-size: 13px;
+    font-size: 14px;
   }
 
-  > strong > i {
-    display: grid;
-    width: 18px;
-    height: 18px;
-    place-items: center;
-    border-radius: 50%;
-    background: #45a66b;
-    color: #fff;
-    font-size: 12px;
-    font-style: normal;
+  .closure-comparison-difference {
+    background: color-mix(in srgb, #f3bb42 25%, var(--paper));
   }
 
-  > small {
-    color: var(--muted);
-    font-size: 9px;
-  }
-
-  &.balanced {
-    border-color: color-mix(in srgb, #45a66b 42%, var(--line));
-    background: color-mix(in srgb, #45a66b 9%, var(--paper));
-  }
-
-  &.shortage > strong {
-    color: #bd4a38;
-  }
-
-  &.surplus > strong {
+  .closure-comparison-difference.balanced strong,
+  .closure-comparison-difference.surplus strong {
     color: #31844f;
+  }
+
+  .closure-comparison-difference.shortage strong {
+    color: #bd4a38;
   }
 }
 
@@ -2278,8 +2294,14 @@
   margin-top: 2px;
 }
 
-.closure-history-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
-.closure-history-search { width: min(100%, 360px); }
+.closure-history-title {
+  gap: 12px;
+}
+
+.closure-history-search {
+  width: min(100%, 360px);
+  margin-bottom: 0;
+}
 
 @media (max-width: 900px) {
   .closure-overview {
@@ -2310,6 +2332,14 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .closure-expected {
+    min-height: 0;
+    padding-top: 10px;
+    padding-left: 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
   .closure-cash-movements p {
     font-size: 11px;
   }
@@ -2318,9 +2348,13 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .closure-additional-entry {
-    grid-column: auto;
-    grid-template-columns: minmax(0, 1fr);
+  .closure-history-title {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .closure-history-search {
+    width: 100%;
   }
 }
 

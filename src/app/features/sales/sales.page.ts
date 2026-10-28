@@ -1,13 +1,14 @@
 import { Component, computed, HostListener, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService, StaffProfile } from '../../core/auth/auth.service';
-import { CashClosure, ExpenseRecord, OrderPaymentGroup, PaymentCorrectionTender, SalePaymentMethod, SalesService, SaleRecord, ServedOrder, SplitPaymentInput, SplitTenderSale } from './sales.service';
+import { CashClosure, CashClosureIncomeEntry, ExpenseRecord, OrderPaymentGroup, PaymentCorrectionTender, SalePaymentMethod, SalesService, SaleRecord, ServedOrder, SplitPaymentInput, SplitTenderSale } from './sales.service';
 import { OrderItemDetail, OrdersService } from '../orders/orders.service';
 import { TablePaginationComponent, TablePaginationState } from '../../shared/table-pagination';
 import { roundCurrencyForDisplay } from '../../shared/currency';
 
-type SalesTab = 'ventas' | 'egresos' | 'apertura' | 'cierre';
-type ExpensePeriod = 'day' | 'yesterday' | 'week' | 'month';
+type SalesTab = 'ventas' | 'ingresos' | 'egresos' | 'apertura' | 'cierre';
+type ExpensePeriod = 'day' | 'week' | 'month';
+type IncomePeriod = 'day' | 'week' | 'month';
 type ExpenseAmountSort = 'none' | 'ascending' | 'descending';
 type ClosureSortKey = 'closed_at' | 'opening_amount' | 'expected_cash' | 'counted_cash' | 'difference' | 'transfer' | 'total' | 'responsible';
 type SortDirection = 'ascending' | 'descending';
@@ -83,6 +84,23 @@ function localDayRange(dateValue: string): { start: string; end: string } {
   const end = new Date(start);
   end.setDate(end.getDate() + 1);
   return { start: start.toISOString(), end: end.toISOString() };
+}
+
+function incomeDateRange(dateValue: string, period: IncomePeriod): { start: string; end: string } {
+  const start = new Date(`${dateValue}T00:00:00`);
+  if (Number.isNaN(start.getTime())) throw new Error('Selecciona una fecha válida para consultar ingresos.');
+  const end = new Date(start);
+  if (period === 'month') {
+    start.setDate(1);
+    end.setMonth(end.getMonth() + 1, 1);
+  } else if (period === 'week') {
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+    end.setTime(start.getTime());
+    end.setDate(end.getDate() + 7);
+  } else {
+    end.setDate(end.getDate() + 1);
+  }
+  return localDateRange(start, end);
 }
 
 function localDateRange(start: Date, end: Date): { start: string; end: string } {
@@ -164,6 +182,8 @@ export class SalesPage implements OnDestroy, OnInit {
   private readonly ordersService = inject(OrdersService);
   private readonly money = new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' });
   private readonly dateTime = new Intl.DateTimeFormat('es-EC', { dateStyle: 'short', timeStyle: 'short' });
+  private readonly servedDateFormatter = new Intl.DateTimeFormat('es-EC', { dateStyle: 'short' });
+  private readonly servedTimeFormatter = new Intl.DateTimeFormat('es-EC', { hour: 'numeric', minute: '2-digit' });
 
   protected readonly profile = signal<StaffProfile | null>(null);
   protected readonly paidOrders = signal<SaleRecord[]>([]);
@@ -172,6 +192,7 @@ export class SalesPage implements OnDestroy, OnInit {
   protected readonly servedOrdersPagination = new TablePaginationState();
   protected readonly paidOrdersPagination = new TablePaginationState();
   protected readonly expensesPagination = new TablePaginationState();
+  protected readonly additionalIncomePagination = new TablePaginationState();
   protected readonly closureHistoryPagination = new TablePaginationState();
   protected readonly dailyOrderNumbers = signal<Map<number, number>>(new Map());
   protected readonly paidDailyOrderNumbers = signal<Map<number, number>>(new Map());
@@ -200,6 +221,34 @@ export class SalesPage implements OnDestroy, OnInit {
   protected paymentCorrectionReason = '';
   protected readonly selectedDate = signal(localDateValue(new Date()));
   protected readonly totalSales = computed(() => this.paidOrders().reduce((total, sale) => total + sale.total_amount, 0));
+  protected readonly additionalIncomeEntries = signal<CashClosureIncomeEntry[]>([]);
+  protected readonly additionalIncomeLoading = signal(false);
+  protected readonly additionalIncomeError = signal('');
+  protected readonly additionalIncomeActionError = signal('');
+  protected readonly additionalIncomeActionSuccess = signal('');
+  protected readonly editingAdditionalIncome = signal<CashClosureIncomeEntry | null>(null);
+  protected readonly deletingAdditionalIncome = signal<CashClosureIncomeEntry | null>(null);
+  protected readonly savingAdditionalIncomeEdit = signal(false);
+  protected readonly confirmingAdditionalIncomeDelete = signal(false);
+  protected editAdditionalIncomeAmount = 0;
+  protected editAdditionalIncomeDescription = '';
+  protected editAdditionalIncomePaymentMethod: CashClosureIncomeEntry['payment_method'] = 'efectivo';
+  protected readonly additionalIncomeCashTotal = computed(() =>
+    this.roundMoney(this.additionalIncomeEntries()
+      .filter((entry) => entry.payment_method === 'efectivo')
+      .reduce((total, entry) => total + entry.amount, 0)),
+  );
+  protected readonly additionalIncomeTransferTotal = computed(() =>
+    this.roundMoney(this.additionalIncomeEntries()
+      .filter((entry) => entry.payment_method === 'transferencia')
+      .reduce((total, entry) => total + entry.amount, 0)),
+  );
+  protected readonly additionalIncomeTotal = computed(() =>
+    this.roundMoney(this.additionalIncomeCashTotal() + this.additionalIncomeTransferTotal()),
+  );
+  protected readonly additionalIncomeDate = signal(localDateValue(new Date()));
+  protected readonly additionalIncomePeriod = signal<IncomePeriod>('day');
+  protected additionalIncomeDescription = '';
   protected readonly averageSale = computed(() => {
     const sales = this.paidOrders();
     return sales.length ? this.totalSales() / sales.length : 0;
@@ -253,6 +302,7 @@ export class SalesPage implements OnDestroy, OnInit {
   protected readonly confirmingExpenseDelete = signal(false);
   protected readonly expenseDate = signal(localDateValue(new Date()));
   protected readonly expensePeriod = signal<ExpensePeriod>('day');
+  protected readonly newExpensePeriod = signal<ExpenseRecord['expense_period']>('day');
   protected expenseAmountValue = 0;
   protected expenseDescription = '';
   protected expenseCategory: ExpenseCategory = 'insumos';
@@ -305,41 +355,57 @@ export class SalesPage implements OnDestroy, OnInit {
       || (!!this.openClosure()
         && businessDateValue(new Date(this.openClosure()!.opened_at)) === today);
   });
+  protected readonly hasOpenCashRegisterToday = computed(() => {
+    const closure = this.openClosure();
+    return !!closure && businessDateValue(new Date(closure.opened_at)) === businessDateValue(new Date());
+  });
   protected readonly closurePaidOrders = signal<SaleRecord[]>([]);
+  protected readonly closurePreOpeningPaidOrders = signal<SaleRecord[]>([]);
+  protected readonly closurePreOpeningSalesTotal = computed(() =>
+    this.roundMoney(this.closurePreOpeningPaidOrders().reduce((total, order) => total + order.total_amount, 0)),
+  );
   protected readonly closureSplitTenders = signal<SplitTenderSale[]>([]);
   protected readonly closureExpenses = signal<ExpenseRecord[]>([]);
   protected readonly closurePaymentSummary = computed(() => {
     const methods = new Map<string, { label: string; total: number; orderIds: Set<number> }>([
       ['efectivo', { label: 'Efectivo esperado', total: 0, orderIds: new Set() }],
       ['transferencia', { label: 'Transferencia', total: 0, orderIds: new Set() }],
+      ['tarjeta', { label: 'Tarjeta', total: 0, orderIds: new Set() }],
     ]);
     const splitOrderIds = new Set(
       this.closurePaidOrders().filter((order) => order.payment_method === 'mixto').map((order) => order.id),
     );
     for (const order of this.closurePaidOrders()) {
-      if (order.payment_method !== 'efectivo' && order.payment_method !== 'transferencia') continue;
+      if (order.payment_method !== 'efectivo' && order.payment_method !== 'transferencia'
+        && order.payment_method !== 'tarjeta') continue;
       const group = methods.get(order.payment_method)!;
       group.total += order.total_amount;
       group.orderIds.add(order.id);
     }
     for (const tender of this.closureSplitTenders()) {
       if (!splitOrderIds.has(tender.order_id)
-        || (tender.payment_method !== 'efectivo' && tender.payment_method !== 'transferencia')) continue;
+        || (tender.payment_method !== 'efectivo' && tender.payment_method !== 'transferencia'
+          && tender.payment_method !== 'tarjeta')) continue;
       const group = methods.get(tender.payment_method)!;
       group.total += tender.amount;
       group.orderIds.add(tender.order_id);
     }
     const additionalCashIncome = this.closureAdditionalCashIncome();
     const additionalTransferIncome = this.closureAdditionalTransferIncome();
+    const transferExpenses = this.closureTransferExpenseTotal();
     methods.get('efectivo')!.total += additionalCashIncome;
     methods.get('transferencia')!.total += additionalTransferIncome;
     return [...methods.entries()].map(([method, value]) => ({
       method,
       label: value.label,
-      total: method === 'efectivo' ? this.expectedClosureCash() : this.roundMoney(value.total),
+      total: method === 'efectivo'
+        ? this.expectedClosureCash()
+        : method === 'transferencia'
+          ? this.roundMoney(value.total - transferExpenses)
+          : this.roundMoney(value.total),
       count: value.orderIds.size
-        + (method === 'efectivo' && additionalCashIncome > 0 ? 1 : 0)
-        + (method === 'transferencia' && additionalTransferIncome > 0 ? 1 : 0),
+      + (method === 'efectivo' && additionalCashIncome > 0 ? 1 : 0)
+      + (method === 'transferencia' && additionalTransferIncome > 0 ? 1 : 0),
     })).filter((method) => method.count > 0
       || (method.method === 'efectivo' && this.openClosure() !== null));
   });
@@ -350,10 +416,10 @@ export class SalesPage implements OnDestroy, OnInit {
     this.closurePaymentSummary().reduce((count, method) => count + method.count, 0),
   );
   protected readonly closureAdditionalCashIncome = computed(() =>
-    this.roundMoney((this.openClosure()?.additional_cash_income ?? 0) + this.additionalCashIncomeValue()),
+    this.roundMoney(this.openClosure()?.additional_cash_income ?? 0),
   );
   protected readonly closureAdditionalTransferIncome = computed(() =>
-    this.roundMoney((this.openClosure()?.additional_transfer_income ?? 0) + this.additionalTransferIncomeValue()),
+    this.roundMoney(this.openClosure()?.additional_transfer_income ?? 0),
   );
   protected readonly closureCashSales = computed(() =>
     this.roundMoney(
@@ -365,13 +431,24 @@ export class SalesPage implements OnDestroy, OnInit {
         .reduce((total, tender) => total + tender.amount, 0),
     ),
   );
+  protected readonly closureCashExpenseTotal = computed(() =>
+    this.closureExpenses()
+      .filter((expense) => expense.payment_method === 'efectivo')
+      .reduce((total, expense) => total + expense.amount, 0),
+  );
+  protected readonly closureTransferExpenseTotal = computed(() =>
+    this.closureExpenses()
+      .filter((expense) => expense.payment_method === 'transferencia')
+      .reduce((total, expense) => total + expense.amount, 0),
+  );
   protected readonly closureExpenseTotal = computed(() =>
     this.closureExpenses().reduce((total, expense) => total + expense.amount, 0),
   );
   protected readonly expectedClosureCash = computed(() => {
     const openingAmount = this.openClosure()?.opening_amount ?? 0;
     return this.roundMoney(
-      openingAmount + this.closureCashSales() + this.closureAdditionalCashIncome() - this.closureExpenseTotal(),
+      openingAmount + this.closureCashSales() + this.closureAdditionalCashIncome()
+        - this.closureCashExpenseTotal(),
     );
   });
   protected readonly cashDifference = computed(() => this.countedCashValue() === null
@@ -401,7 +478,7 @@ export class SalesPage implements OnDestroy, OnInit {
 
   ngOnInit(): void {
     void this.loadSales();
-    void this.loadCashRegister();
+    void this.loadCashRegister().then(() => this.loadAdditionalIncome());
     this.refreshTimer = setInterval(() => {
       if (document.visibilityState === 'visible') void this.refreshServedOrders();
     }, 20_000);
@@ -490,8 +567,176 @@ export class SalesPage implements OnDestroy, OnInit {
     }
   }
 
+  protected async loadAdditionalIncome(): Promise<void> {
+    this.additionalIncomeLoading.set(true);
+    this.additionalIncomeError.set('');
+    this.additionalIncomePagination.page.set(1);
+    try {
+      const { start, end } = incomeDateRange(this.additionalIncomeDate(), this.additionalIncomePeriod());
+      const periods: CashClosureIncomeEntry['expense_period'][] = ['day', 'week', 'month'];
+      const currentClosureId = this.additionalIncomePeriod() === 'day'
+        && this.isAdditionalIncomeToday()
+        ? this.openClosure()?.id
+        : undefined;
+      this.additionalIncomeEntries.set(await this.salesService.listAdditionalIncome(
+        start,
+        end,
+        periods,
+        currentClosureId,
+      ));
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'message' in error
+          && typeof error.message === 'string'
+          ? error.message
+          : '';
+      this.additionalIncomeError.set(message || 'No se pudieron cargar los ingresos adicionales.');
+    } finally {
+      this.additionalIncomeLoading.set(false);
+    }
+  }
+
+  protected openAdditionalIncomeTab(): void {
+    this.activeTab.set('ingresos');
+    void this.loadAdditionalIncome();
+  }
+
+  protected selectAdditionalIncomePeriod(period: IncomePeriod): void {
+    const date = new Date();
+    this.additionalIncomeDate.set(localDateValue(date));
+    this.additionalIncomePeriod.set(period);
+    void this.loadAdditionalIncome();
+  }
+
+  protected onAdditionalIncomeDateChange(date: string): void {
+    this.additionalIncomeDate.set(date);
+    this.additionalIncomePeriod.set('day');
+    void this.loadAdditionalIncome();
+  }
+
+  protected additionalIncomePeriodLabel(): string {
+    switch (this.additionalIncomePeriod()) {
+      case 'week': return 'Esta semana';
+      case 'month': return 'Este mes';
+      default: return this.additionalIncomeDate() === localDateValue(new Date())
+        ? 'Hoy'
+        : this.formatDate(`${this.additionalIncomeDate()}T12:00:00`);
+    }
+  }
+
+  protected isAdditionalIncomeToday(): boolean {
+    return this.additionalIncomeDate() === localDateValue(new Date());
+  }
+
+  protected isAdditionalIncomeFutureDate(): boolean {
+    return this.additionalIncomeDate() > localDateValue(new Date());
+  }
+
+  protected canRecordAdditionalIncome(): boolean {
+    return this.hasOpenCashRegisterToday();
+  }
+
+  protected additionalIncomeRecordPeriod(): CashClosureIncomeEntry['expense_period'] {
+    return this.additionalIncomePeriod() === 'month'
+      ? 'month'
+      : this.additionalIncomePeriod() === 'week'
+        ? 'week'
+        : 'day';
+  }
+
+  protected additionalIncomeTypeLabel(period: CashClosureIncomeEntry['expense_period']): string {
+    return period === 'month' ? 'Mensual' : period === 'week' ? 'Semanal' : 'Diario';
+  }
+
+  protected openEditAdditionalIncome(entry: CashClosureIncomeEntry): void {
+    if (entry.source !== 'manual') return;
+    this.editAdditionalIncomeAmount = entry.amount;
+    this.editAdditionalIncomeDescription = entry.description;
+    this.editAdditionalIncomePaymentMethod = entry.payment_method;
+    this.additionalIncomeActionError.set('');
+    this.editingAdditionalIncome.set(entry);
+  }
+
+  protected closeEditAdditionalIncome(): void {
+    if (this.savingAdditionalIncomeEdit()) return;
+    this.editingAdditionalIncome.set(null);
+  }
+
+  protected async saveAdditionalIncomeEdit(): Promise<void> {
+    const entry = this.editingAdditionalIncome();
+    const description = this.editAdditionalIncomeDescription.trim();
+    if (!entry || !description || !Number.isFinite(this.editAdditionalIncomeAmount)
+      || this.editAdditionalIncomeAmount <= 0) {
+      this.additionalIncomeActionError.set('Ingresa un monto válido y una descripción para el ingreso.');
+      return;
+    }
+
+    this.savingAdditionalIncomeEdit.set(true);
+    this.additionalIncomeActionError.set('');
+    try {
+      await this.salesService.updateAdditionalIncome(
+        entry.id,
+        this.editAdditionalIncomeAmount,
+        description,
+        this.editAdditionalIncomePaymentMethod,
+      );
+      this.editingAdditionalIncome.set(null);
+      await Promise.all([this.loadAdditionalIncome(), this.loadCashRegister()]);
+      this.additionalIncomeActionSuccess.set('Ingreso adicional actualizado.');
+    } catch (error) {
+      this.additionalIncomeActionError.set(error instanceof Error
+        ? error.message
+        : 'No se pudo actualizar el ingreso adicional.');
+    } finally {
+      this.savingAdditionalIncomeEdit.set(false);
+    }
+  }
+
+  protected requestDeleteAdditionalIncome(entry: CashClosureIncomeEntry): void {
+    if (entry.source !== 'manual') return;
+    this.additionalIncomeActionError.set('');
+    this.deletingAdditionalIncome.set(entry);
+  }
+
+  protected cancelDeleteAdditionalIncome(): void {
+    if (this.confirmingAdditionalIncomeDelete()) return;
+    this.deletingAdditionalIncome.set(null);
+  }
+
+  protected async confirmDeleteAdditionalIncome(): Promise<void> {
+    const entry = this.deletingAdditionalIncome();
+    if (!entry || this.confirmingAdditionalIncomeDelete()) return;
+    this.confirmingAdditionalIncomeDelete.set(true);
+    this.additionalIncomeActionError.set('');
+    try {
+      await this.salesService.deleteAdditionalIncome(entry.id);
+      this.deletingAdditionalIncome.set(null);
+      await Promise.all([this.loadAdditionalIncome(), this.loadCashRegister()]);
+      this.additionalIncomeActionSuccess.set('Ingreso adicional eliminado.');
+    } catch (error) {
+      this.additionalIncomeActionError.set(error instanceof Error
+        ? error.message
+        : 'No se pudo eliminar el ingreso adicional.');
+    } finally {
+      this.confirmingAdditionalIncomeDelete.set(false);
+    }
+  }
+
+  protected additionalIncomeSourceLabel(source: CashClosureIncomeEntry['source']): string {
+    return source === 'reserva'
+      ? 'Abono de reserva'
+      : source === 'cobro_persona'
+        ? 'Cobro de saldo'
+        : 'Ingreso manual';
+  }
+
   protected async openPayment(order: ServedOrder): Promise<void> {
     if (this.payingOrderId() !== null) return;
+    if (!this.hasOpenCashRegisterToday()) {
+      this.errorMessage.set(this.cashRegisterRequiredMessage());
+      return;
+    }
     this.payingOrderId.set(order.id);
     try {
       await this.showServedDetails(order);
@@ -509,6 +754,10 @@ export class SalesPage implements OnDestroy, OnInit {
   }
 
   private startPaymentDraft(split: boolean): void {
+    if (!this.hasOpenCashRegisterToday()) {
+      this.paymentError.set(this.cashRegisterRequiredMessage());
+      return;
+    }
     if (this.paymentDetailError()) {
       this.paymentError.set('No se puede iniciar el cobro sin consultar los pagos ya registrados.');
       return;
@@ -559,6 +808,10 @@ export class SalesPage implements OnDestroy, OnInit {
   }
 
   protected async paySplitGroup(groupId: number): Promise<void> {
+    if (!this.hasOpenCashRegisterToday()) {
+      this.paymentError.set(this.cashRegisterRequiredMessage());
+      return;
+    }
     const order = this.selectedDetail();
     const group = this.paymentGroups().find((candidate) => candidate.id === groupId);
     const validation = group ? this.splitGroupValidation(group) : 'No se encontró la división que se va a cobrar.';
@@ -821,6 +1074,10 @@ export class SalesPage implements OnDestroy, OnInit {
   }
 
   protected async submitSplitPayment(): Promise<void> {
+    if (!this.hasOpenCashRegisterToday()) {
+      this.paymentError.set(this.cashRegisterRequiredMessage());
+      return;
+    }
     const order = this.selectedDetail();
     const validation = this.splitPaymentValidation();
     if (!order || validation) {
@@ -863,7 +1120,6 @@ export class SalesPage implements OnDestroy, OnInit {
 
   protected selectExpensePeriod(period: ExpensePeriod): void {
     const date = new Date();
-    if (period === 'yesterday') date.setDate(date.getDate() - 1);
     this.expenseDate.set(localDateValue(date));
     this.expensePeriod.set(period);
     void this.loadExpenses();
@@ -877,7 +1133,6 @@ export class SalesPage implements OnDestroy, OnInit {
 
   protected expensePeriodLabel(): string {
     switch (this.expensePeriod()) {
-      case 'yesterday': return 'Ayer';
       case 'week': return 'Esta semana';
       case 'month': return 'Este mes';
       default: return this.expenseDate() === localDateValue(new Date())
@@ -920,7 +1175,11 @@ export class SalesPage implements OnDestroy, OnInit {
   }
 
   protected expenseCategoryName(category: string): string {
-    return category === 'apertura_caja' ? 'Apertura de Caja' : category;
+    return category === 'apertura_caja'
+      ? 'Apertura de Caja'
+      : category === 'pago_persona'
+        ? 'Pago a persona'
+        : category;
   }
 
   protected expenseTypeLabel(period: ExpenseRecord['expense_period']): string {
@@ -933,6 +1192,10 @@ export class SalesPage implements OnDestroy, OnInit {
   }
 
   protected async recordExpense(): Promise<void> {
+    if (!this.hasOpenCashRegisterToday()) {
+      this.expenseError.set(this.cashRegisterRequiredMessage());
+      return;
+    }
     if (!this.expenseDescription.trim() || this.expenseAmountValue <= 0) {
       this.expenseError.set('Ingresa un monto válido y una descripción para el egreso.');
       return;
@@ -945,11 +1208,12 @@ export class SalesPage implements OnDestroy, OnInit {
         this.expenseDescription,
         this.expenseCategory,
         this.expenseDate(),
-        this.expensePeriod() === 'month' ? 'month' : this.expensePeriod() === 'week' ? 'week' : 'day',
+        this.newExpensePeriod(),
       );
       this.expenseAmountValue = 0;
       this.expenseDescription = '';
       this.expenseCategory = 'insumos';
+      this.newExpensePeriod.set('day');
       await Promise.all([this.loadExpenses(), this.loadCashRegister()]);
     } catch (error) {
       this.expenseError.set(error instanceof Error ? error.message : 'No se pudo registrar el egreso.');
@@ -1039,6 +1303,7 @@ export class SalesPage implements OnDestroy, OnInit {
       this.closureHistory.set(history);
       if (!open) {
         this.closurePaidOrders.set([]);
+        this.closurePreOpeningPaidOrders.set([]);
         this.closureSplitTenders.set([]);
         this.closureExpenses.set([]);
         this.countedCashInput.set('');
@@ -1046,17 +1311,25 @@ export class SalesPage implements OnDestroy, OnInit {
         this.additionalTransferIncomeInput.set('');
         return;
       }
+      this.closurePreOpeningPaidOrders.set([]);
       const now = new Date().toISOString();
       const businessDay = businessDayRange(new Date(open.opened_at));
-      const [paidOrders, expenses, splitTenders] = await Promise.all([
+      const [paidOrders, preOpeningPaidOrders, expenses, splitTenders] = await Promise.all([
         this.salesService.listPaidOrders(open.opened_at, now),
+        this.salesService.listPaidOrders(businessDay.start, open.opened_at),
         this.salesService.listExpenses(businessDay.start, businessDay.end, ['day']),
         this.salesService.listSplitPaymentTenders(open.opened_at, now),
       ]);
       this.closurePaidOrders.set(paidOrders);
+      this.closurePreOpeningPaidOrders.set(preOpeningPaidOrders);
       this.closureExpenses.set(expenses);
       this.closureSplitTenders.set(splitTenders);
     } catch (error) {
+      this.openClosure.set(null);
+      this.closurePaidOrders.set([]);
+      this.closurePreOpeningPaidOrders.set([]);
+      this.closureSplitTenders.set([]);
+      this.closureExpenses.set([]);
       this.closureError.set(cashRegisterErrorMessage(error));
     } finally {
       this.closureLoading.set(false);
@@ -1073,7 +1346,13 @@ export class SalesPage implements OnDestroy, OnInit {
   }
 
   protected closureTotalWithTransfer(closure: CashClosure): number {
-    return this.roundMoney(closure.expected_cash + closure.total_other_sales);
+    return this.roundMoney(closure.expected_cash + closure.total_other_sales + closure.total_card_sales);
+  }
+
+  protected cashRegisterRequiredMessage(): string {
+    return this.openClosure()
+      ? 'La caja abierta corresponde a otra fecha. Ciérrala y abre la caja de hoy antes de registrar operaciones.'
+      : 'Abre la caja de hoy antes de registrar operaciones.';
   }
 
   protected updateClosureHistorySearch(value: string): void {
@@ -1128,8 +1407,8 @@ export class SalesPage implements OnDestroy, OnInit {
 
   protected updateAdditionalIncome(event: Event, method: 'efectivo' | 'transferencia'): void {
     const input = event.target as HTMLInputElement;
-    this.closureError.set('');
-    this.closureSuccess.set('');
+    this.additionalIncomeActionError.set('');
+    this.additionalIncomeActionSuccess.set('');
     if (method === 'efectivo') {
       this.additionalCashIncomeInput.set(input.value);
     } else {
@@ -1182,11 +1461,6 @@ export class SalesPage implements OnDestroy, OnInit {
       this.closureError.set('El monto contado no puede ser negativo.');
       return;
     }
-    if (!Number.isFinite(this.additionalCashIncomeValue()) || this.additionalCashIncomeValue() < 0
-      || !Number.isFinite(this.additionalTransferIncomeValue()) || this.additionalTransferIncomeValue() < 0) {
-      this.closureError.set('Los ingresos adicionales deben ser montos válidos y no negativos.');
-      return;
-    }
     this.closureError.set('');
     this.closureSuccess.set('');
     this.showCloseConfirm.set(true);
@@ -1195,36 +1469,72 @@ export class SalesPage implements OnDestroy, OnInit {
   protected async recordAdditionalIncome(): Promise<void> {
     const cashIncome = this.additionalCashIncomeValue();
     const transferIncome = this.additionalTransferIncomeValue();
-    if (!this.openClosure()) {
-      this.closureError.set('No hay una caja abierta para registrar estos ingresos.');
+    const description = this.additionalIncomeDescription.trim();
+    const period = this.additionalIncomeRecordPeriod();
+    if (!this.hasOpenCashRegisterToday()) {
+      this.additionalIncomeActionError.set(this.cashRegisterRequiredMessage());
+      return;
+    }
+    if (!description) {
+      this.additionalIncomeActionError.set('Ingresa una descripción para el ingreso.');
+      return;
+    }
+    if (this.isAdditionalIncomeFutureDate()) {
+      this.additionalIncomeActionError.set('No se pueden registrar ingresos con una fecha futura.');
+      return;
+    }
+    if (period === 'day' && this.isAdditionalIncomeToday() && !this.openClosure()) {
+      this.additionalIncomeActionError.set('Abre la caja para registrar un ingreso de hoy. Los ingresos de fechas anteriores no modifican el cierre actual.');
       return;
     }
     if (!Number.isFinite(cashIncome) || cashIncome < 0
       || !Number.isFinite(transferIncome) || transferIncome < 0) {
-      this.closureError.set('Los ingresos adicionales deben ser montos válidos y no negativos.');
+      this.additionalIncomeActionError.set('Los ingresos adicionales deben ser montos válidos y no negativos.');
       return;
     }
     if (cashIncome === 0 && transferIncome === 0) {
-      this.closureError.set('Ingresa un monto en efectivo o transferencia para registrar.');
+      this.additionalIncomeActionError.set('Ingresa un monto en efectivo o transferencia para registrar.');
       return;
     }
 
     this.closureBusy.set(true);
-    this.closureError.set('');
-    this.closureSuccess.set('');
+    this.additionalIncomeActionError.set('');
+    this.additionalIncomeActionSuccess.set('');
     try {
-      await this.salesService.recordAdditionalClosureIncome(cashIncome, transferIncome);
-      this.openClosure.update((closure) => closure ? {
-        ...closure,
-        additional_cash_income: this.roundMoney(closure.additional_cash_income + cashIncome),
-        additional_transfer_income: this.roundMoney(closure.additional_transfer_income + transferIncome),
-      } : closure);
+      await this.salesService.recordAdditionalIncome(
+        cashIncome,
+        transferIncome,
+        description,
+        this.additionalIncomeDate(),
+        period,
+      );
+      if (period === 'day' && this.isAdditionalIncomeToday()) {
+        this.openClosure.update((closure) => closure ? {
+          ...closure,
+          additional_cash_income: this.roundMoney(closure.additional_cash_income + cashIncome),
+          additional_transfer_income: this.roundMoney(closure.additional_transfer_income + transferIncome),
+        } : closure);
+      }
       this.additionalCashIncomeInput.set('');
       this.additionalTransferIncomeInput.set('');
-      await this.loadCashRegister();
-      this.closureSuccess.set('Ingresos adicionales registrados en la caja abierta.');
+      this.additionalIncomeDescription = '';
+      if (period === 'day') await this.loadCashRegister();
+      await this.loadAdditionalIncome();
+      this.additionalIncomeActionSuccess.set(
+        period === 'day' && this.isAdditionalIncomeToday()
+          ? 'Ingreso diario registrado y sumado al cierre de caja de hoy.'
+          : period === 'day'
+            ? 'Ingreso histórico registrado sin modificar el cierre de caja actual.'
+            : `Ingreso ${period === 'week' ? 'semanal' : 'mensual'} registrado correctamente.`,
+      );
     } catch (error) {
-      this.closureError.set(error instanceof Error ? error.message : 'No se pudieron registrar los ingresos adicionales.');
+      const message = error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null && 'message' in error
+          && typeof error.message === 'string'
+          ? error.message
+          : '';
+      this.additionalIncomeActionError.set(message || 'No se pudieron registrar los ingresos adicionales.');
     } finally {
       this.closureBusy.set(false);
     }
@@ -1242,12 +1552,6 @@ export class SalesPage implements OnDestroy, OnInit {
       this.closureError.set('Ingresa un monto válido de efectivo contado antes de cerrar la caja.');
       return;
     }
-    if (!Number.isFinite(this.additionalCashIncomeValue()) || this.additionalCashIncomeValue() < 0
-      || !Number.isFinite(this.additionalTransferIncomeValue()) || this.additionalTransferIncomeValue() < 0) {
-      this.showCloseConfirm.set(false);
-      this.closureError.set('Los ingresos adicionales deben ser montos válidos y no negativos.');
-      return;
-    }
     this.closureBusy.set(true);
     this.closureError.set('');
     this.closureSuccess.set('');
@@ -1255,13 +1559,9 @@ export class SalesPage implements OnDestroy, OnInit {
       await this.salesService.closeClosure(
         this.countedCashValue()!,
         this.closingNotes.trim() || null,
-        this.additionalCashIncomeValue(),
-        this.additionalTransferIncomeValue(),
       );
       this.showCloseConfirm.set(false);
       this.countedCashInput.set('');
-      this.additionalCashIncomeInput.set('');
-      this.additionalTransferIncomeInput.set('');
       this.closingNotes = '';
       await this.loadCashRegister();
     } catch (error) {
@@ -1644,6 +1944,19 @@ export class SalesPage implements OnDestroy, OnInit {
   protected locationLabel(order: ServedOrder): string {
     const relation = Array.isArray(order.restaurant_tables) ? order.restaurant_tables[0] : order.restaurant_tables;
     return relation ? `Mesa ${relation.table_number}` : 'Para llevar';
+  }
+
+  protected servedOrderOwnerName(order: ServedOrder): string {
+    const relation = Array.isArray(order.users) ? order.users[0] : order.users;
+    return relation?.full_name ?? 'Sin responsable';
+  }
+
+  protected servedOrderDate(value: string): string {
+    return this.servedDateFormatter.format(new Date(value));
+  }
+
+  protected servedOrderTime(value: string): string {
+    return this.servedTimeFormatter.format(new Date(value));
   }
 
 }

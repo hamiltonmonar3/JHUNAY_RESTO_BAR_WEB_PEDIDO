@@ -2,29 +2,34 @@
   <header class="module-heading sales-heading">
     <div class="sales-heading-copy"><h1>Ventas</h1><p>Consulta pagos, egresos y el cierre de caja diario.</p></div>
     <div class="heading-actions sales-heading-actions">
-      @if (activeTab() === 'ventas') {
-        <form class="sales-toolbar" (ngSubmit)="loadSales()">
-          <label for="sales-date">Fecha de venta</label>
+      @if (activeTab() === 'ventas' || activeTab() === 'ingresos') {
+        <form class="sales-toolbar" (ngSubmit)="activeTab() === 'ventas' ? loadSales() : loadAdditionalIncome()">
+          <label for="sales-date">{{ activeTab() === 'ventas' ? 'Fecha de venta' : 'Fecha de ingresos' }}</label>
           <input id="sales-date" name="salesDate" type="date" [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />
-          <button class="primary-button" type="submit" [disabled]="loading()">Consultar</button>
+          <button class="primary-button" type="submit" [disabled]="activeTab() === 'ventas' ? loading() : additionalIncomeLoading()">Consultar</button>
         </form>
       }
-      <button class="quiet-button" type="button" (click)="loadSales()" [disabled]="loading() || refreshingServedOrders()"
-        aria-label="Actualizar ventas" title="Actualizar ventas">
-        {{ loading() || refreshingServedOrders() ? '…' : '↻' }}
+      <button class="quiet-button" type="button"
+        (click)="activeTab() === 'ingresos' ? loadAdditionalIncome() : loadSales()"
+        [disabled]="activeTab() === 'ingresos' ? additionalIncomeLoading() : loading() || refreshingServedOrders()"
+        [attr.aria-label]="activeTab() === 'ingresos' ? 'Actualizar ingresos adicionales' : 'Actualizar ventas'"
+        [title]="activeTab() === 'ingresos' ? 'Actualizar ingresos adicionales' : 'Actualizar ventas'">
+        {{ (activeTab() === 'ingresos' ? additionalIncomeLoading() : loading() || refreshingServedOrders()) ? '…' : '↻' }}
       </button>
     </div>
   </header>
 
   <div class="admin-tabs sales-tabs" role="tablist" aria-label="Secciones de caja">
-    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'ventas'" [class.active]="activeTab() === 'ventas'" (click)="activeTab.set('ventas')">Ventas</button>
-    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'egresos'" [class.active]="activeTab() === 'egresos'" (click)="activeTab.set('egresos')">Egresos <span>{{ expenses().length }}</span></button>
-    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'apertura'" [class.active]="activeTab() === 'apertura'" (click)="activeTab.set('apertura'); loadCashRegister()">Apertura</button>
-    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'cierre'" [class.active]="activeTab() === 'cierre'" (click)="activeTab.set('cierre'); loadCashRegister()">Cierre de caja @if (openClosure()) { <span class="open-dot" aria-hidden="true"></span> }</button>
+    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'ventas'" [class.active]="activeTab() === 'ventas'" (click)="activeTab.set('ventas')"><span class="tab-icon" aria-hidden="true">💳</span>Ventas</button>
+    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'ingresos'" [class.active]="activeTab() === 'ingresos'" (click)="openAdditionalIncomeTab()"><span class="tab-icon" aria-hidden="true">💰</span>Ingresos adicionales <span class="tab-count">{{ additionalIncomeLoading() ? '…' : additionalIncomeEntries().length }}</span></button>
+    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'egresos'" [class.active]="activeTab() === 'egresos'" (click)="activeTab.set('egresos')"><span class="tab-icon" aria-hidden="true">🧾</span>Egresos <span class="tab-count">{{ expenses().length }}</span></button>
+    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'apertura'" [class.active]="activeTab() === 'apertura'" (click)="activeTab.set('apertura'); loadCashRegister()"><span class="tab-icon" aria-hidden="true">🔓</span>Apertura</button>
+    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'cierre'" [class.active]="activeTab() === 'cierre'" (click)="activeTab.set('cierre'); loadCashRegister()"><span class="tab-icon" aria-hidden="true">🧮</span>Cierre de caja @if (openClosure()) { <span class="open-dot" aria-hidden="true"></span> }</button>
   </div>
 
   @if (activeTab() === 'ventas') {
   @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
+  @if (closureError()) { <div class="error-banner" role="alert">No se pudo verificar la caja: {{ closureError() }}</div> }
   @if (paymentMessage()) { <div class="success-banner" role="status">{{ paymentMessage() }}</div> }
 
   <div class="sales-metrics">
@@ -59,13 +64,33 @@
     } @else if (servedOrders().length === 0) {
       <div class="empty-state sales-empty-state"><span class="sales-empty-icon" aria-hidden="true">✓</span><span>No hay pedidos servidos pendientes de cobro.</span></div>
     } @else {
-      <div class="table-scroll"><table>
-        <thead><tr><th>Pedido</th><th>Mesa</th><th>Hora</th><th class="numeric">Total</th><th>Detalle</th>@if (canCollect()) { <th></th> }</tr></thead>
+      @if (!closureLoading() && !closureError() && !hasOpenCashRegisterToday()) {
+        <div class="error-banner" role="alert">{{ cashRegisterRequiredMessage() }}</div>
+      }
+      <div class="table-scroll pending-orders-scroll"><table class="pending-orders-table">
+        <thead><tr><th class="pending-order-heading">Pedido</th><th class="pending-location-heading">Mesa</th><th class="pending-time-heading">Hora</th><th class="numeric pending-total-heading">Total</th><th class="pending-actions-heading actions-heading">Acciones</th></tr></thead>
         <tbody>
           @for (order of servedOrdersPagination.visible(servedOrders()); track order.id) {
-            <tr><td class="order-number">Pedido {{ servedOrderNumber(order) }}</td><td>{{ locationLabel(order) }}</td><td>{{ formatDate(order.created_at) }}</td><td class="numeric amount">{{ formatCurrency(order.total_amount) }}</td>
-              <td><button class="detail-button" type="button" (click)="showServedDetails(order)">Ver desglose</button></td>
-              @if (canCollect()) { <td class="numeric"><button class="row-action" type="button" [disabled]="payingOrderId() !== null" (click)="openPayment(order)">{{ payingOrderId() === order.id ? 'Cargando…' : 'Cobrar' }}</button></td> }
+            <tr>
+              <td class="order-number pending-order-number">
+                Pedido {{ servedOrderNumber(order) }}<span> · {{ servedOrderOwnerName(order) }}</span>
+              </td>
+              <td><span class="pending-location" [class.pending-location--takeout]="!order.table_id">{{ locationLabel(order) }}</span></td>
+              <td class="pending-order-time"><strong>{{ servedOrderTime(order.created_at) }}</strong><small>{{ servedOrderDate(order.created_at) }}</small></td>
+              <td class="numeric amount pending-order-total">{{ formatCurrency(order.total_amount) }}</td>
+              <td class="pending-actions-cell"><div class="pending-order-actions">
+                  <button class="pending-view-button" type="button" (click)="showServedDetails(order)" aria-label="Ver desglose del pedido" title="Ver desglose">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12s3.3-6 9.5-6 9.5 6 9.5 6-3.3 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+                    <span>Ver detalle</span>
+                  </button>
+                  @if (canCollect()) {
+                    <button class="pending-collect-button" type="button" [disabled]="payingOrderId() !== null || !hasOpenCashRegisterToday()" (click)="openPayment(order)" aria-label="Cobrar pedido" [title]="hasOpenCashRegisterToday() ? 'Cobrar pedido' : 'Abre la caja antes de cobrar'">
+                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18m-9 4h.01"/></svg>
+                      <span>{{ payingOrderId() === order.id ? 'Cargando…' : 'Cobrar' }}</span>
+                    </button>
+                  }
+                </div>
+              </td>
             </tr>
           }
         </tbody>
@@ -114,9 +139,11 @@
       @if (paidOrders().length === 0) {
         <div class="empty-state compact">No hay ventas pagadas en esta fecha.</div>
       } @else {
-        <div class="table-scroll"><table><thead><tr><th>Pedido</th><th>Hora</th><th>Método</th><th class="numeric">Total</th><th>Detalle</th></tr></thead><tbody>
+        <div class="table-scroll"><table><thead><tr><th>Pedido</th><th>Hora</th><th>Método</th><th class="numeric">Total</th><th class="actions-heading">Acciones</th></tr></thead><tbody>
           @for (sale of paidOrdersPagination.visible(paidOrders()); track sale.id) {
-            <tr><td class="order-number">Pedido {{ paidOrderNumber(sale) }}</td><td>{{ formatDate(sale.paid_at) }}</td><td><span class="payment-method-cell"><span aria-hidden="true">{{ paymentMethodIcon(sale.payment_method ?? '') }}</span>{{ salePaymentMethodLabel(sale.payment_method) }}</span></td><td class="numeric amount">{{ formatCurrency(sale.total_amount) }}</td><td><button class="detail-button" type="button" (click)="showSaleDetails(sale)">Ver desglose</button></td></tr>
+            <tr><td class="order-number">Pedido {{ paidOrderNumber(sale) }}</td><td>{{ formatDate(sale.paid_at) }}</td><td><span class="payment-method-cell"><span aria-hidden="true">{{ paymentMethodIcon(sale.payment_method ?? '') }}</span>{{ salePaymentMethodLabel(sale.payment_method) }}</span></td><td class="numeric amount">{{ formatCurrency(sale.total_amount) }}</td><td class="admin-actions"><button class="table-action-button table-action-view" type="button" (click)="showSaleDetails(sale)" aria-label="Ver desglose de venta" data-tooltip="Ver desglose">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12s3.3-6 9.5-6 9.5 6 9.5 6-3.3 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+            </button></td></tr>
           }
         </tbody></table></div>
         <app-table-pagination [totalItems]="paidOrders().length"
@@ -151,9 +178,6 @@
           <button type="button" [class.active]="expensePeriod() === 'day' && isExpenseToday()"
             [attr.aria-pressed]="expensePeriod() === 'day' && isExpenseToday()"
             (click)="selectExpensePeriod('day')">Hoy</button>
-          <button type="button" [class.active]="expensePeriod() === 'yesterday'"
-            [attr.aria-pressed]="expensePeriod() === 'yesterday'"
-            (click)="selectExpensePeriod('yesterday')">Ayer</button>
           <button type="button" [class.active]="expensePeriod() === 'week'"
             [attr.aria-pressed]="expensePeriod() === 'week'"
             (click)="selectExpensePeriod('week')">Esta semana</button>
@@ -164,6 +188,8 @@
       </div>
 
       @if (expenseError()) { <div class="error-banner" role="alert">{{ expenseError() }}</div> }
+          @if (closureError()) { <div class="error-banner" role="alert">No se pudo verificar la caja: {{ closureError() }}</div> }
+      @if (!closureLoading() && !closureError() && !hasOpenCashRegisterToday()) { <div class="error-banner" role="alert">{{ cashRegisterRequiredMessage() }}</div> }
 
       <div class="expense-workspace">
         <section class="expense-records" aria-label="Registros de egresos">
@@ -186,7 +212,7 @@
                       Monto @if (expenseAmountSort() === 'ascending') { <span aria-hidden="true">↑</span> } @else if (expenseAmountSort() === 'descending') { <span aria-hidden="true">↓</span> } @else { <span aria-hidden="true">↕</span> }
                     </button>
                   </th>
-                  <th>Categoría</th><th>Tipo de egreso</th><th>Fecha</th><th>Registrado por</th>@if (isAdmin()) { <th></th> }
+                  <th>Categoría</th><th>Método</th><th>Tipo de egreso</th><th>Fecha</th><th>Registrado por</th>@if (isAdmin()) { <th class="actions-heading">Acciones</th> }
                 </tr></thead>
                 <tbody>
                   @for (expense of expensesPagination.visible(sortedExpenses()); track expense.id) {
@@ -194,13 +220,22 @@
                       <td>{{ expense.description }}</td>
                       <td class="numeric amount">{{ formatCurrency(expense.amount) }}</td>
                       <td><span class="expense-category">{{ expenseCategoryName(expense.category) }}</span></td>
+                      <td>{{ salePaymentMethodLabel(expense.payment_method) }}</td>
                       <td>{{ expenseTypeLabel(expense.expense_period) }}</td>
                       <td>{{ formatDate(expense.created_at) }}</td>
                       <td>{{ expenseAuthorName(expense) }}</td>
                       @if (isAdmin()) {
                         <td class="admin-actions">
-                          <button class="detail-button" type="button" (click)="openEditExpense(expense)">Editar</button>
-                          <button class="detail-button danger-action" type="button" (click)="deleteExpense(expense)">Eliminar</button>
+                          @if (expense.category !== 'pago_persona') {
+                            <button class="table-action-button table-action-edit" type="button" (click)="openEditExpense(expense)" aria-label="Editar egreso" data-tooltip="Editar egreso">
+                              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4M4 20l4.3-1L18.7 8.6a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z"/></svg>
+                            </button>
+                            <button class="table-action-button table-action-delete" type="button" (click)="deleteExpense(expense)" aria-label="Eliminar egreso" data-tooltip="Eliminar egreso">
+                              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg>
+                            </button>
+                          } @else {
+                            <span class="expense-locked">Vinculado a cobro</span>
+                          }
                         </td>
                       }
                     </tr>
@@ -233,12 +268,128 @@
                 <option value="apertura_caja">Apertura de Caja</option>
               </select>
             </label>
-            <button class="primary-button" type="submit" [disabled]="savingExpense()">
+            <label>Frecuencia del egreso
+              <select name="newExpensePeriod" required [ngModel]="newExpensePeriod()"
+                (ngModelChange)="newExpensePeriod.set($event)">
+                <option value="day">Diario</option>
+                <option value="week">Semanal</option>
+                <option value="month">Mensual</option>
+              </select>
+            </label>
+            <button class="primary-button" type="submit" [disabled]="savingExpense() || !hasOpenCashRegisterToday()">
               {{ savingExpense() ? 'Guardando…' : '+ Registrar egreso' }}
             </button>
           </form>
         </aside>
       </div>
+    </section>
+  }
+
+  @if (activeTab() === 'ingresos') {
+    <section class="sales-section">
+      <div class="section-title">
+        <div><p class="eyebrow">DESGLOSE</p><h2>Ingresos adicionales</h2></div>
+        <span class="result-count">{{ additionalIncomeEntries().length }} movimientos</span>
+      </div>
+      @if (additionalIncomeError()) { <div class="error-banner" role="alert">{{ additionalIncomeError() }}</div> }
+      @if (closureError()) { <div class="error-banner" role="alert">No se pudo verificar la caja: {{ closureError() }}</div> }
+      @if (additionalIncomeActionError()) { <div class="error-banner" role="alert">{{ additionalIncomeActionError() }}</div> }
+      @if (additionalIncomeActionSuccess()) { <div class="success-banner" role="status">{{ additionalIncomeActionSuccess() }}</div> }
+      <div class="closure-status additional-income-summary">
+        <article class="income-summary-card income-summary-card--cash">
+          <span class="income-summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18m-9 4h.01"/></svg></span>
+          <span class="income-summary-label">Efectivo</span><strong>{{ formatCurrency(additionalIncomeCashTotal()) }}</strong>
+        </article>
+        <article class="income-summary-card income-summary-card--transfer">
+          <span class="income-summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h15m0 0-3-3m3 3-3 3M20 16H5m0 0 3-3m-3 3 3 3"/></svg></span>
+          <span class="income-summary-label">Transferencias</span><strong>{{ formatCurrency(additionalIncomeTransferTotal()) }}</strong>
+        </article>
+        <article class="income-summary-card income-summary-card--total">
+          <span class="income-summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18m5-14H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+          <span class="income-summary-label">Total adicional</span><strong>{{ formatCurrency(additionalIncomeTotal()) }}</strong>
+        </article>
+        <article class="income-summary-card income-summary-card--count">
+          <span class="income-summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8l4 4v12H4V4h4Zm0 0v5h8V4m-8 9h8m-8 4h8"/></svg></span>
+          <span class="income-summary-label">Movimientos</span><strong>{{ additionalIncomeLoading() ? '…' : additionalIncomeEntries().length }}</strong>
+        </article>
+      </div>
+      <div class="expense-period-toolbar">
+        <label class="expense-calendar" for="additional-income-date">
+          <span aria-hidden="true">▦</span>
+          <input id="additional-income-date" name="additionalIncomeDate" type="date"
+            [ngModel]="additionalIncomeDate()" (ngModelChange)="onAdditionalIncomeDateChange($event)" />
+        </label>
+        <div class="expense-period-buttons" role="group" aria-label="Período de ingresos adicionales">
+          <button type="button" [class.active]="additionalIncomePeriod() === 'day' && isAdditionalIncomeToday()"
+            [attr.aria-pressed]="additionalIncomePeriod() === 'day' && isAdditionalIncomeToday()"
+            (click)="selectAdditionalIncomePeriod('day')">Hoy</button>
+          <button type="button" [class.active]="additionalIncomePeriod() === 'week'"
+            [attr.aria-pressed]="additionalIncomePeriod() === 'week'"
+            (click)="selectAdditionalIncomePeriod('week')">Esta semana</button>
+          <button type="button" [class.active]="additionalIncomePeriod() === 'month'"
+            [attr.aria-pressed]="additionalIncomePeriod() === 'month'"
+            (click)="selectAdditionalIncomePeriod('month')">Mensual</button>
+        </div>
+      </div>
+      <form class="additional-income-form" (ngSubmit)="recordAdditionalIncome()">
+        <div class="additional-income-form-heading">
+          <div><p class="eyebrow">REGISTRO MANUAL</p><h3>Agregar ingreso adicional</h3><small>Período: {{ additionalIncomePeriodLabel() }}</small></div>
+          @if (additionalIncomeRecordPeriod() === 'day' && hasOpenCashRegisterToday()) {
+            <span class="additional-income-cash-status">Caja abierta</span>
+          } @else if (additionalIncomeRecordPeriod() === 'day') {
+            <span class="additional-income-cash-status is-closed">Caja cerrada</span>
+          }
+        </div>
+        <div class="additional-income-fields">
+          <label>Descripción<input name="additionalIncomeDescription" type="text" required maxlength="200"
+            [(ngModel)]="additionalIncomeDescription" placeholder="Motivo del ingreso" /></label>
+          <label>Ingreso en efectivo<input name="additionalCashIncome" type="text" inputmode="decimal"
+            [value]="additionalCashIncomeInput()" (input)="updateAdditionalIncome($event, 'efectivo')" placeholder="0.00" /></label>
+          <label>Ingreso por transferencia<input name="additionalTransferIncome" type="text" inputmode="decimal"
+            [value]="additionalTransferIncomeInput()" (input)="updateAdditionalIncome($event, 'transferencia')" placeholder="0.00" /></label>
+          <button class="secondary-button" type="submit"
+            [disabled]="closureBusy() || !canRecordAdditionalIncome() || isAdditionalIncomeFutureDate()">
+            {{ closureBusy() ? 'Registrando…' : 'Registrar ingresos' }}
+          </button>
+        </div>
+        @if (!closureLoading() && !closureError() && !hasOpenCashRegisterToday()) { <p class="additional-income-hint">{{ cashRegisterRequiredMessage() }}</p> }
+        @if (additionalIncomeRecordPeriod() === 'day' && isAdditionalIncomeFutureDate()) { <p class="additional-income-hint">No se pueden registrar ingresos con una fecha futura.</p> }
+      </form>
+      @if (additionalIncomeLoading()) {
+        <div class="empty-state">Cargando ingresos adicionales…</div>
+      } @else if (additionalIncomeEntries().length === 0) {
+        <div class="empty-state">No hay ingresos adicionales en esta fecha.</div>
+      } @else {
+        <div class="table-scroll"><table>
+          <thead><tr><th>Fecha</th><th>Origen</th><th>Detalle</th><th>Período</th><th>Método</th><th class="numeric">Monto</th><th class="actions-heading">Acciones</th></tr></thead>
+          <tbody>
+            @for (entry of additionalIncomePagination.visible(additionalIncomeEntries()); track entry.id) {
+              <tr>
+                <td>{{ formatDate(entry.created_at) }}</td>
+                <td>{{ additionalIncomeSourceLabel(entry.source) }}</td>
+                <td>{{ entry.description }}</td>
+                <td>{{ additionalIncomeTypeLabel(entry.expense_period) }}</td>
+                <td>{{ salePaymentMethodLabel(entry.payment_method) }}</td>
+                <td class="numeric amount">{{ formatCurrency(entry.amount) }}</td>
+                <td class="admin-actions">
+                  @if (entry.source === 'manual') {
+                    <button class="table-action-button table-action-edit" type="button" (click)="openEditAdditionalIncome(entry)" aria-label="Editar ingreso adicional" data-tooltip="Editar ingreso">
+                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4M4 20l4.3-1L18.7 8.6a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z"/></svg>
+                    </button>
+                    <button class="table-action-button table-action-delete" type="button" (click)="requestDeleteAdditionalIncome(entry)" aria-label="Eliminar ingreso adicional" data-tooltip="Eliminar ingreso">
+                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg>
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table></div>
+        <app-table-pagination [totalItems]="additionalIncomeEntries().length"
+          [page]="additionalIncomePagination.currentPage(additionalIncomeEntries().length)" [pageSize]="additionalIncomePagination.pageSize()"
+          (pageChange)="additionalIncomePagination.setPage($event, additionalIncomeEntries().length)"
+          (pageSizeChange)="additionalIncomePagination.setPageSize($event)" />
+      }
     </section>
   }
 
@@ -341,10 +492,17 @@
       } @else {
         <div class="closure-overview">
           <section class="closure-summary-card" aria-label="Resumen de efectivo esperado">
-            <div class="closure-card-heading"><span>CAJA COMPARTIDA</span><strong>Cierre de caja</strong></div>
+            <div class="closure-card-heading"><span>CAJA COMPARTIDA</span><strong>Resumen de Flujo de Efectivo</strong></div>
             <div class="closure-cash-summary">
               <article class="closure-opening">
-                <span>Apertura</span>
+                <span class="closure-opening-label">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="6" width="18" height="13" rx="2"></rect>
+                    <path d="M3 10h18M7 15h3"></path>
+                    <circle cx="16.5" cy="14.5" r="1.5"></circle>
+                  </svg>
+                  Apertura
+                </span>
                 <strong>{{ formatCurrency(openClosure()!.opening_amount) }}</strong>
                 <small>{{ formatDate(openClosure()!.opened_at) }} · {{ closureAuthorName(openClosure()!) }}</small>
               </article>
@@ -354,7 +512,7 @@
                 @if (closureAdditionalCashIncome() > 0) {
                   <p><span><i class="movement-dot sales-dot"></i>Ingresos adicionales en efectivo</span><strong>+ {{ formatCurrency(closureAdditionalCashIncome()) }}</strong></p>
                 }
-                <p><span><i class="movement-dot expenses-dot"></i>Egresos / Gastos</span><strong>− {{ formatCurrency(closureExpenseTotal()) }}</strong></p>
+                <p><span><i class="movement-dot expenses-dot"></i>Egresos en efectivo</span><strong>− {{ formatCurrency(closureCashExpenseTotal()) }}</strong></p>
               </div>
               <div class="closure-expected">
                 <span>EFECTIVO ESPERADO</span>
@@ -363,13 +521,13 @@
             </div>
           </section>
 
-          <section class="closure-method-card" aria-label="Resumen de caja y métodos de pago">
-            <h3>Resumen de caja y métodos de pago</h3>
+          <section class="closure-method-card" aria-label="Detalle de métodos de pago">
+            <h3>Detalle de Métodos de Pago</h3>
             @if (closurePaymentSummary().length === 0) {
               <p class="closure-no-payments">Aún no hay pagos registrados.</p>
             }
             <table>
-              <thead><tr><th>Método</th><th class="numeric">Total</th><th class="numeric">Movimientos de pago</th></tr></thead>
+              <thead><tr><th>Método</th><th class="numeric">Total</th><th class="numeric">Movimientos</th></tr></thead>
               <tbody>
                 @for (method of closurePaymentSummary(); track method.method) {
                   <tr>
@@ -381,7 +539,7 @@
               </tbody>
               <tfoot>
                 <tr>
-                  <th>Total efectivo + transferencias</th>
+                  <th>Total efectivo esperado + transferencias + tarjeta</th>
                   <th class="numeric">{{ formatCurrency(closurePaymentTotal()) }}</th>
                   <th class="numeric">{{ closurePaymentCount() }}</th>
                 </tr>
@@ -389,66 +547,64 @@
             </table>
           </section>
         </div>
+        @if (closurePreOpeningPaidOrders().length > 0) {
+          <div class="error-banner" role="alert">
+            Hay {{ closurePreOpeningPaidOrders().length }} pedido(s), por {{ formatCurrency(closurePreOpeningSalesTotal()) }},
+            cobrados antes de abrir esta caja. No están incluidos en el arqueo de esta caja; verifica el efectivo contado
+            al momento de apertura para evitar duplicar o excluir ese importe.
+          </div>
+        }
 
         <form class="closure-count-form" (ngSubmit)="closeRegister()">
-          <label class="closure-count-input">Arqueo de efectivo
+          <label class="closure-count-input closure-control-card">Arqueo de efectivo
             <span>Monto en efectivo contado</span>
             <input name="countedCash" type="text" inputmode="decimal" required
-              [value]="countedCashInput()" (input)="updateCountedCash($event)" placeholder="0.00" />
+              [value]="countedCashInput()" (input)="updateCountedCash($event)" placeholder="Ingresar efectivo contado" />
           </label>
-          <div class="closure-additional-entry">
-            <label>Ingreso adicional en efectivo
-              <span>Se suma al efectivo esperado</span>
-              <input name="additionalCashIncome" type="text" inputmode="decimal"
-                [value]="additionalCashIncomeInput()" (input)="updateAdditionalIncome($event, 'efectivo')" placeholder="0.00" />
-            </label>
-            <label>Ingreso adicional por transferencia
-              <span>Se suma al total de transferencias</span>
-              <input name="additionalTransferIncome" type="text" inputmode="decimal"
-                [value]="additionalTransferIncomeInput()" (input)="updateAdditionalIncome($event, 'transferencia')" placeholder="0.00" />
-            </label>
-            <button class="secondary-button closure-register-income" type="button"
-              (click)="recordAdditionalIncome()" [disabled]="closureBusy()">
-              {{ closureBusy() ? 'Registrando…' : 'Registrar ingresos' }}
-            </button>
-          </div>
-          <div class="closure-difference" [class.balanced]="cashDifference() === 0"
-            [class.shortage]="cashDifference() !== null && cashDifference()! < 0"
-            [class.surplus]="cashDifference() !== null && cashDifference()! > 0">
-            <span>Cuadre y diferencia</span>
-            @if (cashDifference() === null) {
-              <strong>Ingresa el efectivo contado</strong>
-              <small>El saldo aparecerá aquí</small>
-            } @else if (cashDifference() === 0) {
-              <strong><i aria-hidden="true">✓</i> Caja cuadrada</strong>
-              <small>Diferencia: {{ formatCurrency(cashDifference()!) }}</small>
-            } @else {
-              <strong>{{ cashDifference()! > 0 ? 'Sobrante' : 'Faltante' }}</strong>
-              <small>Diferencia: {{ formatCurrency(cashDifference()!) }}</small>
-            }
-            <small class="closure-expected-hint">Efectivo esperado: {{ formatCurrency(expectedClosureCash()) }}</small>
-          </div>
-          <label class="closure-notes">Notas del cierre
+          <section class="closure-comparison-card" aria-label="Módulo de comparación">
+            <h3>Módulo de Comparación</h3>
+            <div class="closure-comparison-values">
+              <article>
+                <span>Contado</span>
+                <strong>{{ formatCurrency(countedCashValue() ?? 0) }}</strong>
+              </article>
+              <article>
+                <span>Esperado</span>
+                <strong>{{ formatCurrency(expectedClosureCash()) }}</strong>
+              </article>
+              <article class="closure-comparison-difference"
+                [class.balanced]="cashDifference() === 0"
+                [class.shortage]="cashDifference() !== null && cashDifference()! < 0"
+                [class.surplus]="cashDifference() !== null && cashDifference()! > 0">
+                <span>Diferencia</span>
+                <strong>{{ cashDifference() === null ? formatCurrency(0) : formatCurrency(cashDifference()!) }}</strong>
+              </article>
+            </div>
+          </section>
+          <label class="closure-notes closure-control-card">Notas del cierre
             <textarea name="closingNotes" maxlength="200" [(ngModel)]="closingNotes" placeholder="Notas"></textarea>
           </label>
-          <button class="primary-button closure-submit" type="submit" [disabled]="closureBusy()">
+          <button class="primary-button closure-submit" type="submit"
+            [disabled]="closureBusy() || countedCashValue() === null">
             {{ closureBusy() ? 'Cerrando…' : 'Cerrar caja' }}
           </button>
         </form>
       }
 
-      <div class="section-title closure-history-title"><div><p class="eyebrow">HISTORIAL</p><h2>Cierres anteriores</h2></div></div>
-      @if (closureHistory().length === 0) {
-        <div class="empty-state compact">Aún no hay cierres registrados.</div>
-      } @else {
-        <div class="closure-history-toolbar">
+      <div class="section-title closure-history-title">
+        <div><p class="eyebrow">HISTORIAL</p><h2>Cierres anteriores</h2></div>
+        @if (closureHistory().length > 0) {
           <label class="expense-calendar closure-history-search">
             <span aria-hidden="true">⌕</span>
             <input type="search" aria-label="Buscar en el historial de cierres"
               placeholder="Buscar por fecha, responsable o monto"
               [ngModel]="closureHistorySearch()" (ngModelChange)="updateClosureHistorySearch($event)" />
           </label>
-        </div>
+        }
+      </div>
+      @if (closureHistory().length === 0) {
+        <div class="empty-state compact">Aún no hay cierres registrados.</div>
+      } @else {
         @if (filteredClosureHistory().length === 0) {
           <div class="empty-state compact">No se encontraron cierres que coincidan con la búsqueda.</div>
         } @else {
@@ -568,6 +724,61 @@
         <button class="secondary-button" type="button" (click)="cancelDeleteExpense()" [disabled]="confirmingExpenseDelete()">Cancelar</button>
         <button class="primary-button" type="button" (click)="confirmDeleteExpense()" [disabled]="confirmingExpenseDelete()">
           {{ confirmingExpenseDelete() ? 'Eliminando…' : 'Sí, eliminar' }}
+        </button>
+      </div>
+    </section>
+  </div>
+}
+
+@if (editingAdditionalIncome(); as income) {
+  <div class="modal-backdrop admin-backdrop" (click)="closeEditAdditionalIncome()">
+    <section class="admin-modal expense-edit-modal" role="dialog" aria-modal="true"
+      [attr.aria-labelledby]="'additional-income-edit-title-' + income.id" (click)="$event.stopPropagation()">
+      <header class="modal-heading">
+        <div><h2 [id]="'additional-income-edit-title-' + income.id">Editar ingreso adicional</h2></div>
+        <button class="quiet-button close-top" type="button" (click)="closeEditAdditionalIncome()"
+          aria-label="Cerrar" [disabled]="savingAdditionalIncomeEdit()">×</button>
+      </header>
+      @if (additionalIncomeActionError()) { <div class="error-banner" role="alert">{{ additionalIncomeActionError() }}</div> }
+      <form class="admin-form expense-edit-form" (ngSubmit)="saveAdditionalIncomeEdit()">
+        <label>Monto<input name="editAdditionalIncomeAmount" type="number" min="0.01" step="0.01" required
+          [(ngModel)]="editAdditionalIncomeAmount" /></label>
+        <label>Descripción<input name="editAdditionalIncomeDescription" type="text" required maxlength="200"
+          [(ngModel)]="editAdditionalIncomeDescription" /></label>
+        <label>Método de pago
+          <select name="editAdditionalIncomePaymentMethod" required [(ngModel)]="editAdditionalIncomePaymentMethod">
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+          </select>
+        </label>
+        <footer class="modal-footer">
+          <button class="secondary-button" type="button" (click)="closeEditAdditionalIncome()"
+            [disabled]="savingAdditionalIncomeEdit()">Cancelar</button>
+          <button class="primary-button" type="submit" [disabled]="savingAdditionalIncomeEdit()">
+            {{ savingAdditionalIncomeEdit() ? 'Guardando…' : 'Guardar cambios' }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (deletingAdditionalIncome(); as income) {
+  <div class="closure-confirm-backdrop expense-delete-backdrop" (click)="cancelDeleteAdditionalIncome()">
+    <section class="closure-confirm-modal expense-delete-modal" role="alertdialog" aria-modal="true"
+      aria-labelledby="additional-income-delete-title" aria-describedby="additional-income-delete-description"
+      (click)="$event.stopPropagation()">
+      <span class="closure-confirm-icon" aria-hidden="true">!</span>
+      <h2 id="additional-income-delete-title">Eliminar ingreso adicional</h2>
+      <p id="additional-income-delete-description">¿Seguro que quieres eliminar “{{ income.description }}” por
+        {{ formatCurrency(income.amount) }}? Esta acción no se puede deshacer.</p>
+      @if (additionalIncomeActionError()) { <div class="error-banner" role="alert">{{ additionalIncomeActionError() }}</div> }
+      <div class="closure-confirm-actions">
+        <button class="secondary-button" type="button" (click)="cancelDeleteAdditionalIncome()"
+          [disabled]="confirmingAdditionalIncomeDelete()">Cancelar</button>
+        <button class="primary-button" type="button" (click)="confirmDeleteAdditionalIncome()"
+          [disabled]="confirmingAdditionalIncomeDelete()">
+          {{ confirmingAdditionalIncomeDelete() ? 'Eliminando…' : 'Sí, eliminar' }}
         </button>
       </div>
     </section>
@@ -847,7 +1058,7 @@
               @if (splitPaymentMode() && paymentGroupTotal(group) > 0) {
                 @if (splitGroupValidation(group)) { <p class="split-validation" role="status">{{ splitGroupValidation(group) }}</p> }
                 <button class="primary-button split-partial-payment" type="button"
-                  [disabled]="paymentSaving() || !!splitGroupValidation(group)"
+                  [disabled]="paymentSaving() || !!splitGroupValidation(group) || !hasOpenCashRegisterToday()"
                   (click)="paySplitGroup(group.id)">
                   {{ paymentSaving() ? 'Registrando…' : 'Registrar pago de esta persona' }}
                 </button>
@@ -861,7 +1072,7 @@
           <footer class="split-payment-footer">
             <button class="secondary-button" type="button" (click)="closeDetails()" [disabled]="paymentSaving()">Cancelar</button>
             @if (!splitPaymentMode()) {
-              <button class="primary-button" type="button" (click)="submitSplitPayment()" [disabled]="paymentSaving() || !!splitPaymentValidation()">
+              <button class="primary-button" type="button" (click)="submitSplitPayment()" [disabled]="paymentSaving() || !!splitPaymentValidation() || !hasOpenCashRegisterToday()">
                 {{ paymentSaving() ? 'Registrando…' : 'Confirmar cobro total' }}
               </button>
             }
@@ -870,7 +1081,7 @@
       } @else if (order.status === 'Servido') {
         @if (!paymentDetailError()) {
           <div class="payment-options" aria-label="Opciones de cobro">
-            <button class="whole-payment-option" type="button" (click)="startWholePayment()">
+            <button class="whole-payment-option" type="button" (click)="startWholePayment()" [disabled]="!hasOpenCashRegisterToday()">
               <svg class="payment-option-icon cash-option-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
                 <path d="m7 15 26-8 3 9" />
                 <path d="m6 21 27-8 3 9" />
@@ -885,7 +1096,7 @@
                 <span class="payment-option-balance">Saldo pendiente: {{ formatCurrency(remainingPaymentTotal()) }}</span>
               </span>
             </button>
-            <button class="split-payment-option" type="button" (click)="startSplitPayment()">
+            <button class="split-payment-option" type="button" (click)="startSplitPayment()" [disabled]="!hasOpenCashRegisterToday()">
               <svg class="payment-option-icon split-option-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
                 <path d="M7 8v12m5-12v12M7 14h5M9.5 20v19" />
                 <path d="M38 8c-4 4-5 9-5 14h7c0-5-1-10-5-14Zm-1.5 14v17" />

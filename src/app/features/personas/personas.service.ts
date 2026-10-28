@@ -19,6 +19,7 @@ export interface PersonMovement {
   amount: number;
   description: string;
   movement_date: string;
+  payment_method: 'efectivo' | 'transferencia' | null;
   created_at: string;
   personas: { full_name: string } | { full_name: string }[] | null;
 }
@@ -59,7 +60,7 @@ export class PersonasService {
   async listMovements(): Promise<PersonMovement[]> {
     const { data, error } = await this.requireClient()
       .from('persona_financial_movements')
-      .select('id, persona_id, movement_type, amount, description, movement_date, created_at, personas(full_name)')
+      .select('id, persona_id, movement_type, amount, description, movement_date, payment_method, created_at, personas(full_name)')
       .order('movement_date', { ascending: false })
       .order('id', { ascending: false });
     if (error) throw error;
@@ -75,6 +76,7 @@ export class PersonasService {
     amount: number;
     description: string;
     date: string;
+    paymentMethod: 'efectivo' | 'transferencia' | null;
   }): Promise<void> {
     const { error } = await this.requireClient().rpc('record_persona_financial_movement', {
       p_persona_id: input.personaId,
@@ -82,6 +84,7 @@ export class PersonasService {
       p_amount: input.amount,
       p_description: input.description.trim(),
       p_movement_date: input.date,
+      p_payment_method: input.paymentMethod,
     });
     if (error) throw error;
   }

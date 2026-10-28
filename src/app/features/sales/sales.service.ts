@@ -31,6 +31,7 @@ export interface ExpenseRecord {
   amount: number;
   description: string;
   category: string;
+  payment_method: 'efectivo' | 'transferencia';
   expense_period: 'day' | 'week' | 'month';
   created_at: string;
   user_id: number | null;
@@ -55,6 +56,19 @@ export interface CashClosure {
   opened_at: string;
   closed_at: string | null;
   users?: { full_name: string } | { full_name: string }[] | null;
+}
+
+export interface CashClosureIncomeEntry {
+  id: number;
+  cash_closure_id: number | null;
+  reservation_id: number | null;
+  user_id: number | null;
+  source: 'manual' | 'reserva' | 'cobro_persona';
+  payment_method: 'efectivo' | 'transferencia';
+  expense_period: 'day' | 'week' | 'month';
+  amount: number;
+  description: string;
+  created_at: string;
 }
 
 export type SalePaymentMethod = 'efectivo' | 'tarjeta' | 'transferencia';
@@ -264,7 +278,7 @@ export class SalesService {
 
     let query = client
       .from('expenses')
-      .select('id, amount, description, category, expense_period, created_at, user_id, users(full_name)')
+      .select('id, amount, description, category, payment_method, expense_period, created_at, user_id, users(full_name)')
       .gte('created_at', startIso)
       .lt('created_at', endIso)
       .order('created_at', { ascending: false });
@@ -372,8 +386,6 @@ export class SalesService {
   async closeClosure(
     countedCash: number,
     notes: string | null,
-    additionalCashIncome: number,
-    additionalTransferIncome: number,
   ): Promise<void> {
     const client = this.supabase.client;
     if (!client) throw new Error('Configura Supabase antes de cerrar la caja.');
@@ -381,15 +393,16 @@ export class SalesService {
     const { error } = await client.rpc('close_cash_closure', {
       p_counted_cash: countedCash,
       p_notes: notes,
-      p_additional_cash_income: additionalCashIncome,
-      p_additional_transfer_income: additionalTransferIncome,
     });
     if (error) throw error;
   }
 
-  async recordAdditionalClosureIncome(
+  async recordAdditionalIncome(
     additionalCashIncome: number,
     additionalTransferIncome: number,
+    description: string,
+    incomeDate: string,
+    period: CashClosureIncomeEntry['expense_period'],
   ): Promise<void> {
     const client = this.supabase.client;
     if (!client) throw new Error('Configura Supabase antes de registrar ingresos de caja.');
@@ -397,8 +410,67 @@ export class SalesService {
     const { error } = await client.rpc('record_cash_closure_additional_income', {
       p_additional_cash_income: additionalCashIncome,
       p_additional_transfer_income: additionalTransferIncome,
+      p_description: description,
+      p_income_date: incomeDate,
+      p_expense_period: period,
     });
     if (error) throw error;
+  }
+
+  async updateAdditionalIncome(
+    id: number,
+    amount: number,
+    description: string,
+    paymentMethod: CashClosureIncomeEntry['payment_method'],
+  ): Promise<void> {
+    const client = this.supabase.client;
+    if (!client) throw new Error('Configura Supabase antes de editar ingresos adicionales.');
+
+    const { error } = await client.rpc('update_additional_income_entry', {
+      p_entry_id: id,
+      p_amount: amount,
+      p_description: description,
+      p_payment_method: paymentMethod,
+    });
+    if (error) throw error;
+  }
+
+  async deleteAdditionalIncome(id: number): Promise<void> {
+    const client = this.supabase.client;
+    if (!client) throw new Error('Configura Supabase antes de eliminar ingresos adicionales.');
+
+    const { error } = await client.rpc('delete_additional_income_entry', {
+      p_entry_id: id,
+    });
+    if (error) throw error;
+  }
+
+  async listAdditionalIncome(
+    startIso: string,
+    endIso: string,
+    periods: CashClosureIncomeEntry['expense_period'][],
+    cashClosureId?: number,
+  ): Promise<CashClosureIncomeEntry[]> {
+    const client = this.supabase.client;
+    if (!client) throw new Error('Configura Supabase antes de consultar ingresos adicionales.');
+
+    let query = client
+      .from('cash_closure_income_entries')
+      .select('id, cash_closure_id, reservation_id, user_id, source, payment_method, expense_period, amount, description, created_at')
+      .gte('created_at', startIso)
+      .lt('created_at', endIso)
+      .in('expense_period', periods)
+      .order('created_at', { ascending: false });
+    const { data, error } = await query;
+    if (error) throw error;
+    return ((data ?? []) as unknown as CashClosureIncomeEntry[])
+      .filter((entry) => cashClosureId === undefined
+        || entry.expense_period !== 'day'
+        || entry.cash_closure_id === cashClosureId)
+      .map((entry) => ({
+        ...entry,
+        amount: Number(entry.amount),
+      }));
   }
 
   private normalizeClosure(closure: CashClosure): CashClosure {

@@ -11,10 +11,17 @@
     @else if (tables().length === 0) { <div class="empty-state">Aún no hay mesas registradas.</div> }
     @else {
       <div class="table-scroll"><table>
-        <thead><tr><th>Mesa</th><th>Capacidad</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Mesa</th><th>Capacidad</th><th>Estado</th><th class="actions-heading">Acciones</th></tr></thead>
         <tbody>
           @for (table of tablesPagination.visible(tables()); track table.id) {
-            <tr><td><strong><span class="table-symbol" aria-hidden="true">▦</span> Mesa {{ table.table_number }}</strong></td><td>{{ table.capacity }} personas</td><td><span class="availability" [class.unavailable]="table.status !== 'disponible'">{{ table.status }}</span></td><td class="admin-actions"><button class="detail-button" type="button" (click)="openForm(table)">Editar</button><button class="detail-button danger-action" type="button" (click)="deleteTable(table)">Eliminar</button></td></tr>
+            <tr><td><strong><span class="table-symbol" aria-hidden="true">▦</span> Mesa {{ table.table_number }}</strong></td><td>{{ table.capacity }} personas</td><td><span class="availability" [class.unavailable]="table.status !== 'disponible'">{{ table.status }}</span></td><td class="admin-actions">
+              <button class="table-action-button table-action-edit" type="button" (click)="openForm(table)" [attr.aria-label]="'Editar mesa ' + table.table_number" data-tooltip="Editar mesa">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4M4 20l4.3-1L18.7 8.6a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z"/></svg>
+              </button>
+              <button class="table-action-button table-action-delete" type="button" (click)="deleteTable(table)" [attr.aria-label]="'Eliminar mesa ' + table.table_number" data-tooltip="Eliminar mesa">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg>
+              </button>
+            </td></tr>
           }
         </tbody>
       </table></div>

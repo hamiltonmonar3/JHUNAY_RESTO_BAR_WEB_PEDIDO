@@ -27,7 +27,7 @@
       @else if (filteredProducts().length === 0) { <div class="empty-state">No se encontraron productos.</div> }
       @else {
         <div class="table-scroll"><table>
-          <thead><tr><th>Producto</th><th>Categoría</th><th class="numeric">Precio</th><th>Disponible</th><th>Top ventas</th><th>Existencia</th><th>Acciones</th></tr></thead>
+          <thead><tr><th>Producto</th><th>Categoría</th><th class="numeric">Precio</th><th>Disponible</th><th>Top ventas</th><th>Existencia</th><th class="actions-heading">Acciones</th></tr></thead>
           <tbody>
             @for (product of productsPagination.visible(filteredProducts()); track product.id) {
               <tr>
@@ -37,7 +37,14 @@
                 <td><span class="availability" [class.unavailable]="!product.is_available">{{ product.is_available ? 'Sí' : 'No' }}</span></td>
                 <td><span class="availability" [class.unavailable]="!product.top_viewer">{{ product.top_viewer ? 'Sí' : 'No' }}</span></td>
                 <td>{{ product.track_stock ? product.current_stock : 'Sin control' }}</td>
-                <td class="admin-actions"><button class="detail-button" type="button" (click)="openProductForm(product)">Editar</button><button class="detail-button danger-action" type="button" (click)="deleteProduct(product)">Eliminar</button></td>
+                <td class="admin-actions">
+                  <button class="table-action-button table-action-edit" type="button" (click)="openProductForm(product)" aria-label="Editar producto" data-tooltip="Editar producto">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4M4 20l4.3-1L18.7 8.6a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z"/></svg>
+                  </button>
+                  <button class="table-action-button table-action-delete" type="button" (click)="deleteProduct(product)" aria-label="Eliminar producto" data-tooltip="Eliminar producto">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg>
+                  </button>
+                </td>
               </tr>
             }
           </tbody>
@@ -54,10 +61,17 @@
       @if (loading()) { <div class="empty-state">Cargando categorías…</div> }
       @else {
         <div class="table-scroll"><table>
-          <thead><tr><th>Categoría</th><th>Descripción</th><th>Acciones</th></tr></thead>
+          <thead><tr><th>Categoría</th><th>Descripción</th><th class="actions-heading">Acciones</th></tr></thead>
           <tbody>
             @for (category of categoriesPagination.visible(categories()); track category.id) {
-              <tr><td><strong>{{ category.name }}</strong></td><td>{{ category.description || '—' }}</td><td class="admin-actions"><button class="detail-button" type="button" (click)="openCategoryForm(category)">Editar</button><button class="detail-button danger-action" type="button" (click)="deleteCategory(category)">Eliminar</button></td></tr>
+              <tr><td><strong>{{ category.name }}</strong></td><td>{{ category.description || '—' }}</td><td class="admin-actions">
+                <button class="table-action-button table-action-edit" type="button" (click)="openCategoryForm(category)" aria-label="Editar categoría" data-tooltip="Editar categoría">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4M4 20l4.3-1L18.7 8.6a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z"/></svg>
+                </button>
+                <button class="table-action-button table-action-delete" type="button" (click)="deleteCategory(category)" aria-label="Eliminar categoría" data-tooltip="Eliminar categoría">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg>
+                </button>
+              </td></tr>
             } @empty { <tr><td colspan="3" class="empty-cell">Aún no hay categorías.</td></tr> }
           </tbody>
         </table></div>
@@ -74,7 +88,7 @@
       @else if (promotions().length === 0) { <div class="empty-state">Aún no hay promociones.</div> }
       @else {
         <div class="table-scroll"><table>
-          <thead><tr><th>Promoción</th><th>Aplica a</th><th class="numeric">Descuento</th><th>Vigencia</th><th>Activa</th><th>Acciones</th></tr></thead>
+          <thead><tr><th>Promoción</th><th>Aplica a</th><th class="numeric">Descuento</th><th>Vigencia</th><th>Activa</th><th class="actions-heading">Acciones</th></tr></thead>
           <tbody>
             @for (promotion of promotionsPagination.visible(promotions()); track promotion.id) {
               <tr>
@@ -83,7 +97,14 @@
                 <td class="numeric amount">{{ promotionDiscountLabel(promotion) }}</td>
                 <td>{{ promotion.start_date || '—' }} / {{ promotion.end_date || '—' }}</td>
                 <td><span class="availability" [class.unavailable]="!promotion.is_active">{{ promotion.is_active ? 'Sí' : 'No' }}</span></td>
-                <td class="admin-actions"><button class="detail-button" type="button" (click)="openPromotionForm(promotion)">Editar</button><button class="detail-button danger-action" type="button" (click)="deletePromotion(promotion)">Eliminar</button></td>
+                <td class="admin-actions">
+                  <button class="table-action-button table-action-edit" type="button" (click)="openPromotionForm(promotion)" aria-label="Editar promoción" data-tooltip="Editar promoción">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4M4 20l4.3-1L18.7 8.6a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z"/></svg>
+                  </button>
+                  <button class="table-action-button table-action-delete" type="button" (click)="deletePromotion(promotion)" aria-label="Eliminar promoción" data-tooltip="Eliminar promoción">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg>
+                  </button>
+                </td>
               </tr>
             }
           </tbody>

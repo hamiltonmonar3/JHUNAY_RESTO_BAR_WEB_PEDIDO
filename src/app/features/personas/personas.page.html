@@ -21,9 +21,10 @@
             </svg>
           </span>
           <span>Por cobrar</span>
+          <span class="balance-card-count">{{ summaryTotals().receivablePeople }} personas activas</span>
         </div>
         <strong>{{ formatCurrency(summaryTotals().receivable) }}</strong>
-        <small>Saldo pendiente de cobro</small>
+        <small>Cuentas netas por persona</small>
       </article>
       <article class="balance-card balance-card--payable">
         <div class="balance-card-heading">
@@ -33,9 +34,10 @@
             </svg>
           </span>
           <span>Por pagar</span>
+          <span class="balance-card-count">{{ summaryTotals().payablePeople }} cuentas activas</span>
         </div>
         <strong>{{ formatCurrency(summaryTotals().payable) }}</strong>
-        <small>Saldo neto pendiente de pago</small>
+        <small>Resumen de saldos pendientes (neto por persona)</small>
       </article>
     </div>
   </section>
@@ -49,37 +51,59 @@
         </label>
         <button class="secondary-button" type="button" (click)="openMovementForm('por_cobrar')">+ Registrar por cobrar</button>
         <button class="primary-button" type="button" (click)="openMovementForm('por_pagar')">+ Registrar por pagar</button>
+        <div class="people-filters" role="group" aria-label="Filtrar personas por saldo">
+          <button type="button" [class.active]="peopleFilter() === 'all'" (click)="peopleFilter.set('all')">Todo</button>
+          <button type="button" [class.active]="peopleFilter() === 'receivable'" (click)="peopleFilter.set('receivable')">Por cobrar</button>
+          <button type="button" [class.active]="peopleFilter() === 'payable'" (click)="peopleFilter.set('payable')">Por pagar</button>
+        </div>
       </div>
     </div>
     @if (loading()) { <div class="empty-state">Cargando personas…</div> }
     @else {
       <div class="table-scroll">
         <table>
-          <thead><tr><th>Persona</th><th>Identificación</th><th class="numeric">Por cobrar</th><th class="numeric">Por pagar</th><th class="numeric">Neto por pagar</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <thead><tr><th>Persona</th><th>Identificación</th><th class="numeric">Por cobrar</th><th class="numeric">Por pagar</th><th class="numeric">Neto por pagar</th><th>Estado</th><th class="actions-heading">Acciones</th></tr></thead>
           <tbody>
-            @for (person of filteredPeople(); track person.id) {
+            @for (person of visiblePeople(); track person.id) {
               @let total = personTotals(person);
               <tr>
                 <td><strong>{{ person.full_name }}</strong></td>
                 <td>{{ person.identification || '—' }}</td>
                 <td class="numeric">{{ formatCurrency(total.receivable) }}</td>
                 <td class="numeric">{{ formatCurrency(total.payable) }}</td>
-                <td class="numeric"><strong>{{ formatCurrency(total.netPayable) }}</strong></td>
-                <td>{{ person.is_active ? 'Activa' : 'Inactiva' }}</td>
+                <td class="numeric">
+                  @if (total.netPayable === 0) {
+                    <span class="net-balance net-balance--zero">{{ formatCurrency(0) }}</span>
+                  } @else {
+                    <span class="net-balance" [class.net-balance--credit]="total.netPayable < 0" [class.net-balance--debt]="total.netPayable > 0">
+                      {{ formatCurrency(total.netPayable < 0 ? -total.netPayable : total.netPayable) }}
+                      <small>{{ total.netPayable < 0 ? 'A favor' : 'Pasivo' }}</small>
+                    </span>
+                  }
+                </td>
+                <td><span class="person-status" [class.person-status--inactive]="!person.is_active">{{ person.is_active ? 'Activa' : 'Inactiva' }}</span></td>
                 <td class="admin-actions">
                   @if (person.is_active && total.receivable > 0) {
-                    <button class="detail-button settlement-action" type="button" (click)="openSettlementForm(person, 'cobrado')">Cobrar</button>
+                    <button class="table-action-button table-action-collect" type="button" (click)="openSettlementForm(person, 'cobrado')" aria-label="Cobrar saldo" data-tooltip="Cobrar saldo">
+                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18m-9 4h.01"/></svg>
+                    </button>
                   }
                   @if (person.is_active && total.netPayable > 0) {
-                    <button class="detail-button settlement-action" type="button" (click)="openSettlementForm(person, 'pagado')">Pagar</button>
+                    <button class="table-action-button table-action-pay" type="button" (click)="openSettlementForm(person, 'pagado')" aria-label="Pagar saldo" data-tooltip="Pagar saldo">
+                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18m5-14H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </button>
                   }
-                  <button class="detail-button" type="button" (click)="openPersonForm(person)">Editar</button>
-                  <button class="detail-button danger-action" type="button" (click)="requestDeletePerson(person)">Eliminar</button>
+                  <button class="table-action-button table-action-edit" type="button" (click)="openPersonForm(person)" aria-label="Editar persona" data-tooltip="Editar persona">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4M4 20l4.3-1L18.7 8.6a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z"/></svg>
+                  </button>
+                  <button class="table-action-button table-action-delete" type="button" (click)="requestDeletePerson(person)" aria-label="Eliminar persona" data-tooltip="Eliminar persona">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg>
+                  </button>
                 </td>
               </tr>
             } @empty {
               <tr><td colspan="7" class="empty-cell">
-                {{ searchQuery().trim() ? 'No hay personas que coincidan con la búsqueda.' : 'Aún no hay personas registradas.' }}
+                {{ peopleFilter() !== 'all' ? 'No hay personas con saldos en este filtro.' : searchQuery().trim() ? 'No hay personas que coincidan con la búsqueda.' : 'Aún no hay personas registradas.' }}
               </td></tr>
             }
           </tbody>
@@ -98,8 +122,23 @@
       </label>
     </div>
     @if (!loading()) {
+      <div class="movement-history-summary">
+        <p class="movement-period-label">Resumen de movimientos</p>
+        <div class="movement-summary-cards">
+          <article class="movement-summary-card movement-summary-card--collected">
+            <span>Cobros realizados</span>
+            <strong>{{ formatCurrency(movementHistoryTotals().collected) }}</strong>
+            <small>{{ movementHistoryTotals().collectionCount }} {{ movementHistoryTotals().collectionCount === 1 ? 'registro' : 'registros' }}</small>
+          </article>
+          <article class="movement-summary-card movement-summary-card--paid">
+            <span>Pagos realizados</span>
+            <strong>{{ formatCurrency(movementHistoryTotals().paid) }}</strong>
+            <small>{{ movementHistoryTotals().paymentCount }} {{ movementHistoryTotals().paymentCount === 1 ? 'registro' : 'registros' }}</small>
+          </article>
+        </div>
+      </div>
       <div class="table-scroll">
-        <table>
+        <table class="movement-history-table">
           <thead>
             <tr>
               <th [attr.aria-sort]="movementHistorySortAria('date')">
@@ -107,27 +146,46 @@
                   Fecha <span aria-hidden="true">{{ movementHistorySortIndicator('date') }}</span>
                 </button>
               </th>
-              <th>Persona</th><th>Movimiento</th><th>Estado</th><th>Descripción</th>
+              <th>Persona</th><th>Tipo de movimiento</th><th>Estado</th><th>Detalles</th>
               <th class="numeric" [attr.aria-sort]="movementHistorySortAria('amount')">
                 <button class="movement-sort-button" type="button" (click)="toggleMovementHistorySort('amount')">
                   Monto <span aria-hidden="true">{{ movementHistorySortIndicator('amount') }}</span>
                 </button>
               </th>
-              <th>Acciones</th>
+              <th class="actions-heading">Acciones</th>
             </tr>
           </thead>
           <tbody>
             @for (movement of pagination.visible(filteredSortedMovements()); track movement.id) {
               <tr>
                 <td>{{ formatDate(movement.movement_date) }}</td>
-                <td>{{ movementPerson(movement) }}</td>
-                <td>{{ labels[movement.movement_type] }}</td>
-                <td>{{ movementStatus(movement.movement_type) }}</td>
-                <td>{{ movement.description }}</td>
+                <td><strong>{{ movementPerson(movement) }}</strong></td>
+                <td>
+                  <span class="movement-type-badge"
+                    [class.movement-type-badge--collection]="movement.movement_type === 'cobrado' || movement.movement_type === 'por_cobrar'"
+                    [class.movement-type-badge--payment]="movement.movement_type === 'pagado' || movement.movement_type === 'por_pagar'"
+                    [class.movement-type-badge--historical]="movement.movement_type === 'descuento'">
+                    {{ labels[movement.movement_type] }}
+                  </span>
+                </td>
+                <td><span class="movement-status"><span aria-hidden="true">●</span>{{ movementStatus(movement.movement_type) }}</span></td>
+                <td>
+                  <span class="movement-description">{{ movement.description }}</span>
+                  @if (movement.payment_method) {
+                    <small class="movement-payment-method">{{ movement.payment_method === 'efectivo' ? 'Efectivo' : 'Transferencia' }}</small>
+                  }
+                </td>
                 <td class="numeric">{{ formatCurrency(movement.amount) }}</td>
                 <td class="admin-actions">
                   @if (movement.movement_type !== 'descuento') {
-                    <button class="detail-button" type="button" (click)="openEditMovement(movement)">Editar</button>
+                    @if (movement.movement_type !== 'cobrado' && movement.movement_type !== 'pagado') {
+                      <button class="table-action-button table-action-edit" type="button" (click)="openEditMovement(movement)"
+                        [attr.aria-label]="'Editar movimiento de ' + movementPerson(movement)" data-tooltip="Editar movimiento">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="m15 5 4 4M4 20l4.3-1 10.4-10.4a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z" />
+                        </svg>
+                      </button>
+                    }
                   }
                 </td>
               </tr>
@@ -177,28 +235,24 @@
         <button class="quiet-button close-top" type="button" (click)="closeMovementForm()" aria-label="Cerrar">×</button>
       </header>
       <form class="admin-form" (ngSubmit)="saveMovement()">
-        @if (movementId) {
-          <label>Persona
-            <input [value]="movementPersonById(movementId)" readonly />
-          </label>
-        } @else {
         <label>Persona
-          <select name="persona" required [(ngModel)]="selectedPersonId">
-            <option value="" disabled>Seleccionar persona</option>
-            @for (person of people(); track person.id) { <option [value]="person.id" [disabled]="!person.is_active">{{ person.full_name }}{{ person.is_active ? '' : ' (inactiva)' }}</option> }
-          </select>
-        </label>
-        }
-        <label>Tipo de movimiento
-          <select name="movementType" required [(ngModel)]="movementType">
-            @for (type of movementTypes; track type) { <option [value]="type">{{ labels[type] }}</option> }
-          </select>
+          <input [value]="selectedPersonName()" readonly />
         </label>
         <label>Monto<input name="amount" type="number" min="0.01" step="0.01" required [(ngModel)]="movementAmount" /></label>
         @if (movementType === 'cobrado' || movementType === 'pagado') {
           <p class="settlement-balance">Saldo pendiente: <strong>{{ formatCurrency(settlementLimit()) }}</strong></p>
+          <label>Método de pago
+            <select name="settlementPaymentMethod" required [(ngModel)]="movementPaymentMethod">
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+            </select>
+          </label>
+          <p class="settlement-balance">
+            Se registrará hoy como {{ movementType === 'cobrado' ? 'ingreso adicional' : 'egreso' }} en la caja.
+          </p>
         }
-        <label>Fecha<input name="date" type="date" required [(ngModel)]="movementDate" /></label>
+        <label>Fecha<input name="date" type="date" required [(ngModel)]="movementDate"
+          [disabled]="movementType === 'cobrado' || movementType === 'pagado'" /></label>
         <label>Descripción<input name="description" maxlength="250" required [(ngModel)]="movementDescription" placeholder="Motivo del movimiento" /></label>
         @if (movementFormError()) {
           <div class="error-banner" role="alert">{{ movementFormError() }}</div>

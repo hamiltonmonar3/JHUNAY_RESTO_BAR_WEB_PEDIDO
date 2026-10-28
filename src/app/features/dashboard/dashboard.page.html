@@ -3,7 +3,7 @@
     <div>
       <p class="eyebrow">{{ today }}</p>
       <h1>Resumen del negocio</h1>
-      <p class="page-subtitle">Ventas, egresos y actividad del restaurante en un solo lugar.</p>
+      <p class="page-subtitle">Ventas, ingresos adicionales, egresos y actividad del restaurante en un solo lugar.</p>
     </div>
     <div class="heading-actions">
       <button
@@ -130,6 +130,15 @@
       }}</strong>
       <span class="metric-caption">{{ paidOrders().length }} pedidos pagados en el período</span>
     </article>
+    <article class="metric-card metric-additional-income">
+      <div class="metric-topline">
+        <span>Ingresos adicionales</span><span class="metric-icon" aria-hidden="true">↗</span>
+      </div>
+      <strong class="metric-value">{{
+        loadingPeriod() ? '…' : formatCurrency(totalAdditionalIncome())
+      }}</strong>
+      <span class="metric-caption">{{ additionalIncome().length }} ingresos registrados en el período</span>
+    </article>
     <article class="metric-card metric-expenses">
       <div class="metric-topline">
         <span>Total de egresos</span><span class="metric-icon" aria-hidden="true">−</span>
@@ -146,7 +155,7 @@
       <strong class="metric-value" [class.is-negative]="netBalance() < 0">{{
         loadingPeriod() ? '…' : formatCurrency(netBalance())
       }}</strong>
-      <span class="metric-caption">{{ formatPercent(profitMargin()) }} de margen sobre ventas</span>
+      <span class="metric-caption">{{ formatPercent(profitMargin()) }} de margen sobre ingresos</span>
     </article>
     <article class="metric-card metric-average">
       <div class="metric-topline">
@@ -163,23 +172,36 @@
     <div class="chart-heading">
       <div>
         <p class="eyebrow">COMPORTAMIENTO DEL NEGOCIO</p>
-        <h2 id="chart-heading">Ventas vs. egresos</h2>
+        <h2 id="chart-heading">Ingresos vs. egresos</h2>
         <p>Comparativa de ingresos cobrados y gastos registrados · {{ periodLabel() }}</p>
       </div>
-      <div class="chart-legend" aria-label="Series del gráfico">
-        <span><i class="legend-sales"></i>Ventas</span>
-        <span><i class="legend-expenses"></i>Egresos</span>
+      <div class="chart-legend" role="group" aria-label="Filtrar series del gráfico">
+        <button type="button" [class.is-hidden]="!showIncomeSeries()" [attr.aria-pressed]="showIncomeSeries()"
+          (click)="toggleChartSeries('income')" aria-label="Mostrar u ocultar ingresos">
+          <i class="legend-sales"></i>Ingresos
+        </button>
+        <button type="button" [class.is-hidden]="!showExpenseSeries()" [attr.aria-pressed]="showExpenseSeries()"
+          (click)="toggleChartSeries('expenses')" aria-label="Mostrar u ocultar egresos">
+          <i class="legend-expenses"></i>Egresos
+        </button>
+        <button type="button" [class.is-hidden]="!showNetSeries()" [attr.aria-pressed]="showNetSeries()"
+          (click)="toggleChartSeries('net')" aria-label="Mostrar u ocultar balance neto">
+          <i class="legend-net"></i>Balance neto
+        </button>
       </div>
     </div>
-    @if (loadingPeriod() && paidOrders().length === 0 && expenses().length === 0) {
+    @if (loadingPeriod() && paidOrders().length === 0 && additionalIncome().length === 0 && expenses().length === 0) {
       <div class="chart-loading" role="status">Cargando actividad del período…</div>
     } @else {
+      @if (!showIncomeSeries() && !showExpenseSeries() && !showNetSeries()) {
+        <p class="chart-filter-empty">Marca Ingresos, Egresos o Balance neto para mostrar una serie en el gráfico.</p>
+      } @else {
       <div class="chart-scroll">
         <svg
           class="sales-chart"
           viewBox="0 0 1000 270"
           role="img"
-          [attr.aria-label]="'Gráfico de ventas y egresos del período ' + periodLabel()"
+          [attr.aria-label]="'Gráfico de ingresos totales y egresos del período ' + periodLabel()"
         >
           <defs>
             <linearGradient id="sales-area" x1="0" x2="0" y1="0" y2="1">
@@ -190,24 +212,102 @@
           <line class="chart-gridline" x1="42" y1="40" x2="958" y2="40" />
           <line class="chart-gridline" x1="42" y1="99" x2="958" y2="99" />
           <line class="chart-gridline" x1="42" y1="159" x2="958" y2="159" />
-          <line class="chart-gridline" x1="42" y1="218" x2="958" y2="218" />
-          <text class="chart-y-label" x="0" y="44">{{ formatCurrency(chartMaximum()) }}</text>
-          <text class="chart-y-label" x="0" y="103">
-            {{ formatCurrency(chartMaximum() * 0.67) }}
-          </text>
-          <text class="chart-y-label" x="0" y="163">
-            {{ formatCurrency(chartMaximum() * 0.33) }}
-          </text>
-          <text class="chart-y-label" x="0" y="222">$0</text>
-          <path class="sales-area" [attr.d]="salesAreaPath()" />
-          <polyline class="sales-line" [attr.points]="salesPath()" />
-          <polyline class="expenses-line" [attr.points]="expensesPath()" />
+          @for (axisLabel of chartAxisLabels(); track axisLabel.y) {
+            <line class="chart-gridline"
+              x1="42" [attr.y1]="axisLabel.y" x2="958" [attr.y2]="axisLabel.y" />
+            <text class="chart-y-label" x="0" [attr.y]="axisLabel.y + 4">
+              {{ formatCurrency(axisLabel.value) }}
+            </text>
+          }
+          <line class="chart-gridline chart-zero-line" x1="42" [attr.y1]="chartZeroY()"
+            x2="958" [attr.y2]="chartZeroY()" />
+          @if (showIncomeSeries()) {
+            <path class="sales-area" [attr.d]="salesAreaPath()" />
+            <polyline class="sales-line" [attr.points]="salesPath()" />
+          }
+          @if (showExpenseSeries()) {
+            <polyline class="expenses-line" [attr.points]="expensesPath()" />
+          }
+          @if (showNetSeries()) {
+            <polyline class="net-line" [attr.points]="netPath()" />
+          }
           @for (point of chartPoints(); track point.key) {
+            @if (showIncomeSeries()) {
+              <circle class="sales-point" [attr.cx]="point.x" [attr.cy]="point.salesY" r="3">
+                <title>{{ point.label }} — ingresos {{ formatCurrency(point.sales) }}</title>
+              </circle>
+            }
+            @if (showExpenseSeries()) {
+              <circle class="expenses-point" [attr.cx]="point.x" [attr.cy]="point.expensesY" r="2.5">
+                <title>{{ point.label }} — egresos {{ formatCurrency(point.expenses) }}</title>
+              </circle>
+            }
+            @if (showNetSeries()) {
+              <circle class="net-point" [attr.cx]="point.x" [attr.cy]="point.netY" r="3">
+                <title>{{ point.label }} — balance neto {{ formatCurrency(point.net) }}</title>
+              </circle>
+            }
+            @if (point.showLabel) {
+              <text class="chart-x-label" [attr.x]="point.x" y="250">{{ point.label }}</text>
+            }
+          }
+        </svg>
+      </div>
+      }
+    }
+  </section>
+
+  <section class="chart-panel monthly-comparison-panel" aria-labelledby="monthly-chart-heading">
+    <div class="chart-heading monthly-chart-heading">
+      <div>
+        <p class="eyebrow">TENDENCIA FINANCIERA</p>
+        <h2 id="monthly-chart-heading">Comparativa mensual</h2>
+        <p>Ingresos, egresos y balance neto por mes</p>
+      </div>
+      <label class="month-range-control">
+        <span>Meses a comparar</span>
+        <select [value]="monthlyMonthsBack()" (change)="updateMonthlyMonthsBack($event)"
+          aria-label="Cantidad de meses para comparar">
+          <option value="3">Últimos 3 meses</option>
+          <option value="6">Últimos 6 meses</option>
+          <option value="9">Últimos 9 meses</option>
+          <option value="12">Últimos 12 meses</option>
+          <option value="18">Últimos 18 meses</option>
+          <option value="24">Últimos 24 meses</option>
+        </select>
+      </label>
+    </div>
+    <div class="chart-legend monthly-chart-legend" aria-label="Series de comparación mensual">
+      <span><i class="legend-sales"></i>Ingresos</span>
+      <span><i class="legend-expenses"></i>Egresos</span>
+      <span><i class="legend-net"></i>Balance neto</span>
+    </div>
+    @if (monthlyComparisonError()) {
+      <div class="error-banner" role="alert">{{ monthlyComparisonError() }}</div>
+    } @else if (monthlyComparisonLoading()) {
+      <div class="chart-loading" role="status">Cargando comparación mensual…</div>
+    } @else {
+      <div class="chart-scroll">
+        <svg class="sales-chart monthly-sales-chart" viewBox="0 0 1000 270" role="img"
+          [attr.aria-label]="'Comparación mensual de ingresos, egresos y balance neto de los últimos ' + monthlyMonthsBack() + ' meses'">
+          @for (axisLabel of monthlyChartAxisLabels(); track axisLabel.y) {
+            <line class="chart-gridline" x1="70" [attr.y1]="axisLabel.y" x2="958" [attr.y2]="axisLabel.y" />
+            <text class="chart-y-label" x="0" [attr.y]="axisLabel.y + 4">{{ formatCurrency(axisLabel.value) }}</text>
+          }
+          <line class="chart-gridline chart-zero-line" x1="70" [attr.y1]="monthlyChartZeroY()"
+            x2="958" [attr.y2]="monthlyChartZeroY()" />
+          <polyline class="sales-line" [attr.points]="monthlyIncomePath()" />
+          <polyline class="expenses-line" [attr.points]="monthlyExpensesPath()" />
+          <polyline class="net-line" [attr.points]="monthlyNetPath()" />
+          @for (point of monthlyChartPoints(); track point.key) {
             <circle class="sales-point" [attr.cx]="point.x" [attr.cy]="point.salesY" r="3">
-              <title>{{ point.label }} — ventas {{ formatCurrency(point.sales) }}</title>
+              <title>{{ point.label }} — ingresos {{ formatCurrency(point.sales) }}</title>
             </circle>
             <circle class="expenses-point" [attr.cx]="point.x" [attr.cy]="point.expensesY" r="2.5">
               <title>{{ point.label }} — egresos {{ formatCurrency(point.expenses) }}</title>
+            </circle>
+            <circle class="net-point" [attr.cx]="point.x" [attr.cy]="point.netY" r="3">
+              <title>{{ point.label }} — balance neto {{ formatCurrency(point.net) }}</title>
             </circle>
             @if (point.showLabel) {
               <text class="chart-x-label" [attr.x]="point.x" y="250">{{ point.label }}</text>

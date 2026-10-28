@@ -164,7 +164,7 @@ export class OrdersPage implements OnInit {
         { value: 'en_preparacion', label: '🔥  En cocina' },
         { value: 'servido', label: '✅  Servidos' },
         { value: 'pagado', label: '💰  Pagados' },
-        { value: 'cancelado', label: 'Cancelados' },
+        { value: 'cancelado', label: '✖️  Cancelados' },
     ];
 
     // Form state

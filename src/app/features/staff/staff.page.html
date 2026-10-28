@@ -1,4 +1,4 @@
-<section class="admin-page">
+<section class="admin-page staff-page">
   <header class="module-heading">
     <div><h1>Usuarios</h1><p>Gestiona usuarios, roles y estado de acceso.</p></div>
     <button class="quiet-button" type="button" (click)="loadStaff()" [disabled]="loading()" aria-label="Actualizar personal" title="Actualizar personal">↻</button>
@@ -15,9 +15,22 @@
       <div class="admin-toolbar"><span>{{ people().length }} perfiles</span><button class="primary-button" type="button" (click)="openPersonForm()">+ Agregar empleado</button></div>
       @if (loading()) { <div class="empty-state">Cargando personal…</div> }
       @else {
-        <div class="table-scroll"><table><thead><tr><th>Empleado</th><th>Usuario</th><th>Rol</th><th>Auth</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+        <div class="table-scroll"><table><thead><tr><th>Empleado</th><th>Usuario</th><th>Rol</th><th>Auth</th><th>Estado</th><th class="actions-heading">Acciones</th></tr></thead><tbody>
           @for (person of peoplePagination.visible(people()); track person.id) {
-            <tr><td><strong>{{ person.full_name }}</strong><small class="cell-description">{{ person.email }}</small></td><td>{{ person.username }}</td><td>{{ roleNameFor(person.role_id) }}</td><td><span class="auth-link-status" [class.pending-auth]="!person.auth_user_id">{{ person.auth_user_id ? 'Vinculada' : 'Pendiente' }}</span></td><td>{{ person.is_active ? 'Activo' : 'Inactivo' }}</td><td class="admin-actions"><button class="detail-button" type="button" (click)="openPersonForm(person)">Editar</button><button class="detail-button" type="button" (click)="toggleActive(person)">{{ person.is_active ? 'Desactivar' : 'Activar' }}</button></td></tr>
+            <tr><td><strong>{{ person.full_name }}</strong><small class="cell-description">{{ person.email }}</small></td><td>{{ person.username }}</td><td>{{ roleNameFor(person.role_id) }}</td><td><span class="auth-link-status" [class.pending-auth]="!person.auth_user_id">{{ person.auth_user_id ? 'Vinculada' : 'Pendiente' }}</span></td><td>{{ person.is_active ? 'Activo' : 'Inactivo' }}</td><td class="admin-actions">
+              <button class="table-action-button table-action-edit" type="button" (click)="openPersonForm(person)" aria-label="Editar empleado" data-tooltip="Editar empleado">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4M4 20l4.3-1L18.7 8.6a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z"/></svg>
+              </button>
+              <button class="table-action-button" [class.table-action-activate]="!person.is_active" [class.table-action-deactivate]="person.is_active"
+                type="button" (click)="toggleActive(person)" [attr.aria-label]="person.is_active ? 'Desactivar empleado' : 'Activar empleado'"
+                [attr.data-tooltip]="person.is_active ? 'Desactivar empleado' : 'Activar empleado'">
+                @if (person.is_active) {
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6 18.4 18.4"/></svg>
+                } @else {
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12h8m-4-4v8"/></svg>
+                }
+              </button>
+            </td></tr>
           } @empty { <tr><td colspan="6" class="empty-cell">Aún no hay empleados.</td></tr> }
         </tbody></table></div>
         <app-table-pagination [totalItems]="people().length"
@@ -31,9 +44,16 @@
       <div class="admin-toolbar"><span>{{ roles().length }} roles</span><button class="primary-button" type="button" (click)="openRoleForm()">+ Agregar rol</button></div>
       @if (loading()) { <div class="empty-state">Cargando roles…</div> }
       @else {
-        <div class="table-scroll"><table><thead><tr><th>Rol</th><th>Descripción</th><th>Acciones</th></tr></thead><tbody>
+        <div class="table-scroll"><table><thead><tr><th>Rol</th><th>Descripción</th><th class="actions-heading">Acciones</th></tr></thead><tbody>
           @for (role of rolesPagination.visible(roles()); track role.id) {
-            <tr><td><strong>{{ role.name }}</strong></td><td>{{ role.description || '—' }}</td><td class="admin-actions"><button class="detail-button" type="button" (click)="openRoleForm(role)">Editar</button><button class="detail-button danger-action" type="button" (click)="deleteRole(role)">Eliminar</button></td></tr>
+            <tr><td><strong>{{ role.name }}</strong></td><td>{{ role.description || '—' }}</td><td class="admin-actions">
+              <button class="table-action-button table-action-edit" type="button" (click)="openRoleForm(role)" aria-label="Editar rol" data-tooltip="Editar rol">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4M4 20l4.3-1L18.7 8.6a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z"/></svg>
+              </button>
+              <button class="table-action-button table-action-delete" type="button" (click)="deleteRole(role)" aria-label="Eliminar rol" data-tooltip="Eliminar rol">
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg>
+              </button>
+            </td></tr>
           }
         </tbody></table></div>
         <app-table-pagination [totalItems]="roles().length"

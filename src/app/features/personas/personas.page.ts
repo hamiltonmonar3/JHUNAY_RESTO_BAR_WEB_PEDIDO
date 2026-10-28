@@ -28,6 +28,7 @@ export class PersonasPage implements OnInit {
   private readonly financeService = inject(PersonasService);
   protected readonly people = signal<PersonRecord[]>([]);
   protected readonly searchQuery = signal('');
+  protected readonly peopleFilter = signal<'all' | 'receivable' | 'payable'>('all');
   protected readonly movementHistorySearch = signal('');
   protected readonly movementHistorySort = signal<{ key: 'date' | 'amount'; direction: 'asc' | 'desc' }>({
     key: 'date',
@@ -44,7 +45,6 @@ export class PersonasPage implements OnInit {
   protected readonly personToDelete = signal<PersonRecord | null>(null);
   protected readonly deleting = signal(false);
   protected readonly deleteError = signal('');
-  protected readonly movementTypes: PersonMovementType[] = ['por_cobrar', 'por_pagar', 'cobrado', 'pagado'];
   protected readonly labels = movementLabels;
   protected personId: number | null = null;
   protected personFullName = '';
@@ -56,6 +56,7 @@ export class PersonasPage implements OnInit {
   protected movementAmount = 0;
   protected movementDescription = '';
   protected movementDate = localDateValue(new Date());
+  protected movementPaymentMethod: 'efectivo' | 'transferencia' = 'efectivo';
 
   protected readonly filteredPeople = computed(() => {
     const query = this.searchQuery().trim().toLocaleLowerCase('es');
@@ -64,6 +65,13 @@ export class PersonasPage implements OnInit {
       `${person.full_name} ${person.identification ?? ''}`.toLocaleLowerCase('es').includes(query),
     );
   });
+  protected readonly visiblePeople = computed(() => this.filteredPeople().filter((person) => {
+    const totals = this.personTotals(person);
+    const filter = this.peopleFilter();
+    return filter === 'all'
+      || (filter === 'receivable' && totals.receivable > 0)
+      || (filter === 'payable' && totals.netPayable > 0);
+  }));
   protected readonly filteredSortedMovements = computed(() => {
     const query = this.movementHistorySearch().trim().toLocaleLowerCase('es');
     const sort = this.movementHistorySort();
@@ -89,6 +97,22 @@ export class PersonasPage implements OnInit {
         return sort.direction === 'asc' ? comparison : -comparison;
       });
   });
+  protected readonly movementHistoryTotals = computed(() => {
+    let collected = 0;
+    let collectionCount = 0;
+    let paid = 0;
+    let paymentCount = 0;
+    for (const movement of this.filteredSortedMovements()) {
+      if (movement.movement_type === 'cobrado') {
+        collected += movement.amount;
+        collectionCount += 1;
+      } else if (movement.movement_type === 'pagado') {
+        paid += movement.amount;
+        paymentCount += 1;
+      }
+    }
+    return { collected, collectionCount, paid, paymentCount };
+  });
   protected readonly personLifetimeTotals = computed(() => {
     const totals = new Map<number, { receivable: number; payable: number; collected: number; paid: number }>();
     for (const person of this.people()) totals.set(person.id, { receivable: 0, payable: 0, collected: 0, paid: 0 });
@@ -106,13 +130,17 @@ export class PersonasPage implements OnInit {
     let receivable = 0;
     let payable = 0;
     let netPayable = 0;
+    let receivablePeople = 0;
+    let payablePeople = 0;
     for (const person of this.people()) {
       const totals = this.personTotals(person);
       receivable += totals.receivable;
       payable += Math.max(totals.netPayable, 0);
       netPayable += totals.netPayable;
+      if (person.is_active && totals.receivable > 0) receivablePeople += 1;
+      if (person.is_active && totals.netPayable > 0) payablePeople += 1;
     }
-    return { receivable, payable, netPayable };
+    return { receivable, payable, netPayable, receivablePeople, payablePeople };
   });
 
   ngOnInit(): void {
@@ -205,6 +233,12 @@ export class PersonasPage implements OnInit {
     return movement ? this.movementPerson(movement) : 'Persona';
   }
 
+  protected selectedPersonName(): string {
+    const person = this.people().find((item) => item.id === Number(this.selectedPersonId));
+    if (person) return person.full_name;
+    return this.movementId ? this.movementPersonById(this.movementId) : '';
+  }
+
   protected openPersonForm(person?: PersonRecord): void {
     this.personId = person?.id ?? null;
     this.personFullName = person?.full_name ?? '';
@@ -271,11 +305,13 @@ export class PersonasPage implements OnInit {
     this.movementAmount = 0;
     this.movementDescription = '';
     this.movementDate = localDateValue(new Date());
+    this.movementPaymentMethod = 'efectivo';
     this.movementFormError.set('');
     this.showMovementForm.set(true);
   }
 
   protected openEditMovement(movement: PersonMovement): void {
+    if (movement.movement_type === 'cobrado' || movement.movement_type === 'pagado') return;
     this.movementId = movement.id;
     this.selectedPersonId = String(movement.persona_id);
     this.movementType = movement.movement_type;
@@ -304,6 +340,11 @@ export class PersonasPage implements OnInit {
       this.movementFormError.set(`El monto no puede superar el saldo pendiente de ${this.formatCurrency(this.settlementLimit())}.`);
       return;
     }
+    if (!this.movementId && (this.movementType === 'cobrado' || this.movementType === 'pagado')
+      && this.movementDate !== localDateValue(new Date())) {
+      this.movementFormError.set('Los cobros y pagos se registran con la fecha de hoy.');
+      return;
+    }
     this.saving.set(true);
     this.movementFormError.set('');
     try {
@@ -318,13 +359,19 @@ export class PersonasPage implements OnInit {
       } else {
         await this.financeService.recordMovement({
           personaId: Number(this.selectedPersonId),
+          paymentMethod: this.movementType === 'cobrado' || this.movementType === 'pagado'
+            ? this.movementPaymentMethod
+            : null,
           ...values,
         });
       }
       this.showMovementForm.set(false);
       await this.loadData();
     } catch (error) {
-      this.movementFormError.set(error instanceof Error ? error.message : 'No se pudo guardar el movimiento.');
+      const message = error instanceof Error ? error.message : '';
+      this.movementFormError.set(message.includes('There is no open cash register for today')
+        ? 'Abre la caja de hoy antes de registrar un cobro o un pago.'
+        : message || 'No se pudo guardar el movimiento.');
     } finally {
       this.saving.set(false);
     }

@@ -1,13 +1,22 @@
-.personas-page { display: grid; gap: 18px; }
-.staff-finance-section { min-width: 0; border: 1px solid var(--line); background: var(--paper); }
-.staff-finance-toolbar { display: flex; min-height: 62px; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.personas-page { display: grid; gap: 14px; }
+.staff-finance-section { min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); box-shadow: 0 5px 16px #0000000c; }
+.staff-finance-toolbar { display: flex; min-height: 62px; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--paper) 94%, var(--orange)); }
 .staff-finance-toolbar h2 { margin: 0; font-size: 15px; }
 .staff-finance-toolbar p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
 .staff-finance-header-actions { display: flex; align-items: center; gap: 8px; }
-.staff-finance-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.staff-finance-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .movement-history-toolbar { flex-wrap: wrap; }
 .movement-history-search { margin-inline-start: auto; }
 .movement-history-search input { width: min(360px, 42vw); }
+.movement-history-summary { display: grid; gap: 7px; padding: 10px 12px 8px; background: color-mix(in srgb, var(--paper) 89%, var(--orange)); }
+.movement-period-label { margin: 0; color: var(--muted); font-size: 10px; font-weight: 700; }
+.movement-summary-cards { display: flex; flex-wrap: wrap; gap: 8px; }
+.movement-summary-card { display: grid; min-width: 150px; gap: 2px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
+.movement-summary-card > span { color: var(--muted); font-size: 9px; }
+.movement-summary-card strong { color: var(--ink); font-family: 'Manrope', sans-serif; font-size: 16px; line-height: 1.15; }
+.movement-summary-card small { color: var(--muted); font-size: 9px; }
+.movement-summary-card--collected { border-inline-start: 3px solid #45a66b; }
+.movement-summary-card--paid { border-inline-start: 3px solid #dd8055; }
 .movement-sort-button { display: inline-flex; min-height: 28px; align-items: center; gap: 6px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .movement-sort-button span { color: var(--orange); font-size: 13px; }
 .movement-sort-button:hover { color: var(--orange); }
@@ -21,18 +30,18 @@
 .period-selector { display: flex; gap: 4px; padding: 3px; border: 1px solid var(--line); background: var(--paper); }
 .period-selector button { min-height: 32px; padding: 0 12px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 11px; cursor: pointer; }
 .period-selector button.active { background: var(--orange); color: #fff; }
-.executive-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 16px; }
+.executive-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 10px; }
 .executive-cards .balance-card {
   position: relative;
   display: grid;
   min-width: 0;
-  gap: 12px;
+  gap: 8px;
   overflow: hidden;
-  padding: 20px;
+  padding: 14px;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--paper) 88%, var(--orange)), var(--paper) 72%);
-  box-shadow: 0 5px 16px #00000012;
+  border-radius: 9px;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--paper) 90%, var(--orange)), var(--paper) 78%);
+  box-shadow: 0 3px 10px #0000000d;
   transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
 }
 .executive-cards .balance-card::after {
@@ -50,14 +59,45 @@
 .balance-card--receivable { border-inline-start: 4px solid var(--orange) !important; }
 .balance-card--payable { border-inline-start: 4px solid var(--lime) !important; }
 .balance-card-heading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; letter-spacing: .04em; }
-.balance-card-icon { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--orange) 14%, transparent); color: var(--orange); }
+.balance-card-icon { display: grid; width: 26px; height: 26px; flex: 0 0 26px; place-items: center; border-radius: 8px; background: color-mix(in srgb, var(--orange) 14%, transparent); color: var(--orange); }
 .balance-card--payable .balance-card-icon { background: color-mix(in srgb, var(--lime) 16%, transparent); color: var(--lime); }
-.balance-card-icon svg { width: 18px; height: 18px; }
-.executive-cards .balance-card strong { overflow-wrap: anywhere; font-family: 'Manrope', sans-serif; font-size: clamp(23px, 3vw, 32px); font-weight: 800; letter-spacing: -.04em; line-height: 1.1; }
-.executive-cards .balance-card small { color: var(--muted); font-size: 11px; }
-.personas-page .table-scroll table { min-width: 1040px; }
-.personas-page td { height: 52px; }
-.personas-page .settlement-action { color: var(--orange); font-weight: 700; }
+.balance-card-icon svg { width: 15px; height: 15px; }
+.balance-card-heading .balance-card-count { margin-inline-start: auto; padding: 4px 7px; border-radius: 5px; background: color-mix(in srgb, #4da66a 20%, var(--paper)); color: color-mix(in srgb, #4da66a 75%, var(--ink)); font-size: 9px; font-weight: 700; letter-spacing: 0; white-space: nowrap; }
+.balance-card--payable .balance-card-heading .balance-card-count { background: color-mix(in srgb, var(--muted) 18%, var(--paper)); color: var(--ink); }
+.executive-cards .balance-card strong { overflow-wrap: anywhere; font-family: 'Manrope', sans-serif; font-size: clamp(23px, 3vw, 30px); font-weight: 800; letter-spacing: -.04em; line-height: 1.1; }
+.executive-cards .balance-card small { color: var(--muted); font-size: 10px; }
+.people-filters { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 5px; background: var(--paper); }
+.people-filters button { min-height: 29px; padding: 0 9px; border: 0; border-radius: 3px; background: transparent; color: var(--muted); font: inherit; font-size: 10px; cursor: pointer; white-space: nowrap; }
+.people-filters button.active { background: color-mix(in srgb, var(--orange) 14%, var(--paper)); color: var(--ink); }
+.personas-page .table-scroll table { min-width: 780px; }
+.personas-page thead { background: color-mix(in srgb, var(--paper) 88%, var(--orange)); }
+.personas-page th { height: 34px; font-size: 10px; }
+.personas-page td { height: 42px; border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, transparent); font-size: 10px; }
+.personas-page tbody tr:last-child td { border-bottom: 0; }
+.personas-page tbody tr:hover { background: color-mix(in srgb, var(--orange) 5%, var(--paper)); }
+.personas-page .movement-history-table { min-width: 820px; }
+.movement-history-table td { vertical-align: middle; }
+.movement-type-badge { display: inline-block; padding: 3px 7px; border-radius: 999px; font-size: 9px; font-weight: 700; white-space: nowrap; }
+.movement-type-badge--collection { background: #45a66b; color: #fff; }
+.movement-type-badge--payment { background: #e48b22; color: #fff; }
+.movement-type-badge--historical { background: color-mix(in srgb, var(--muted) 24%, var(--paper)); color: var(--ink); }
+.movement-status { display: inline-flex; align-items: center; gap: 5px; color: var(--ink); font-size: 9px; white-space: nowrap; }
+.movement-status > span { color: #45a66b; font-size: 11px; }
+.movement-description { display: block; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.movement-payment-method { display: block; margin-top: 2px; color: var(--muted); font-size: 9px; }
+.movement-edit-button { display: grid; width: 26px; height: 26px; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 5px; background: var(--paper); color: var(--muted); cursor: pointer; }
+.movement-edit-button:hover { border-color: var(--orange); color: var(--orange); }
+.movement-edit-button svg { width: 14px; height: 14px; }
+.personas-page .admin-actions { gap: 5px; }
+.personas-page .admin-actions .detail-button { min-height: 27px; padding: 0 7px; font-size: 10px; white-space: nowrap; }
+.personas-page .settlement-action { border-color: color-mix(in srgb, var(--orange) 40%, var(--line)); background: color-mix(in srgb, var(--orange) 10%, var(--paper)); color: var(--orange); font-weight: 700; }
+.net-balance { display: inline-flex; align-items: center; gap: 5px; padding: 4px 6px; border-radius: 4px; font-weight: 700; white-space: nowrap; }
+.net-balance small { font-size: 9px; font-weight: 600; }
+.net-balance--credit { background: color-mix(in srgb, #4da66a 20%, var(--paper)); color: color-mix(in srgb, #4da66a 80%, var(--ink)); }
+.net-balance--debt { background: color-mix(in srgb, #aaa 25%, var(--paper)); color: var(--ink); }
+.net-balance--zero { color: var(--muted); }
+.person-status { display: inline-block; padding: 3px 6px; border-radius: 4px; background: color-mix(in srgb, #4da66a 18%, var(--paper)); color: color-mix(in srgb, #4da66a 80%, var(--ink)); font-size: 9px; font-weight: 700; }
+.person-status--inactive { background: color-mix(in srgb, var(--muted) 17%, var(--paper)); color: var(--muted); }
 .settlement-balance { margin: 0; color: var(--muted); font-size: 12px; }
 .settlement-balance strong { color: var(--ink); }
 .staff-inactive { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
@@ -91,6 +131,8 @@
   .staff-finance-actions { width: 100%; }
   .person-search, .person-search input { width: 100%; }
   .movement-history-search { margin-inline-start: 0; }
+  .movement-history-search, .movement-history-search input { width: 100%; }
+  .movement-summary-card { min-width: min(145px, calc(50% - 4px)); flex: 1; }
   .executive-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .summary-toolbar { flex-direction: column; align-items: flex-start; }
 }

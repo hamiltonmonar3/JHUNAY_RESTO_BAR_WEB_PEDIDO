@@ -16,9 +16,13 @@
     @if (loading()) { <div class="empty-state">Cargando existencias…</div> }
     @else if (products().length === 0) { <div class="empty-state">Activa “Controlar existencia” en un producto del menú para comenzar.</div> }
     @else {
-      <div class="table-scroll"><table><thead><tr><th>Producto</th><th class="numeric">Existencia</th><th class="numeric">Mínimo</th><th>Estado</th><th>Acción</th></tr></thead><tbody>
+      <div class="table-scroll"><table><thead><tr><th>Producto</th><th class="numeric">Existencia</th><th class="numeric">Mínimo</th><th>Estado</th><th class="actions-heading">Acciones</th></tr></thead><tbody>
         @for (product of productsPagination.visible(products()); track product.id) {
-          <tr><td><strong>{{ product.name }}</strong></td><td class="numeric amount">{{ product.current_stock }}</td><td class="numeric">{{ product.min_stock }}</td><td><span class="stock-pill" [class.stock-low]="product.current_stock <= product.min_stock">{{ product.current_stock <= product.min_stock ? 'Reponer' : 'En stock' }}</span></td><td><button class="detail-button" type="button" (click)="openMovement(product)">Movimiento</button></td></tr>
+          <tr><td><strong>{{ product.name }}</strong></td><td class="numeric amount">{{ product.current_stock }}</td><td class="numeric">{{ product.min_stock }}</td><td><span class="stock-pill" [class.stock-low]="product.current_stock <= product.min_stock">{{ product.current_stock <= product.min_stock ? 'Reponer' : 'En stock' }}</span></td><td>
+            <button class="table-action-button table-action-edit" type="button" (click)="openMovement(product)" [attr.aria-label]="'Registrar movimiento de ' + product.name" data-tooltip="Registrar movimiento">
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14m-7-7h14"/><circle cx="12" cy="12" r="9"/></svg>
+            </button>
+          </td></tr>
         }
       </tbody></table></div>
       <app-table-pagination [totalItems]="products().length"

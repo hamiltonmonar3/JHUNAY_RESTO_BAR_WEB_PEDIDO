@@ -1,0 +1,38 @@
+.admin-page { display: grid; gap: 18px; }
+.admin-section { min-width: 0; border: 1px solid var(--line); background: var(--paper); }
+.admin-toolbar { display: flex; min-height: 52px; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+.admin-actions { display: flex; gap: 12px; }
+.danger-action { color: #e98f75; }
+.admin-backdrop { z-index: 10; }
+.reservation-modal { width: min(100%, 520px); padding: 22px; border: 1px solid var(--line); background: var(--paper); box-shadow: 0 18px 60px #0008; }
+.admin-form { display: grid; gap: 14px; }
+.admin-form label { display: grid; gap: 6px; color: var(--muted); font-size: 11px; font-weight: 600; }
+.admin-form input, .admin-form select, .admin-form textarea { width: 100%; min-width: 0; padding: 0 10px; border: 1px solid var(--control-border); border-radius: 3px; background: var(--control-bg); color: var(--control-text); font: inherit; font-size: 12px; }
+.admin-form input, .admin-form select { height: 38px; }
+.admin-form textarea { height: 38px; min-height: 38px; padding: 8px 10px; resize: vertical; }
+.deposit-note { margin-top: -10px; color: var(--muted); font-size: 11px; }
+.admin-form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.admin-form .modal-footer { justify-content: end; padding-top: 8px; }
+.reservation-delete-backdrop { position: fixed; z-index: 1510; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 20px; background: rgba(35, 30, 26, 0.58); backdrop-filter: blur(4px); animation: reservation-backdrop-in 140ms ease-out; }
+.reservation-delete-modal { box-sizing: border-box; width: min(100%, 440px); padding: 26px; border: 1px solid color-mix(in srgb, var(--line) 75%, #e6b58e); border-radius: 18px; background: var(--paper); color: var(--ink); box-shadow: 0 24px 70px rgba(34, 24, 17, 0.3); animation: reservation-modal-in 180ms ease-out; }
+.reservation-delete-modal h2 { margin: 0 0 8px; font-family: 'Manrope', sans-serif; font-size: 20px; }
+.reservation-delete-modal > p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.reservation-delete-icon { display: grid; width: 44px; height: 44px; margin-bottom: 16px; place-items: center; border: 1px solid color-mix(in srgb, var(--orange) 28%, var(--line)); border-radius: 50%; background: color-mix(in srgb, var(--orange) 10%, var(--paper)); color: var(--orange); font-family: 'Manrope', sans-serif; font-size: 23px; font-weight: 800; }
+.reservation-delete-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+.reservation-delete-actions button { min-height: 42px; padding: 0 16px; border-radius: 9px; font-size: 13px; font-weight: 700; }
+@keyframes reservation-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes reservation-modal-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+@media (max-width: 720px) {
+  .admin-page .table-scroll table { min-width: 900px; }
+}
+
+@media (max-width: 460px) {
+  .reservation-modal { width: 100%; padding: 18px; border-radius: 8px 8px 0 0; }
+  .admin-backdrop { align-items: end; padding: 0; }
+  .admin-form-grid { grid-template-columns: 1fr; }
+  .reservation-delete-backdrop { padding: 14px; }
+  .reservation-delete-modal { padding: 22px 18px; }
+  .reservation-delete-actions { flex-direction: column-reverse; }
+  .reservation-delete-actions button { width: 100%; }
+}

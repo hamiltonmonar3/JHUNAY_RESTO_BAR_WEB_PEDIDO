@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { adminGuard, adminOrAuditorGuard, nonAuditorGuard, staffGuard } from './core/auth/staff.guard';
+import { adminGuard, adminOrAuditorGuard, adminOrOperatorGuard, nonAuditorGuard, staffGuard } from './core/auth/staff.guard';
 
 export const routes: Routes = [
 	{ path: '', pathMatch: 'full', redirectTo: 'login' },
@@ -27,6 +27,11 @@ export const routes: Routes = [
 				path: 'ventas',
 				canActivate: [nonAuditorGuard],
 				loadComponent: () => import('./features/sales/sales.page').then((page) => page.SalesPage),
+			},
+			{
+				path: 'reservas',
+				canActivate: [adminOrOperatorGuard],
+				loadComponent: () => import('./features/reservations/reservations.page').then((page) => page.ReservationsPage),
 			},
 			{
 				path: 'productos',

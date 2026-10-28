@@ -1,0 +1,107 @@
+<section class="admin-page">
+  <header class="module-heading">
+    <div><h1>Reservas</h1><p>Organiza las reservas y registra los abonos recibidos.</p></div>
+    <div class="heading-actions">
+      <button class="quiet-button" type="button" (click)="loadReservations()" [disabled]="loading()" aria-label="Actualizar reservas" title="Actualizar reservas">↻</button>
+      <button class="primary-button" type="button" (click)="openForm()">+ Nueva reserva</button>
+    </div>
+  </header>
+
+  @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
+  <section class="admin-section" aria-label="Reservas registradas">
+    <div class="admin-toolbar"><span>{{ reservations().length }} reservas</span></div>
+    @if (loading()) { <div class="empty-state">Cargando reservas…</div> }
+    @else if (reservations().length === 0) { <div class="empty-state">Aún no hay reservas registradas.</div> }
+    @else {
+      <div class="table-scroll"><table>
+        <thead><tr><th>Cliente</th><th>Mesa</th><th>Fecha</th><th>Hora</th><th>Personas</th><th>Abono</th><th>Método</th><th>Contacto</th><th>Detalle</th><th class="actions-heading">Acciones</th></tr></thead>
+        <tbody>
+          @for (reservation of pagination.visible(reservations()); track reservation.id) {
+            <tr>
+              <td><strong>{{ reservation.customer_name }}</strong></td>
+              <td>{{ tableNumber(reservation.table_id) }}</td>
+              <td>{{ formatDate(reservation.reservation_date) }}</td>
+              <td>{{ formatTime(reservation.reservation_time) }}</td>
+              <td>{{ reservation.people_count }}</td>
+              <td>{{ formatDeposit(reservation.deposit) }}</td>
+              <td>{{ paymentMethodLabel(reservation.deposit_payment_method) }}</td>
+              <td>{{ reservation.phone || '—' }}</td>
+              <td>{{ reservation.notes || '—' }}</td>
+              <td class="admin-actions">
+                <button class="table-action-button table-action-edit" type="button" (click)="openForm(reservation)" aria-label="Editar reserva" data-tooltip="Editar reserva">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4M4 20l4.3-1L18.7 8.6a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z"/></svg>
+                </button>
+                <button class="table-action-button table-action-delete" type="button" (click)="deleteReservation(reservation)" aria-label="Eliminar reserva" data-tooltip="Eliminar reserva">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table></div>
+      <app-table-pagination [totalItems]="reservations().length"
+        [page]="pagination.currentPage(reservations().length)" [pageSize]="pagination.pageSize()"
+        (pageChange)="pagination.setPage($event, reservations().length)"
+        (pageSizeChange)="pagination.setPageSize($event)" />
+    }
+  </section>
+</section>
+
+@if (showForm()) {
+  <div class="modal-backdrop admin-backdrop" (click)="closeForm()">
+    <section class="admin-modal reservation-modal" role="dialog" aria-modal="true" aria-labelledby="reservation-form-title" (click)="$event.stopPropagation()">
+      <header class="modal-heading"><div><h2 id="reservation-form-title">{{ reservationId ? 'Editar reserva' : 'Nueva reserva' }}</h2></div><button class="quiet-button close-top" type="button" (click)="closeForm()" aria-label="Cerrar">×</button></header>
+      <form class="admin-form" (ngSubmit)="saveReservation()">
+        <label>Nombre del cliente<input name="customerName" required maxlength="150" autocomplete="name" [(ngModel)]="customerName" /></label>
+        <div class="admin-form-grid">
+          <label>Teléfono de contacto (opcional)<input name="phone" type="tel" maxlength="30" autocomplete="tel" [(ngModel)]="phone" /></label>
+          <label>Mesa<select name="tableId" required [(ngModel)]="tableId"><option [ngValue]="null" disabled>Seleccionar mesa</option>@for (table of availableTables(); track table.id) { <option [ngValue]="table.id">{{ table.table_number }}</option> }</select></label>
+        </div>
+        <div class="admin-form-grid">
+          <label>Día<input name="reservationDate" type="date" required [(ngModel)]="reservationDate" /></label>
+          <label>Hora<input name="reservationTime" type="time" required [(ngModel)]="reservationTime" /></label>
+        </div>
+        <div class="admin-form-grid">
+          <label>Número de personas<input name="peopleCount" type="number" min="1" step="1" required [(ngModel)]="peopleCount" /></label>
+          <label>Abono (opcional)<input name="deposit" type="number" min="0" step="0.01" placeholder="0.00" [disabled]="reservationId !== null" [(ngModel)]="deposit" /></label>
+        </div>
+        @if (deposit && deposit > 0) {
+          @if (reservationId === null) {
+            <label>Método del abono<select name="depositPaymentMethod" required [(ngModel)]="depositPaymentMethod">
+              <option [ngValue]="null" disabled>Seleccionar método</option>
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+            </select></label>
+            <small class="deposit-note">Se sumará a los ingresos adicionales de la caja abierta.</small>
+          } @else {
+            <label>Método del abono<input name="depositPaymentMethodDisplay" [value]="paymentMethodLabel(depositPaymentMethod)" disabled /></label>
+            <small class="deposit-note">El abono ya registrado no se puede modificar desde la edición.</small>
+          }
+        }
+        <label>Notas (opcional)<textarea name="notes" rows="1" maxlength="500" [(ngModel)]="notes"></textarea></label>
+        <footer class="modal-footer"><button class="secondary-button" type="button" (click)="closeForm()">Cancelar</button><button class="primary-button" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar reserva' }}</button></footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (reservationToDelete(); as reservation) {
+  <div class="reservation-delete-backdrop" (click)="cancelDeleteReservation()">
+    <section class="reservation-delete-modal" role="alertdialog" aria-modal="true"
+      aria-labelledby="reservation-delete-title" aria-describedby="reservation-delete-description"
+      (click)="$event.stopPropagation()">
+      <span class="reservation-delete-icon" aria-hidden="true">!</span>
+      <h2 id="reservation-delete-title">Eliminar reserva</h2>
+      <p id="reservation-delete-description">
+        ¿Seguro que quieres eliminar la reserva de {{ reservation.customer_name }}? Esta acción no se puede deshacer.
+      </p>
+      @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
+      <div class="reservation-delete-actions">
+        <button class="secondary-button" type="button" (click)="cancelDeleteReservation()" [disabled]="deleting()">Cancelar</button>
+        <button class="primary-button" type="button" (click)="confirmDeleteReservation()" [disabled]="deleting()">
+          {{ deleting() ? 'Eliminando…' : 'Sí, eliminar' }}
+        </button>
+      </div>
+    </section>
+  </div>
+}

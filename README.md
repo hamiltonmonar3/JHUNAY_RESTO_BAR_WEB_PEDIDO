@@ -42,11 +42,13 @@ Los roles `admin` y `caja`/`cajero` pueden consultar todos los pedidos; `mesero`
 
 - `/login`: acceso independiente con usuario y PIN.
 - `/pedidos`: carrito, selección de mesa y estados de cocina.
-- `/ventas`: consulta y cobro de pedidos servidos; se puede pagar toda la cuenta o repartir productos/cantidades por persona, combinando efectivo, tarjeta y transferencia. Los cobros divididos se reflejan por método en el informe y en el cierre de caja.
+- `/ventas`: consulta y cobro de pedidos servidos; se puede pagar toda la cuenta o repartir productos/cantidades por persona, combinando efectivo, tarjeta y transferencia. El tab Ingresos adicionales permite registrar, editar y eliminar ingresos manuales en efectivo o transferencia, consultar el desglose por fecha, método y origen, y ver el número de movimientos en la pestaña.
+- `/reservas`: registra y administra reservas con cliente, mesa, fecha, hora, número de personas y abono opcional en efectivo o transferencia. Los abonos se contabilizan como ingresos adicionales de la caja abierta; está disponible para Administrador y Operador.
 - `/productos`: CRUD de productos, categorías y promociones, solo para `admin`. Las promociones se guardan como referencia y no se aplican a pedidos ni ventas.
 - `/mesas`: CRUD de mesas y capacidades, solo para `admin`.
 - `/inventario`: stock y registro auditable de entradas, salidas y ajustes; el historial no se elimina.
 - `/personal`: perfiles y roles; los empleados se desactivan para conservar sus pedidos históricos.
+- `/personas`: saldos por cobrar y por pagar, con cobros y pagos registrados como ingresos adicionales o egresos del día, según el método de pago y con caja abierta.
 
 Las rutas administrativas están protegidas por un guard de rol y por políticas RLS. Cambiar existencias desde Menú no está permitido; usa los movimientos de Inventario.
 

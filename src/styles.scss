@@ -374,6 +374,66 @@ td { height: 48px; padding: 6px 13px; border-top: 1px solid #302720; color: #d5c
 .order-id-link:hover { color: #ffd0aa; text-decoration: underline; }
 .detail-button { padding: 4px 0; border: 0; background: transparent; color: #ffad74; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .detail-button:hover { color: #ffd0aa; text-decoration: underline; }
+.table-action-button { position: relative; display: inline-grid; width: 30px; height: 30px; flex: 0 0 30px; place-items: center; padding: 0; border: 1px solid color-mix(in srgb, currentColor 28%, var(--line)); border-radius: 8px; background: color-mix(in srgb, currentColor 10%, var(--paper)); color: var(--action-color, var(--orange)); cursor: pointer; transition: background 140ms ease, border-color 140ms ease, transform 140ms ease; }
+.table-action-button:hover:not(:disabled) { transform: translateY(-1px); border-color: color-mix(in srgb, currentColor 55%, var(--line)); background: color-mix(in srgb, currentColor 18%, var(--paper)); }
+.table-action-button:focus-visible { outline: 2px solid color-mix(in srgb, currentColor 55%, transparent); outline-offset: 2px; }
+.table-action-button:disabled { cursor: not-allowed; opacity: .5; }
+.table-action-button svg { width: 16px; height: 16px; stroke: currentColor; }
+.actions-heading,
+.pending-actions-heading { text-align: center; }
+:root .workspace .table-scroll table th.actions-heading { text-align: center; }
+.admin-actions { align-items: center; justify-content: center; }
+.pending-actions-cell { text-align: center; }
+.pending-actions-cell .pending-order-actions { justify-content: center; }
+.table-action-edit { --action-color: #3b9dd8; }
+.table-action-delete { --action-color: #e05b68; }
+.table-action-collect { --action-color: #31a66b; }
+.table-action-pay { --action-color: #e5942f; }
+.table-action-view { --action-color: #8873d6; }
+.table-action-activate { --action-color: #31a66b; }
+.table-action-deactivate { --action-color: #e5942f; }
+.table-action-button[data-tooltip]::after { position: absolute; z-index: 20; right: 50%; bottom: calc(100% + 7px); width: max-content; max-width: 180px; padding: 5px 8px; transform: translateX(50%) translateY(3px); border-radius: 5px; background: #211a16; color: #fffaf5; content: attr(data-tooltip); font-size: 10px; font-weight: 600; line-height: 1.2; opacity: 0; pointer-events: none; transition: opacity 120ms ease, transform 120ms ease; }
+.table-action-button[data-tooltip]:hover::after, .table-action-button[data-tooltip]:focus-visible::after { transform: translateX(50%) translateY(0); opacity: 1; }
+.sales-page .pending-orders-scroll { overflow-x: hidden; }
+.sales-page .sales-section .pending-orders-table { width: 100%; min-width: 0; table-layout: fixed; }
+.sales-page .pending-orders-table .pending-order-heading { width: 31%; }
+.sales-page .pending-orders-table .pending-location-heading { width: 17%; }
+.sales-page .pending-orders-table .pending-time-heading { width: 16%; }
+.sales-page .pending-orders-table .pending-total-heading { width: 12%; }
+.sales-page .pending-orders-table .pending-actions-heading { width: 24%; }
+.sales-page .pending-orders-table th,
+.sales-page .pending-orders-table td { padding-inline: 10px; font-size: 11px; }
+.sales-page .pending-orders-table th { height: 36px; }
+.sales-page .pending-orders-table td { height: 48px; }
+.sales-page .pending-orders-table .pending-order-number { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.sales-page .pending-order-number span { color: var(--muted); font-weight: 500; }
+.sales-page .pending-location { display: inline-block; max-width: 100%; overflow: hidden; padding: 4px 8px; border-radius: 999px; background: color-mix(in srgb, #4a9ac4 18%, var(--paper)); color: color-mix(in srgb, #4a9ac4 82%, var(--ink)); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.sales-page .pending-location--takeout { background: color-mix(in srgb, #e49439 20%, var(--paper)); color: color-mix(in srgb, #d77a16 82%, var(--ink)); }
+.sales-page .pending-orders-table .pending-order-time { color: var(--ink); font-size: 10px; white-space: normal; }
+.sales-page .pending-order-time strong,
+.sales-page .pending-order-time small { display: block; }
+.sales-page .pending-order-time small { margin-top: 2px; color: var(--muted); font-size: 9px; }
+.sales-page .pending-orders-table .pending-order-total { font-size: 12px; }
+.sales-page .pending-order-actions { display: flex; align-items: center; gap: 5px; white-space: normal; }
+.sales-page .pending-view-button,
+.sales-page .pending-collect-button { display: inline-flex; min-height: 28px; align-items: center; justify-content: center; gap: 4px; padding: 0 7px; border: 1px solid transparent; border-radius: 7px; font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.sales-page .pending-view-button { border-color: color-mix(in srgb, #8873d6 25%, var(--line)); background: color-mix(in srgb, #8873d6 11%, var(--paper)); color: #8873d6; }
+.sales-page .pending-collect-button { background: var(--orange); color: #fff; }
+.sales-page .pending-collect-button:disabled { cursor: wait; opacity: .6; }
+.sales-page .pending-view-button svg,
+.sales-page .pending-collect-button svg { width: 13px; height: 13px; flex: 0 0 13px; }
+.sales-page .additional-income-summary { gap: 10px; padding: 14px 16px; }
+.sales-page .additional-income-summary .income-summary-card { position: relative; grid-template-columns: minmax(0, 1fr) 38px; grid-template-rows: auto auto; align-items: center; gap: 5px 8px; min-height: 82px; overflow: hidden; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: linear-gradient(120deg, color-mix(in srgb, var(--summary-color) 8%, var(--paper)), var(--paper) 85%); box-shadow: 0 4px 12px #0000000c; }
+.sales-page .income-summary-card--cash { --summary-color: #31a66b; }
+.sales-page .income-summary-card--transfer { --summary-color: #438fd0; }
+.sales-page .income-summary-card--total { --summary-color: #ed8b2f; }
+.sales-page .income-summary-card--count { --summary-color: #8873d6; }
+.sales-page .additional-income-summary .income-summary-card { border-inline-start: 3px solid var(--summary-color); }
+.sales-page .additional-income-summary .income-summary-label { grid-column: 1; grid-row: 1; color: var(--muted); font-size: 10px; font-weight: 700; }
+.sales-page .additional-income-summary .income-summary-card strong { grid-column: 1; grid-row: 2; color: var(--ink); font-family: 'Manrope', sans-serif; font-size: 20px; font-weight: 800; line-height: 1.15; }
+.sales-page .additional-income-summary .income-summary-icon { display: grid; width: 36px; height: 36px; grid-column: 2; grid-row: 1 / span 2; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--summary-color) 15%, var(--paper)); color: var(--summary-color); }
+.sales-page .additional-income-summary .income-summary-icon svg { width: 19px; height: 19px; }
+.sales-page .additional-income-summary .income-summary-card--total strong { color: var(--summary-color); }
 .detail-backdrop { z-index: 12; }
 .order-detail-modal { width: min(100%, 660px); max-height: min(90dvh, 760px); overflow-y: auto; padding: 22px; border: 1px solid var(--line); background: var(--paper); box-shadow: 0 18px 60px #0008; }
 .detail-heading { margin-bottom: 12px; }
@@ -1177,6 +1237,14 @@ td { height: 48px; padding: 6px 13px; border-top: 1px solid #302720; color: #d5c
 	gap: 8px;
 }
 
+:root .workspace .staff-page .admin-section th {
+	font-size: 12px;
+}
+
+:root .workspace .staff-page .admin-section td {
+	font-size: 13px;
+}
+
 :root .workspace :is(.admin-page, .inventory-page) .detail-button {
 	border-radius: 8px;
 }
@@ -1353,4 +1421,38 @@ td { height: 48px; padding: 6px 13px; border-top: 1px solid #302720; color: #d5c
 	:is(.admin-page, .inventory-page) .admin-actions {
 		gap: 9px;
 	}
+}
+
+@media (max-width: 760px) {
+	.sales-page .pending-orders-table th,
+	.sales-page .pending-orders-table td { padding-inline: 7px; }
+	.sales-page .pending-orders-table .pending-order-heading { width: 30%; }
+	.sales-page .pending-orders-table .pending-location-heading { width: 17%; }
+	.sales-page .pending-orders-table .pending-time-heading { width: 17%; }
+	.sales-page .pending-orders-table .pending-total-heading { width: 13%; }
+	.sales-page .pending-orders-table .pending-actions-heading { width: 23%; }
+	.sales-page .pending-view-button span { display: none; }
+	.sales-page .pending-view-button { width: 28px; padding: 0; }
+}
+
+@media (max-width: 520px) {
+	.sales-page .section-title { min-height: 56px; padding: 10px 12px; }
+	.sales-page .section-title h2 { font-size: 14px; }
+	.sales-page .pending-orders-table th,
+	.sales-page .pending-orders-table td { padding-inline: 5px; font-size: 9px; }
+	.sales-page .pending-orders-table .pending-order-heading { width: 29%; }
+	.sales-page .pending-orders-table .pending-location-heading { width: 18%; }
+	.sales-page .pending-orders-table .pending-time-heading { width: 17%; }
+	.sales-page .pending-orders-table .pending-total-heading { width: 13%; }
+	.sales-page .pending-orders-table .pending-actions-heading { width: 23%; }
+	.sales-page .pending-orders-table .pending-order-number,
+	.sales-page .pending-orders-table .pending-order-total { font-size: 10px; }
+	.sales-page .pending-location { padding: 3px 5px; font-size: 8px; }
+	.sales-page .pending-order-actions { gap: 3px; }
+	.sales-page .pending-view-button,
+	.sales-page .pending-collect-button { min-height: 26px; padding-inline: 5px; }
+	.sales-page .pending-view-button { width: 26px; }
+	.sales-page .pending-view-button span,
+	.sales-page .pending-collect-button span { display: none; }
+	.sales-page .pending-collect-button { width: 26px; padding: 0; }
 }
