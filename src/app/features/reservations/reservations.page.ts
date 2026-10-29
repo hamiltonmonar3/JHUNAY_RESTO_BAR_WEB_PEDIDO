@@ -1,7 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TablePaginationComponent, TablePaginationState } from '../../shared/table-pagination';
-import { ReservationInput, ReservationsService, RestaurantReservation } from './reservations.service';
+import { ReservationInput, ReservationsService, ReservationStatus, RestaurantReservation } from './reservations.service';
 import { RestaurantTable } from '../tables/tables.service';
 
 @Component({
@@ -26,6 +26,7 @@ export class ReservationsPage implements OnInit {
   protected readonly errorMessage = signal('');
   protected readonly reservationToDelete = signal<RestaurantReservation | null>(null);
   protected readonly deleting = signal(false);
+  protected readonly changingStatusId = signal<number | null>(null);
 
   protected reservationId: number | null = null;
   protected tableId: number | null = null;
@@ -112,6 +113,21 @@ export class ReservationsPage implements OnInit {
     }
   }
 
+  protected async changeStatus(reservation: RestaurantReservation, status: ReservationStatus): Promise<void> {
+    if (reservation.status === status || this.changingStatusId() !== null) return;
+
+    this.changingStatusId.set(reservation.id);
+    this.errorMessage.set('');
+    try {
+      await this.reservationsService.updateStatus(reservation.id, status);
+      await this.loadReservations();
+    } catch (error) {
+      this.errorMessage.set(this.readableError(error, 'No se pudo actualizar el estado de la reserva.'));
+    } finally {
+      this.changingStatusId.set(null);
+    }
+  }
+
   protected deleteReservation(reservation: RestaurantReservation): void {
     this.errorMessage.set('');
     this.reservationToDelete.set(reservation);
@@ -174,7 +190,7 @@ export class ReservationsPage implements OnInit {
     return localDate.toISOString().slice(0, 10);
   }
 
-  private readableError(error: unknown): string {
+  private readableError(error: unknown, fallback = 'No se pudo guardar la reserva.'): string {
     const message = error instanceof Error
       ? error.message
       : typeof error === 'object' && error !== null && 'message' in error
@@ -191,6 +207,6 @@ export class ReservationsPage implements OnInit {
       || message.includes('The selected table already has a reservation')) {
       return 'La mesa seleccionada ya no está disponible. Actualiza la lista y elige otra mesa.';
     }
-    return message || 'No se pudo guardar la reserva.';
+    return message || fallback;
   }
 }

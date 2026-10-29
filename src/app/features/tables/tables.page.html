@@ -1,7 +1,7 @@
 <section class="admin-page">
   <header class="module-heading">
     <div><h1>Mesas</h1><p>Organiza la capacidad y disponibilidad del salón.</p></div>
-    <div class="heading-actions"><button class="quiet-button" type="button" (click)="loadTables()" [disabled]="loading()" aria-label="Actualizar mesas" title="Actualizar mesas">↻</button><button class="primary-button" type="button" (click)="openForm()">+ Agregar mesa</button></div>
+    <div class="heading-actions tables-heading-actions"><button class="quiet-button" type="button" (click)="loadTables()" [disabled]="loading()" aria-label="Actualizar mesas" title="Actualizar mesas">↻</button><button class="primary-button" type="button" (click)="openForm()">+ Agregar mesa</button></div>
   </header>
 
   @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }

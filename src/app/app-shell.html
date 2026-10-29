@@ -62,10 +62,16 @@
           <a class="sales-nav-link" routerLink="/ventas" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
             <span class="nav-icon" aria-hidden="true">💳</span>
             <span class="nav-text">Ventas</span>
+            @if (todaySalesCount() !== null) {
+              <span class="nav-badge accent">{{ todaySalesCount() }}</span>
+            }
           </a>
           <a routerLink="/reservas" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
             <span class="nav-icon" aria-hidden="true">📅</span>
             <span class="nav-text">Reservas</span>
+            @if (todayReservationCount() !== null) {
+              <span class="nav-badge accent">{{ todayReservationCount() }}</span>
+            }
           </a>
         }
       </nav>

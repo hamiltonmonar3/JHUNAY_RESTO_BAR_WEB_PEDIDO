@@ -109,6 +109,25 @@ export class SalesService {
   private readonly supabase = inject(SupabaseService);
   private readonly pageSize = 1000;
 
+  async countPaidToday(): Promise<number> {
+    const client = this.supabase.client;
+    if (!client) throw new Error('Configura Supabase antes de consultar ventas.');
+
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    const { count, error } = await client
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pagado')
+      .gte('paid_at', start.toISOString())
+      .lt('paid_at', end.toISOString());
+
+    if (error) throw error;
+    return count ?? 0;
+  }
+
   async listPaidOrders(startIso: string, endIso: string): Promise<SaleRecord[]> {
     const client = this.supabase.client;
     if (!client) throw new Error('Configura Supabase antes de consultar ventas.');

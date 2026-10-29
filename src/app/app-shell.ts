@@ -4,6 +4,8 @@ import { environment } from '../environments/environment';
 import { AuthService, StaffProfile } from './core/auth/auth.service';
 import { ThemeService } from './core/theme/theme.service';
 import { OrdersService } from './features/orders/orders.service';
+import { ReservationsService } from './features/reservations/reservations.service';
+import { SalesService } from './features/sales/sales.service';
 import { TablesService } from './features/tables/tables.service';
 
 @Component({
@@ -16,11 +18,15 @@ export class AppShell implements OnDestroy, OnInit {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly ordersService = inject(OrdersService);
+  private readonly reservationsService = inject(ReservationsService);
+  private readonly salesService = inject(SalesService);
   private readonly tablesService = inject(TablesService);
   protected readonly theme = inject(ThemeService);
   protected readonly supabaseConfigured = Boolean(environment.supabaseAnonKey);
   protected readonly profile = signal<StaffProfile | null>(null);
   protected readonly todayOrderCount = signal<number | null>(null);
+  protected readonly todaySalesCount = signal<number | null>(null);
+  protected readonly todayReservationCount = signal<number | null>(null);
   protected readonly freeTableCount = signal<number | null>(null);
   protected readonly navigationCountError = signal(false);
   protected readonly logoutError = signal('');
@@ -88,19 +94,27 @@ export class AppShell implements OnDestroy, OnInit {
   private async refreshNavigationCounts(): Promise<void> {
     if (this.profile()?.role === 'Auditor') {
       this.todayOrderCount.set(null);
+      this.todaySalesCount.set(null);
+      this.todayReservationCount.set(null);
       this.freeTableCount.set(null);
       return;
     }
     try {
-      const [todayOrders, freeTables] = await Promise.all([
+      const [todayOrders, todaySales, todayReservations, freeTables] = await Promise.all([
         this.ordersService.countToday(),
+        this.salesService.countPaidToday(),
+        this.reservationsService.countToday(),
         this.tablesService.countFree(),
       ]);
       this.todayOrderCount.set(todayOrders);
+      this.todaySalesCount.set(todaySales);
+      this.todayReservationCount.set(todayReservations);
       this.freeTableCount.set(freeTables);
       this.navigationCountError.set(false);
     } catch (error) {
       this.todayOrderCount.set(null);
+      this.todaySalesCount.set(null);
+      this.todayReservationCount.set(null);
       this.freeTableCount.set(null);
       this.navigationCountError.set(true);
       console.error('No se pudieron actualizar los contadores de navegación desde Supabase.', error);

@@ -23,7 +23,7 @@
 .person-search { display: flex; align-items: center; }
 .person-search input { width: min(260px, 30vw); min-width: 190px; height: 38px; padding: 8px 11px; border: 1px solid var(--control-border); border-radius: 3px; background: var(--control-bg); color: var(--control-text); font: inherit; font-size: 12px; }
 .person-search input:focus { outline: 2px solid color-mix(in srgb, var(--orange) 35%, transparent); outline-offset: 1px; }
-.personas-page .admin-actions { display: flex; gap: 10px; }
+.personas-page table td.admin-actions { display: flex; justify-content: flex-start !important; gap: 10px; text-align: left !important; }
 .personas-page .danger-action { color: #e98f75; }
 .personas-page .empty-cell { height: 70px; color: var(--muted); text-align: center; }
 .summary-toolbar { flex-wrap: wrap; }
@@ -71,32 +71,32 @@
 .people-filters button.active { background: color-mix(in srgb, var(--orange) 14%, var(--paper)); color: var(--ink); }
 .personas-page .table-scroll table { min-width: 780px; }
 .personas-page thead { background: color-mix(in srgb, var(--paper) 88%, var(--orange)); }
-.personas-page th { height: 34px; font-size: 10px; }
-.personas-page td { height: 42px; border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, transparent); font-size: 10px; }
+.personas-page th { height: 38px; font-size: 14px; }
+.personas-page td { height: 46px; border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, transparent); font-size: 14px; }
 .personas-page tbody tr:last-child td { border-bottom: 0; }
 .personas-page tbody tr:hover { background: color-mix(in srgb, var(--orange) 5%, var(--paper)); }
 .personas-page .movement-history-table { min-width: 820px; }
 .movement-history-table td { vertical-align: middle; }
-.movement-type-badge { display: inline-block; padding: 3px 7px; border-radius: 999px; font-size: 9px; font-weight: 700; white-space: nowrap; }
+.movement-type-badge { display: inline-block; padding: 3px 7px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .movement-type-badge--collection { background: #45a66b; color: #fff; }
 .movement-type-badge--payment { background: #e48b22; color: #fff; }
 .movement-type-badge--historical { background: color-mix(in srgb, var(--muted) 24%, var(--paper)); color: var(--ink); }
-.movement-status { display: inline-flex; align-items: center; gap: 5px; color: var(--ink); font-size: 9px; white-space: nowrap; }
+.movement-status { display: inline-flex; align-items: center; gap: 5px; color: var(--ink); font-size: 13px; white-space: nowrap; }
 .movement-status > span { color: #45a66b; font-size: 11px; }
 .movement-description { display: block; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.movement-payment-method { display: block; margin-top: 2px; color: var(--muted); font-size: 9px; }
+.movement-payment-method { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; }
 .movement-edit-button { display: grid; width: 26px; height: 26px; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 5px; background: var(--paper); color: var(--muted); cursor: pointer; }
 .movement-edit-button:hover { border-color: var(--orange); color: var(--orange); }
 .movement-edit-button svg { width: 14px; height: 14px; }
 .personas-page .admin-actions { gap: 5px; }
-.personas-page .admin-actions .detail-button { min-height: 27px; padding: 0 7px; font-size: 10px; white-space: nowrap; }
+.personas-page .admin-actions .detail-button { min-height: 27px; padding: 0 7px; font-size: 14px; white-space: nowrap; }
 .personas-page .settlement-action { border-color: color-mix(in srgb, var(--orange) 40%, var(--line)); background: color-mix(in srgb, var(--orange) 10%, var(--paper)); color: var(--orange); font-weight: 700; }
 .net-balance { display: inline-flex; align-items: center; gap: 5px; padding: 4px 6px; border-radius: 4px; font-weight: 700; white-space: nowrap; }
-.net-balance small { font-size: 9px; font-weight: 600; }
+.net-balance small { font-size: 12px; font-weight: 600; }
 .net-balance--credit { background: color-mix(in srgb, #4da66a 20%, var(--paper)); color: color-mix(in srgb, #4da66a 80%, var(--ink)); }
 .net-balance--debt { background: color-mix(in srgb, #aaa 25%, var(--paper)); color: var(--ink); }
 .net-balance--zero { color: var(--muted); }
-.person-status { display: inline-block; padding: 3px 6px; border-radius: 4px; background: color-mix(in srgb, #4da66a 18%, var(--paper)); color: color-mix(in srgb, #4da66a 80%, var(--ink)); font-size: 9px; font-weight: 700; }
+.person-status { display: inline-block; padding: 3px 6px; border-radius: 4px; background: color-mix(in srgb, #4da66a 18%, var(--paper)); color: color-mix(in srgb, #4da66a 80%, var(--ink)); font-size: 12px; font-weight: 700; }
 .person-status--inactive { background: color-mix(in srgb, var(--muted) 17%, var(--paper)); color: var(--muted); }
 .settlement-balance { margin: 0; color: var(--muted); font-size: 12px; }
 .settlement-balance strong { color: var(--ink); }

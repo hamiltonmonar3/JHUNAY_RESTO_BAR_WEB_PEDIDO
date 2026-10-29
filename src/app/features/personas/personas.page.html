@@ -236,7 +236,18 @@
       </header>
       <form class="admin-form" (ngSubmit)="saveMovement()">
         <label>Persona
-          <input [value]="selectedPersonName()" readonly />
+          @if (movementId) {
+            <input [value]="selectedPersonName()" readonly />
+          } @else {
+            <select name="personId" required [ngModel]="selectedPersonId" (ngModelChange)="onMovementPersonChange($event)" [disabled]="saving()">
+              <option value="" disabled>Seleccionar persona</option>
+              @for (person of people(); track person.id) {
+                @if (person.is_active) {
+                  <option [value]="person.id">{{ person.full_name }}</option>
+                }
+              }
+            </select>
+          }
         </label>
         <label>Monto<input name="amount" type="number" min="0.01" step="0.01" required [(ngModel)]="movementAmount" /></label>
         @if (movementType === 'cobrado' || movementType === 'pagado') {

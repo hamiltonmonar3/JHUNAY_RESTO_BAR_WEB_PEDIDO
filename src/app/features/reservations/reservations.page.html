@@ -1,7 +1,7 @@
 <section class="admin-page">
   <header class="module-heading">
     <div><h1>Reservas</h1><p>Organiza las reservas y registra los abonos recibidos.</p></div>
-    <div class="heading-actions">
+    <div class="heading-actions reservations-heading-actions">
       <button class="quiet-button" type="button" (click)="loadReservations()" [disabled]="loading()" aria-label="Actualizar reservas" title="Actualizar reservas">↻</button>
       <button class="primary-button" type="button" (click)="openForm()">+ Nueva reserva</button>
     </div>
@@ -14,7 +14,7 @@
     @else if (reservations().length === 0) { <div class="empty-state">Aún no hay reservas registradas.</div> }
     @else {
       <div class="table-scroll"><table>
-        <thead><tr><th>Cliente</th><th>Mesa</th><th>Fecha</th><th>Hora</th><th>Personas</th><th>Abono</th><th>Método</th><th>Contacto</th><th>Detalle</th><th class="actions-heading">Acciones</th></tr></thead>
+        <thead><tr><th>Cliente</th><th>Mesa</th><th>Fecha</th><th>Hora</th><th>Personas</th><th>Abono</th><th>Método</th><th>Contacto</th><th>Detalle</th><th>Estado</th><th class="actions-heading">Acciones</th></tr></thead>
         <tbody>
           @for (reservation of pagination.visible(reservations()); track reservation.id) {
             <tr>
@@ -27,6 +27,21 @@
               <td>{{ paymentMethodLabel(reservation.deposit_payment_method) }}</td>
               <td>{{ reservation.phone || '—' }}</td>
               <td>{{ reservation.notes || '—' }}</td>
+              <td>
+                <select
+                  class="reservation-status-select"
+                  [class.status-pending]="reservation.status === 'pendiente'"
+                  [class.status-completed]="reservation.status === 'realizada'"
+                  [class.status-cancelled]="reservation.status === 'cancelada'"
+                  [ngModel]="reservation.status"
+                  (ngModelChange)="changeStatus(reservation, $event)"
+                  [disabled]="changingStatusId() !== null"
+                  [attr.aria-label]="'Estado de la reserva de ' + reservation.customer_name">
+                  <option value="pendiente">Pendiente</option>
+                  <option value="realizada">Realizada</option>
+                  <option value="cancelada">Cancelada</option>
+                </select>
+              </td>
               <td class="admin-actions">
                 <button class="table-action-button table-action-edit" type="button" (click)="openForm(reservation)" aria-label="Editar reserva" data-tooltip="Editar reserva">
                   <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4M4 20l4.3-1L18.7 8.6a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z"/></svg>

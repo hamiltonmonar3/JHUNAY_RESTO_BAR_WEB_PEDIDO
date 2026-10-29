@@ -4,6 +4,7 @@ import { RestaurantTable } from '../tables/tables.service';
 
 export interface RestaurantReservation {
   id: number;
+  status: ReservationStatus;
   table_id: number | null;
   customer_name: string;
   phone: string | null;
@@ -14,6 +15,8 @@ export interface RestaurantReservation {
   deposit_payment_method: 'efectivo' | 'transferencia' | null;
   notes: string | null;
 }
+
+export type ReservationStatus = 'pendiente' | 'realizada' | 'cancelada';
 
 export interface ReservationInput {
   id: number | null;
@@ -32,14 +35,39 @@ export interface ReservationInput {
 export class ReservationsService {
   private readonly supabase = inject(SupabaseService);
 
+  async countToday(): Promise<number> {
+    const today = new Date();
+    const reservationDate = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, '0'),
+      String(today.getDate()).padStart(2, '0'),
+    ].join('-');
+    const { count, error } = await this.requireClient()
+      .from('reservations')
+      .select('id', { count: 'exact', head: true })
+      .eq('reservation_date', reservationDate)
+      .neq('status', 'cancelada');
+
+    if (error) throw error;
+    return count ?? 0;
+  }
+
   async listAll(): Promise<RestaurantReservation[]> {
     const { data, error } = await this.requireClient()
       .from('reservations')
-      .select('id, table_id, customer_name, phone, reservation_date, reservation_time, people_count, deposit, deposit_payment_method, notes')
+      .select('id, status, table_id, customer_name, phone, reservation_date, reservation_time, people_count, deposit, deposit_payment_method, notes')
       .order('reservation_date')
       .order('reservation_time');
     if (error) throw error;
     return (data ?? []) as unknown as RestaurantReservation[];
+  }
+
+  async updateStatus(id: number, status: ReservationStatus): Promise<void> {
+    const { error } = await this.requireClient().rpc('set_reservation_status', {
+      p_reservation_id: id,
+      p_status: status,
+    });
+    if (error) throw error;
   }
 
   async listTables(): Promise<RestaurantTable[]> {

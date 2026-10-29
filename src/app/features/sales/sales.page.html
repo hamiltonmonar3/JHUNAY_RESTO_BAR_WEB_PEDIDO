@@ -7,21 +7,29 @@
           <label for="sales-date">{{ activeTab() === 'ventas' ? 'Fecha de venta' : 'Fecha de ingresos' }}</label>
           <input id="sales-date" name="salesDate" type="date" [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />
           <button class="primary-button" type="submit" [disabled]="activeTab() === 'ventas' ? loading() : additionalIncomeLoading()">Consultar</button>
+          <button class="quiet-button" type="button"
+            (click)="activeTab() === 'ingresos' ? loadAdditionalIncome() : loadSales()"
+            [disabled]="activeTab() === 'ingresos' ? additionalIncomeLoading() : loading() || refreshingServedOrders()"
+            [attr.aria-label]="activeTab() === 'ingresos' ? 'Actualizar ingresos adicionales' : 'Actualizar ventas'"
+            [title]="activeTab() === 'ingresos' ? 'Actualizar ingresos adicionales' : 'Actualizar ventas'">
+            {{ (activeTab() === 'ingresos' ? additionalIncomeLoading() : loading() || refreshingServedOrders()) ? '…' : '↻' }}
+          </button>
         </form>
+      } @else {
+        <button class="quiet-button" type="button"
+          (click)="loadSales()"
+          [disabled]="loading() || refreshingServedOrders()"
+          aria-label="Actualizar ventas"
+          title="Actualizar ventas">
+          {{ loading() || refreshingServedOrders() ? '…' : '↻' }}
+        </button>
       }
-      <button class="quiet-button" type="button"
-        (click)="activeTab() === 'ingresos' ? loadAdditionalIncome() : loadSales()"
-        [disabled]="activeTab() === 'ingresos' ? additionalIncomeLoading() : loading() || refreshingServedOrders()"
-        [attr.aria-label]="activeTab() === 'ingresos' ? 'Actualizar ingresos adicionales' : 'Actualizar ventas'"
-        [title]="activeTab() === 'ingresos' ? 'Actualizar ingresos adicionales' : 'Actualizar ventas'">
-        {{ (activeTab() === 'ingresos' ? additionalIncomeLoading() : loading() || refreshingServedOrders()) ? '…' : '↻' }}
-      </button>
     </div>
   </header>
 
   <div class="admin-tabs sales-tabs" role="tablist" aria-label="Secciones de caja">
     <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'ventas'" [class.active]="activeTab() === 'ventas'" (click)="activeTab.set('ventas')"><span class="tab-icon" aria-hidden="true">💳</span>Ventas</button>
-    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'ingresos'" [class.active]="activeTab() === 'ingresos'" (click)="openAdditionalIncomeTab()"><span class="tab-icon" aria-hidden="true">💰</span>Ingresos adicionales <span class="tab-count">{{ additionalIncomeLoading() ? '…' : additionalIncomeEntries().length }}</span></button>
+    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'ingresos'" [class.active]="activeTab() === 'ingresos'" (click)="openAdditionalIncomeTab()"><span class="tab-icon" aria-hidden="true">💰</span>Ingresos + <span class="tab-count">{{ additionalIncomeLoading() ? '…' : additionalIncomeEntries().length }}</span></button>
     <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'egresos'" [class.active]="activeTab() === 'egresos'" (click)="activeTab.set('egresos')"><span class="tab-icon" aria-hidden="true">🧾</span>Egresos <span class="tab-count">{{ expenses().length }}</span></button>
     <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'apertura'" [class.active]="activeTab() === 'apertura'" (click)="activeTab.set('apertura'); loadCashRegister()"><span class="tab-icon" aria-hidden="true">🔓</span>Apertura</button>
     <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'cierre'" [class.active]="activeTab() === 'cierre'" (click)="activeTab.set('cierre'); loadCashRegister()"><span class="tab-icon" aria-hidden="true">🧮</span>Cierre de caja @if (openClosure()) { <span class="open-dot" aria-hidden="true"></span> }</button>
@@ -68,13 +76,14 @@
         <div class="error-banner" role="alert">{{ cashRegisterRequiredMessage() }}</div>
       }
       <div class="table-scroll pending-orders-scroll"><table class="pending-orders-table">
-        <thead><tr><th class="pending-order-heading">Pedido</th><th class="pending-location-heading">Mesa</th><th class="pending-time-heading">Hora</th><th class="numeric pending-total-heading">Total</th><th class="pending-actions-heading actions-heading">Acciones</th></tr></thead>
+        <thead><tr><th class="pending-order-heading">Pedido</th><th class="pending-owner-heading">Atendido por</th><th class="pending-location-heading">Mesa</th><th class="pending-time-heading">Hora</th><th class="numeric pending-total-heading">Total</th><th class="pending-actions-heading actions-heading">Acciones</th></tr></thead>
         <tbody>
           @for (order of servedOrdersPagination.visible(servedOrders()); track order.id) {
             <tr>
               <td class="order-number pending-order-number">
-                Pedido {{ servedOrderNumber(order) }}<span> · {{ servedOrderOwnerName(order) }}</span>
+                Pedido {{ servedOrderNumber(order) }}
               </td>
+              <td class="pending-order-owner">{{ servedOrderOwnerName(order) }}</td>
               <td><span class="pending-location" [class.pending-location--takeout]="!order.table_id">{{ locationLabel(order) }}</span></td>
               <td class="pending-order-time"><strong>{{ servedOrderTime(order.created_at) }}</strong><small>{{ servedOrderDate(order.created_at) }}</small></td>
               <td class="numeric amount pending-order-total">{{ formatCurrency(order.total_amount) }}</td>

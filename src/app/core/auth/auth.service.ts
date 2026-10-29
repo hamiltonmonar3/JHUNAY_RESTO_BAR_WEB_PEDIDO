@@ -92,9 +92,13 @@ export class AuthService {
 
     const { data, error } = await client.functions.invoke('login-with-pin', {
       body: { username: username.trim(), pin },
+      timeout: 20_000,
     });
     if (error) {
-      const context = (error as Error & { context?: Response }).context;
+      const context = (error as Error & { context?: unknown }).context;
+      if (context instanceof Error && context.name === 'AbortError') {
+        throw new Error('El servicio de acceso tardó demasiado en responder. Revisa tu conexión e inténtalo de nuevo.');
+      }
       const responseBody = context instanceof Response
         ? await context.clone().json().catch(() => null) as { error?: string } | null
         : null;

@@ -310,6 +310,16 @@ export class PersonasPage implements OnInit {
     this.showMovementForm.set(true);
   }
 
+  protected onMovementPersonChange(personId: string): void {
+    this.selectedPersonId = personId;
+    if (this.movementType === 'cobrado' || this.movementType === 'pagado') {
+      this.movementAmount = this.settlementLimit();
+      this.movementDescription = this.movementType === 'cobrado'
+        ? 'Cobro de saldo pendiente'
+        : 'Pago de saldo pendiente';
+    }
+  }
+
   protected openEditMovement(movement: PersonMovement): void {
     if (movement.movement_type === 'cobrado' || movement.movement_type === 'pagado') return;
     this.movementId = movement.id;

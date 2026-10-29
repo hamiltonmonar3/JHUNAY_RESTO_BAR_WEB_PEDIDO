@@ -1,9 +1,15 @@
 .admin-page { display: grid; gap: 18px; }
+.reservations-heading-actions { display: grid; width: max-content; max-width: 100%; grid-template-columns: 42px max-content; align-items: center; justify-content: start; gap: 8px; }
 .admin-section { min-width: 0; border: 1px solid var(--line); background: var(--paper); }
 .admin-toolbar { display: flex; min-height: 52px; align-items: center; padding: 9px 14px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11px; }
 .admin-actions { display: flex; gap: 12px; }
+.reservation-status-select { min-height: 30px; padding: 0 25px 0 10px; border: 1px solid transparent; border-radius: 999px; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.reservation-status-select:disabled { cursor: wait; opacity: .65; }
+.reservation-status-select.status-pending { border-color: color-mix(in srgb, #d88942 35%, var(--line)); background: color-mix(in srgb, #e8a34f 15%, var(--paper)); color: #a55c18; }
+.reservation-status-select.status-completed { border-color: color-mix(in srgb, #45a66b 35%, var(--line)); background: color-mix(in srgb, #45a66b 14%, var(--paper)); color: #247742; }
+.reservation-status-select.status-cancelled { border-color: color-mix(in srgb, #d34b4b 35%, var(--line)); background: color-mix(in srgb, #d34b4b 12%, var(--paper)); color: #ad3030; }
 .danger-action { color: #e98f75; }
-.admin-backdrop { z-index: 10; }
+.admin-backdrop { z-index: 1100; }
 .reservation-modal { width: min(100%, 520px); padding: 22px; border: 1px solid var(--line); background: var(--paper); box-shadow: 0 18px 60px #0008; }
 .admin-form { display: grid; gap: 14px; }
 .admin-form label { display: grid; gap: 6px; color: var(--muted); font-size: 11px; font-weight: 600; }
@@ -24,7 +30,7 @@
 @keyframes reservation-modal-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 @media (max-width: 720px) {
-  .admin-page .table-scroll table { min-width: 900px; }
+  .admin-page .table-scroll table { min-width: 1050px; }
 }
 
 @media (max-width: 460px) {
