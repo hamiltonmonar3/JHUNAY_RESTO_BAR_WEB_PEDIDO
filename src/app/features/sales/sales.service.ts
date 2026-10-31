@@ -314,7 +314,7 @@ export class SalesService {
     description: string,
     category: string,
     expenseDate: string,
-    period: ExpenseRecord['expense_period'],
+    paymentMethod: 'efectivo' | 'transferencia',
   ): Promise<void> {
     const client = this.supabase.client;
     if (!client) throw new Error('Configura Supabase antes de registrar egresos.');
@@ -324,7 +324,7 @@ export class SalesService {
       p_description: description,
       p_category: category,
       p_expense_date: expenseDate,
-      p_expense_period: period,
+      p_payment_method: paymentMethod,
     });
     if (error) throw error;
   }
@@ -343,7 +343,7 @@ export class SalesService {
     description: string,
     category: string,
     expenseDate: string,
-    period: ExpenseRecord['expense_period'],
+    paymentMethod: 'efectivo' | 'transferencia',
   ): Promise<void> {
     const client = this.supabase.client;
     if (!client) throw new Error('Configura Supabase antes de actualizar egresos.');
@@ -354,7 +354,7 @@ export class SalesService {
       p_description: description,
       p_category: category,
       p_expense_date: expenseDate,
-      p_expense_period: period,
+      p_payment_method: paymentMethod,
     });
     if (error) throw error;
   }

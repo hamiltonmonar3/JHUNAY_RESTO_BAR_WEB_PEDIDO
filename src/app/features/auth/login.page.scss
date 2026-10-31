@@ -1,117 +1,643 @@
 .login-screen {
-  --primary: #ff5500; // Naranja más intenso
-  --primary-hover: #ff6622;
-  --bg-gradient: radial-gradient(circle at 50% 50%, #151210 0%, #000000 100%);
-  --card-bg: rgba(30, 26, 24, 0.85); // Un poco más sólida para contraste
-  --input-bg: rgba(255, 255, 255, 0.05);
-  --text-main: #ffffff;
-  --text-muted: #e2e2e2; // Texto muted más claro para que resalte
+  --accent: #ff7b32;
+  --accent-deep: #eb571d;
+  --background: #100d0b;
+  --surface: rgba(26, 22, 20, 0.88);
+  --surface-border: rgba(255, 255, 255, 0.12);
+  --input-background: rgba(255, 255, 255, 0.055);
+  --text-main: #fffaf5;
+  --text-muted: #b8aaa0;
+  --orb-one: rgba(226, 91, 28, 0.28);
+  --orb-two: rgba(250, 169, 73, 0.16);
+  --shadow-accent: rgba(255, 112, 42, 0.25);
 
-  
-  font-family: 'Manrope', sans-serif;
-  min-height: 100dvh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   position: relative;
-  overflow: hidden;
-  background: var(--bg-gradient);
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  padding: 16px;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(84, 48, 30, 0.34), transparent 50%),
+    linear-gradient(145deg, #17110e 0%, var(--background) 55%, #090807 100%);
   color: var(--text-main);
-  transition: all 0.5s ease;
+  font-family: 'Manrope', sans-serif;
+  transition:
+    background 400ms ease,
+    color 300ms ease;
 
   &.light-mode {
-    --bg-gradient: radial-gradient(circle at 100% 100%, #fff6f0 0%, #fde7dc 100%);
-    --card-bg: rgba(255, 255, 255, 0.8);
-    --input-bg: #ffffff;
-    --text-main: #1a120e;
-    --text-muted: #6b7280;
-    --primary: #e0430c;
+    --background: #f7eee7;
+    --surface: rgba(255, 252, 249, 0.91);
+    --surface-border: rgba(96, 59, 37, 0.13);
+    --input-background: rgba(108, 72, 49, 0.045);
+    --text-main: #291a12;
+    --text-muted: #76675d;
+    --orb-one: rgba(236, 111, 54, 0.18);
+    --orb-two: rgba(241, 175, 88, 0.22);
+    --shadow-accent: rgba(206, 82, 29, 0.2);
 
-    .login-card { border: 1px solid rgba(255, 255, 255, 0.4); }
-    .input-icon { color: var(--text-muted); }
-    input { color: #000; }
-    .form-group label { color: var(--text-main); }
+    background:
+      radial-gradient(ellipse at 50% 42%, rgba(255, 255, 255, 0.92), transparent 52%),
+      linear-gradient(145deg, #fff8f2 0%, var(--background) 62%, #f0dfd1 100%);
+
+    .login-card {
+      box-shadow:
+        0 30px 90px rgba(89, 49, 24, 0.16),
+        0 2px 12px rgba(89, 49, 24, 0.06);
+    }
+
+    .theme-toggle {
+      color: #58331f;
+    }
+  }
+
+  &[data-holiday='halloween'] {
+    --accent: #ff8a32;
+    --accent-deep: #d94d17;
+    --orb-one: rgba(122, 49, 204, 0.3);
+    --orb-two: rgba(255, 106, 34, 0.2);
+    --shadow-accent: rgba(255, 118, 45, 0.28);
+  }
+
+  &[data-holiday='christmas'] {
+    --accent: #d84a39;
+    --accent-deep: #a92c2d;
+    --orb-one: rgba(24, 132, 84, 0.29);
+    --orb-two: rgba(211, 59, 54, 0.18);
+    --shadow-accent: rgba(204, 65, 53, 0.25);
+  }
+
+  &[data-holiday='kings'] {
+    --accent: #d3a342;
+    --accent-deep: #a97725;
+    --orb-one: rgba(47, 76, 158, 0.3);
+    --orb-two: rgba(218, 164, 64, 0.2);
+    --shadow-accent: rgba(198, 145, 48, 0.26);
   }
 }
 
-.bg-blobs {
+.ambient-light {
   position: absolute;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  .blob {
-    position: absolute;
-    filter: blur(80px);
-    border-radius: 50%;
-    opacity: 0.4;
-    animation: move 20s infinite alternate;
-  }
-  .blob-1 { width: 400px; height: 400px; background: var(--primary); top: -100px; left: -100px; }
-  .blob-2 { width: 300px; height: 300px; background: #fbbf24; bottom: -50px; right: -50px; animation-delay: -5s; }
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ambient-orb {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  filter: blur(2px);
+  animation: drift 16s ease-in-out infinite alternate;
+}
+
+.ambient-orb-one {
+  top: -240px;
+  left: -180px;
+  width: min(60vw, 650px);
+  aspect-ratio: 1;
+  background: radial-gradient(circle, var(--orb-one), transparent 68%);
+}
+
+.ambient-orb-two {
+  right: -200px;
+  bottom: -290px;
+  width: min(65vw, 700px);
+  aspect-ratio: 1;
+  background: radial-gradient(circle, var(--orb-two), transparent 68%);
+  animation-delay: -5s;
+}
+
+.ambient-orb-three {
+  top: 20%;
+  right: 12%;
+  width: 7px;
+  height: 7px;
+  background: var(--accent);
+  box-shadow: 0 0 28px 8px var(--shadow-accent);
+  animation-duration: 8s;
 }
 
 .login-content {
-  width: min(92%, 440px);
   position: relative;
   z-index: 1;
-  animation: fadeInUp 0.8s ease-out;
+  width: min(100%, 440px);
+  animation: reveal 650ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
 }
 
 .login-card {
-  background: var(--card-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
-  padding: 0; // Eliminamos padding general para que el header sea full-width
-  overflow: hidden; // Para que el header respete el border-radius de la card
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  border: 1px solid var(--surface-border);
+  border-radius: 26px;
+  background: var(--surface);
+  box-shadow:
+    0 36px 100px rgba(0, 0, 0, 0.42),
+    inset 0 1px rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  transition:
+    border-color 300ms ease,
+    background 300ms ease,
+    box-shadow 300ms ease;
 
-  form, .alert, .login-footer {
-    padding-left: 40px;
-    padding-right: 40px;
+  form,
+  .alert,
+  .login-footer {
+    margin-right: 42px;
+    margin-left: 42px;
   }
-  
-  .login-footer { padding-bottom: 40px; }
+
+  form {
+    position: relative;
+    padding-top: 10px;
+  }
 }
 
 .login-header {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 0 2px;
   text-align: center;
-  margin-bottom: 32px;
-  width: 100%;
+}
 
-  .logo-container {
-    width: 100%; // Logo ocupa todo el ancho
-    height: 180px; // Altura fija para el banner del logo
-    margin: 0 0 20px 0;
-    border-radius: 0;
-    overflow: hidden;
-    border-bottom: 2px solid var(--primary);
-    
-    img { 
-      width: 100%; 
-      height: 100%; 
-      object-fit: cover; // Ajuste tipo banner
-    }
+.login-banner {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2.45;
+  overflow: hidden;
+  border-bottom: 2px solid var(--accent);
+  background: #17110e;
+
+  > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 48%;
+  }
+}
+
+.banner-holiday-scene {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.banner-halloween {
+  .banner-witch {
+    position: absolute;
+    top: 0;
+    left: -30%;
+    width: clamp(72px, 22%, 100px);
+    height: 54%;
+    overflow: visible;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.8));
+    animation: banner-witch-flight 12s linear -3s infinite;
   }
 
-  .brand-text {
-    padding: 0 40px;
-    .title { 
-      font-size: 28px; margin: 0; font-weight: 800; letter-spacing: -1px; 
-      color: var(--text-main); // Cambia automáticamente según el tema
-      
-      span { color: var(--primary); text-shadow: 0 0 20px rgba(255, 85, 0, 0.3); }
+  .banner-witch-cloak,
+  .banner-witch-hair,
+  .banner-witch-hat {
+    fill: #24152d;
+    stroke: #e5a060;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+  }
+
+  .banner-witch-face {
+    fill: #edbd91;
+    stroke: #573527;
+    stroke-width: 1.2;
+  }
+
+  .banner-witch-brim {
+    fill: none;
+    stroke: #f0ad5d;
+    stroke-linecap: round;
+    stroke-width: 3;
+  }
+
+  .banner-witch-leg {
+    fill: none;
+    stroke: #edbd91;
+    stroke-linecap: round;
+    stroke-width: 2.5;
+  }
+
+  .banner-broom {
+    fill: none;
+    stroke: #bb7843;
+    stroke-linecap: round;
+    stroke-width: 3;
+  }
+
+  .banner-pumpkin {
+    position: absolute;
+    bottom: 1%;
+    font-size: clamp(18px, 5vw, 26px);
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.85));
+    animation: banner-pumpkin-glow 2.4s ease-in-out infinite alternate;
+  }
+
+  .banner-pumpkin-left {
+    left: 2%;
+  }
+
+  .banner-pumpkin-right {
+    right: 2%;
+    animation-delay: -1.2s;
+  }
+
+  .banner-bat {
+    position: absolute;
+    top: 30%;
+    font-size: clamp(11px, 3vw, 17px);
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+    animation: banner-bat-flight 5s ease-in-out infinite alternate;
+  }
+
+  .banner-bat-one {
+    left: 34%;
+  }
+
+  .banner-bat-two {
+    top: 18%;
+    left: 72%;
+    animation-delay: -2s;
+  }
+}
+
+.banner-christmas {
+  .banner-snow {
+    position: absolute;
+    top: -15%;
+    color: #fff;
+    font-size: clamp(10px, 3vw, 17px);
+    text-shadow: 0 0 6px #bdeaff;
+    animation: banner-snowfall 5s linear infinite;
+  }
+
+  .banner-snow-one {
+    left: 18%;
+  }
+  .banner-snow-two {
+    left: 42%;
+    animation-delay: -1.5s;
+  }
+  .banner-snow-three {
+    left: 68%;
+    animation-delay: -3s;
+  }
+  .banner-snow-four {
+    left: 88%;
+    animation-delay: -2.2s;
+  }
+
+  .banner-tree {
+    position: absolute;
+    right: 2%;
+    bottom: 0;
+    font-size: clamp(20px, 6vw, 31px);
+    filter: drop-shadow(0 0 5px rgba(255, 227, 151, 0.85));
+    animation: banner-pumpkin-glow 2.5s ease-in-out infinite alternate;
+  }
+}
+
+.banner-kings {
+  .banner-kings-star {
+    position: absolute;
+    top: 8%;
+    right: 10%;
+    color: #ffe28c;
+    font-size: clamp(22px, 6vw, 34px);
+    text-shadow: 0 0 9px #ffd45b;
+    animation: banner-star-pulse 2s ease-in-out infinite alternate;
+  }
+
+  .banner-kings-star-two {
+    top: 35%;
+    right: 25%;
+    font-size: clamp(14px, 4vw, 22px);
+    animation-delay: -1s;
+  }
+
+  .banner-kings-crown {
+    position: absolute;
+    right: 2%;
+    bottom: 1%;
+    font-size: clamp(20px, 5vw, 28px);
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7));
+  }
+}
+
+.holiday-scene {
+  position: relative;
+  z-index: 1;
+  height: 48px;
+  margin: 0 0 7px;
+  overflow: hidden;
+  border-radius: 0 0 10px 10px;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(255, 119, 43, 0.13), transparent 60%),
+    linear-gradient(180deg, rgba(48, 30, 43, 0.025), rgba(39, 21, 17, 0.1));
+
+  &::after {
+    position: absolute;
+    inset: 0;
+    border-bottom: 1px solid rgba(255, 130, 56, 0.16);
+    content: '';
+  }
+}
+
+.halloween-scene {
+  .holiday-witch {
+    position: absolute;
+    top: -1px;
+    left: -30%;
+    width: clamp(78px, 23%, 104px);
+    height: 47px;
+    overflow: visible;
+    filter: drop-shadow(0 3px 4px rgba(13, 8, 22, 0.55));
+    animation: witch-flight 12s linear -5s infinite;
+  }
+
+  .witch-cloak {
+    fill: url(#witch-cloak);
+    stroke: #c78557;
+    stroke-width: 1.2;
+  }
+
+  .witch-limb {
+    fill: none;
+    stroke: #e6ad7c;
+    stroke-linecap: round;
+    stroke-width: 2.2;
+  }
+
+  .witch-hair,
+  .witch-hat {
+    fill: #211629;
+    stroke: #bd8054;
+    stroke-linejoin: round;
+    stroke-width: 1.4;
+  }
+
+  .witch-face {
+    fill: #e6af83;
+    stroke: #754d44;
+    stroke-width: 1;
+  }
+
+  .witch-hat-brim {
+    fill: none;
+    stroke: #e4a857;
+    stroke-linecap: round;
+    stroke-width: 3;
+  }
+
+  .witch-shimmer {
+    fill: #ffd58a;
+    stroke: none;
+    filter: drop-shadow(0 0 3px #fbbf67);
+  }
+
+  .witch-broom {
+    fill: none;
+    stroke: #a76b3d;
+    stroke-linecap: round;
+    stroke-width: 2.6;
+  }
+
+  .holiday-pumpkin {
+    position: absolute;
+    bottom: 1px;
+    width: clamp(34px, 10%, 43px);
+    height: 42px;
+    overflow: visible;
+    filter: drop-shadow(0 3px 4px rgba(74, 30, 11, 0.65));
+    animation: pumpkin-bob 3.2s ease-in-out infinite;
+  }
+
+  .pumpkin-body {
+    fill: url(#pumpkin-left);
+    stroke: #71341e;
+    stroke-width: 1.4;
+  }
+
+  .pumpkin-ridge {
+    fill: none;
+    stroke: rgba(113, 48, 23, 0.55);
+    stroke-linecap: round;
+    stroke-width: 1.4;
+  }
+
+  .pumpkin-stem {
+    fill: #536231;
+    stroke: #374323;
+    stroke-width: 1;
+  }
+
+  .pumpkin-face {
+    fill: #422013;
+    stroke: none;
+  }
+
+  .pumpkin-glow {
+    fill: #ffd36b;
+    stroke: none;
+    filter: drop-shadow(0 0 3px #ff9a2c);
+  }
+
+  .pumpkin-highlight {
+    fill: none;
+    stroke: rgba(255, 223, 151, 0.8);
+    stroke-linecap: round;
+    stroke-width: 1.5;
+  }
+
+  .pumpkin-one {
+    left: 2%;
+  }
+
+  .pumpkin-two {
+    right: 2%;
+    width: clamp(31px, 9%, 38px);
+    filter: drop-shadow(0 3px 4px rgba(74, 30, 11, 0.65)) brightness(0.9);
+    animation-delay: -1.6s;
+
+    .pumpkin-body {
+      fill: url(#pumpkin-right);
     }
   }
 }
 
+.christmas-scene {
+  .snowflake {
+    position: absolute;
+    top: -35%;
+    color: #fff;
+    font-size: 14px;
+    text-shadow: 0 0 8px rgba(203, 239, 255, 0.9);
+    animation: snowfall 6s linear infinite;
+  }
+
+  .snowflake-one {
+    left: 20%;
+  }
+
+  .snowflake-two {
+    left: 72%;
+    font-size: 18px;
+    animation-delay: -2.4s;
+    animation-duration: 7s;
+  }
+
+  .snowflake-three {
+    left: 88%;
+    font-size: 10px;
+    animation-delay: -4s;
+    animation-duration: 5s;
+  }
+
+  .holiday-tree {
+    position: absolute;
+    right: 3%;
+    bottom: 0;
+    width: 22px;
+    height: 30px;
+    fill: #176b44;
+    stroke: #f4d184;
+    stroke-width: 1.5;
+    animation: tree-glow 2.5s ease-in-out infinite alternate;
+  }
+
+  .tree-trunk {
+    fill: #81512b;
+    stroke: none;
+  }
+
+  .tree-star {
+    fill: #ffe28c;
+    stroke: none;
+  }
+}
+
+.kings-scene {
+  .holiday-star {
+    position: absolute;
+    top: 0;
+    right: 9%;
+    width: clamp(23px, 7%, 32px);
+    height: 26px;
+    fill: #ffe58b;
+    filter: drop-shadow(0 0 8px #ffd45b);
+    animation: star-pulse 2.4s ease-in-out infinite alternate;
+  }
+
+  .holiday-caravan {
+    position: absolute;
+    bottom: 0;
+    left: -55%;
+    width: clamp(80px, 30%, 110px);
+    height: 30px;
+    fill: #271a3a;
+    stroke: #f2c466;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.5;
+    animation: caravan-journey 16s linear infinite;
+  }
+}
+
+.brand-rule {
+  width: 34px;
+  height: 1px;
+  margin-top: 8px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+
+.brand-tagline {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.holiday-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+  padding: 4px 9px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+
+  span {
+    font-size: 12px;
+  }
+}
+
+.form-intro {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  margin-bottom: 12px;
+  text-align: center;
+
+  h2 {
+    margin: 2px 0 0;
+    color: var(--text-main);
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+
+  p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 10px;
+  }
+}
+
+.form-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
 
 .form-group {
-  margin-bottom: 20px;
-  label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 8px; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; }
-}
+  margin-bottom: 11px;
 
+  label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--text-main);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+  }
+}
 
 .input-container {
   position: relative;
@@ -120,144 +646,459 @@
 
   .input-icon {
     position: absolute;
-    left: 14px;
+    left: 13px;
+    width: 17px;
+    height: 17px;
     color: var(--text-muted);
     pointer-events: none;
   }
 
   input {
     width: 100%;
-    background: var(--input-bg);
-    border: 2px solid transparent;
-    border-radius: 12px;
-    padding: 14px 16px 14px 44px;
+    min-height: 40px;
+    padding: 8px 40px 8px 38px;
+    border: 1px solid var(--surface-border);
+    border-radius: 10px;
+    outline: none;
+    background: var(--input-background);
     color: var(--text-main);
-    font-size: 15px;
-    transition: all 0.3s ease;
+    font: inherit;
+    font-size: 12px;
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      background 180ms ease;
+
+    &::placeholder {
+      color: var(--text-muted);
+      opacity: 0.8;
+    }
 
     &:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 4px rgba(255, 77, 0, 0.15);
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--input-background) 72%, var(--accent) 5%);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
     }
   }
 
   .view-toggle {
     position: absolute;
-    right: 12px;
-    background: none;
-    border: none;
+    right: 8px;
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
     cursor: pointer;
-    font-size: 18px;
-    padding: 4px;
-    opacity: 0.6;
-    transition: opacity 0.2s;
-    &:hover { opacity: 1; }
+    transition:
+      color 160ms ease,
+      background 160ms ease;
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      color: var(--accent);
+    }
   }
 }
 
 .btn-submit {
-  width: 100%;
-  padding: 16px;
-  background: linear-gradient(135deg, #ff5500 0%, #ff2200 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 800;
-  cursor: pointer;
-  margin-top: 12px;
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 8px 25px -5px rgba(255, 85, 0, 0.6);
   display: flex;
+  width: 100%;
+  min-height: 42px;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(110deg, var(--accent-deep), var(--accent));
+  box-shadow: 0 10px 24px -8px var(--shadow-accent);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease;
 
-  &:hover:not(:disabled) {
-    transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 15px 30px -5px rgba(255, 85, 0, 0.7);
-    background: linear-gradient(135deg, #ff6622 0%, #ff3311 100%);
+  .arrow {
+    width: 17px;
+    height: 17px;
+    transition: transform 180ms ease;
   }
 
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px -8px var(--shadow-accent);
 
-  &:active { transform: translateY(0); }
-  &:disabled { opacity: 0.6; cursor: not-allowed; filter: grayscale(0.5); }
+    .arrow {
+      transform: translateX(3px);
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    filter: grayscale(0.45);
+    opacity: 0.65;
+  }
 }
 
 .alert {
-  padding: 12px;
-  border-radius: 10px;
-  font-size: 13px;
-  margin-bottom: 20px;
   display: flex;
-  gap: 10px;
   align-items: center;
-  
+  gap: 10px;
+  margin-top: 15px;
+  margin-bottom: 0;
+  padding: 11px 13px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 11px;
+  line-height: 1.5;
+
   &.error {
-    background: rgba(239, 68, 68, 0.15);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.28);
+    background: rgba(239, 68, 68, 0.12);
+    color: #ffb4ad;
   }
-  
+
   &.message {
-    background: rgba(59, 130, 246, 0.15);
-    border: 1px solid rgba(59, 130, 246, 0.3);
-    color: #93c5fd;
+    border-color: rgba(59, 130, 246, 0.25);
+    background: rgba(59, 130, 246, 0.12);
+    color: #a8c9ff;
   }
 }
 
+.alert-icon {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .login-footer {
-  margin-top: 32px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding-top: 10px;
+  padding-bottom: 12px;
   text-align: center;
-  p { font-size: 12px; color: var(--text-muted); margin: 0; }
+
+  p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 9px;
+  }
+}
+
+.footer-divider {
+  width: 30px;
+  height: 2px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 72%, transparent);
 }
 
 .theme-toggle {
   position: absolute;
-  top: 16px; // Más arriba para evitar solapamientos
-  right: 16px;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: var(--card-bg);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255,255,255,0.1);
+  z-index: 2;
+  top: 22px;
+  right: 22px;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid var(--surface-border);
+  border-radius: 13px;
+  background: var(--surface);
+  color: var(--text-main);
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100; // Aseguramos que siempre esté por encima
-  transition: all 0.2s;
-  &:hover { transform: scale(1.1); }
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease;
+
+  svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(-12px, -8px, 0);
+  }
+
+  to {
+    transform: translate3d(20px, 16px, 0);
+  }
+}
+
+@keyframes banner-witch-flight {
+  0% {
+    left: -30%;
+    transform: translateY(3px) rotate(-2deg);
+  }
+
+  50% {
+    transform: translateY(-4px) rotate(2deg);
+  }
+
+  100% {
+    left: 110%;
+    transform: translateY(2px) rotate(-2deg);
+  }
+}
+
+@keyframes banner-pumpkin-glow {
+  from {
+    transform: translateY(0) scale(0.96);
+    filter: drop-shadow(0 1px 3px rgba(255, 115, 34, 0.35));
+  }
+
+  to {
+    transform: translateY(-2px) scale(1.04);
+    filter: drop-shadow(0 1px 8px rgba(255, 152, 49, 0.85));
+  }
+}
+
+@keyframes banner-bat-flight {
+  from {
+    transform: translate(0, 3px) rotate(-8deg);
+  }
+
+  to {
+    transform: translate(20px, -6px) rotate(8deg);
+  }
+}
+
+@keyframes banner-snowfall {
+  0% {
+    transform: translate3d(0, -8px, 0) rotate(0);
+    opacity: 0;
+  }
+
+  20%,
+  80% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate3d(14px, 170px, 0) rotate(180deg);
+    opacity: 0;
+  }
+}
+
+@keyframes banner-star-pulse {
+  from {
+    transform: scale(0.88) rotate(-8deg);
+  }
+
+  to {
+    transform: scale(1.08) rotate(8deg);
+  }
+}
+
+@keyframes witch-flight {
+  0% {
+    left: -30%;
+    transform: translateY(3px) rotate(-2deg);
+  }
+
+  50% {
+    transform: translateY(-3px) rotate(2deg);
+  }
+
+  100% {
+    left: 110%;
+    transform: translateY(2px) rotate(-2deg);
+  }
+}
+
+@keyframes pumpkin-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+
+  50% {
+    transform: translateY(-2px) rotate(1deg);
+  }
+}
+
+@keyframes snowfall {
+  0% {
+    transform: translate3d(0, -10px, 0) rotate(0);
+    opacity: 0;
+  }
+
+  15%,
+  80% {
+    opacity: 0.9;
+  }
+
+  100% {
+    transform: translate3d(18px, 230px, 0) rotate(180deg);
+    opacity: 0;
+  }
+}
+
+@keyframes tree-glow {
+  from {
+    filter: drop-shadow(0 0 2px rgba(255, 222, 129, 0.35));
+  }
+
+  to {
+    filter: drop-shadow(0 0 9px rgba(255, 222, 129, 0.9));
+  }
+}
+
+@keyframes star-pulse {
+  from {
+    transform: scale(0.9) rotate(-8deg);
+  }
+
+  to {
+    transform: scale(1.08) rotate(8deg);
+  }
+}
+
+@keyframes caravan-journey {
+  from {
+    left: -55%;
+  }
+
+  to {
+    left: 110%;
+  }
 }
 
 @media (max-width: 480px) {
-  .theme-toggle {
-    top: 12px;
-    right: 12px;
-    background: rgba(0, 0, 0, 0.5); // Más visible en móvil sobre cualquier fondo
+  .login-screen {
+    padding: 12px;
   }
-  .login-card { 
-    padding: 20px 0; // Reducimos padding lateral
-    border-radius: 0; 
-    min-height: 100vh; 
-    display: flex; 
-    flex-direction: column; 
-    justify-content: center; 
-    border: none; 
-    
-    form, .alert, .login-footer {
-      padding-left: 20px;
-      padding-right: 20px;
+
+  .login-content {
+    width: min(100%, 420px);
+  }
+
+  .login-card {
+    border-radius: 22px;
+
+    form,
+    .alert,
+    .login-footer {
+      margin-right: 22px;
+      margin-left: 22px;
     }
   }
+
   .login-header {
-    .brand-text { padding: 0 20px; }
-    .logo-container { height: 140px; } // Banner un poco más bajo en móvil
+    padding-bottom: 2px;
   }
-  .login-screen { background: var(--card-bg); }
-  .bg-blobs { display: none; }
+
+  .theme-toggle {
+    top: 8px;
+    right: 8px;
+    width: 34px;
+    height: 34px;
+  }
+}
+
+@media (max-height: 760px) {
+  .login-screen {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .login-content {
+    width: min(100%, 400px);
+  }
+
+  .login-card form,
+  .login-card .alert,
+  .login-card .login-footer {
+    margin-right: 30px;
+    margin-left: 30px;
+  }
+
+  .login-banner {
+    aspect-ratio: 2.65;
+  }
+
+  .holiday-badge {
+    margin-top: 4px;
+  }
+
+  .form-intro {
+    margin-bottom: 8px;
+  }
+
+  .form-group {
+    margin-bottom: 8px;
+  }
+
+  .login-footer {
+    padding-top: 7px;
+    padding-bottom: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .halloween-scene .holiday-witch {
+    left: 38%;
+    transform: none;
+  }
+
+  .banner-halloween .banner-witch {
+    left: 38%;
+    transform: none;
+  }
 }

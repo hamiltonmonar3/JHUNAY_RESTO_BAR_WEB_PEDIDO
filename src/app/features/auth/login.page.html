@@ -1,23 +1,95 @@
-<!-- Agregamos la clase dinámica aquí en el <main> -->
-<main class="login-screen" [class.light-mode]="theme.mode() !== 'dark'">
-  <div class="bg-blobs" aria-hidden="true">
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
+<main
+  class="login-screen"
+  [class.light-mode]="theme.mode() !== 'dark'"
+  [attr.data-holiday]="holidayTheme"
+>
+  <div class="ambient-light" aria-hidden="true">
+    <span class="ambient-orb ambient-orb-one"></span>
+    <span class="ambient-orb ambient-orb-two"></span>
+    <span class="ambient-orb ambient-orb-three"></span>
   </div>
 
-  <button class="theme-toggle" type="button" (click)="theme.toggle()" [attr.aria-label]="theme.mode() === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'">
-    {{ theme.mode() === 'dark' ? '☀️' : '🌙' }}
+  <button
+    class="theme-toggle"
+    type="button"
+    (click)="theme.toggle()"
+    [attr.aria-label]="theme.mode() === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'"
+    [title]="theme.mode() === 'dark' ? 'Activar tema claro' : 'Activar tema oscuro'"
+  >
+    @if (theme.mode() === 'dark') {
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+      >
+        <circle cx="12" cy="12" r="4"></circle>
+        <path
+          d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"
+        ></path>
+      </svg>
+    } @else {
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"></path>
+      </svg>
+    }
   </button>
-  
+
   <section class="login-content">
     <div class="login-card">
       <header class="login-header">
-        <div class="logo-container">
-          <img src="/assets/images/logo.jpeg" alt="Logo" class="logo-img" />
+        <div class="login-banner">
+          <img
+            src="/assets/images/login-banner.jpg"
+            alt="JHUNAY Resto Bar: carne a la parrilla, hamburguesa y papas fritas"
+          />
+          @if (holidayTheme === 'halloween') {
+            <div class="banner-holiday-scene banner-halloween" aria-hidden="true">
+              <span class="banner-pumpkin banner-pumpkin-left">🎃</span>
+              <svg class="banner-witch" viewBox="0 0 160 90">
+                <path class="banner-broom" d="m63 62 87 18m-9-17 16 3-13 7 12 6-17-1" />
+                <path class="banner-witch-cloak" d="m75 43 20 1 12 18-21-3-15 5-18-3 13-12Z" />
+                <path class="banner-witch-hair" d="m70 31-9 13 12-4 7 10 3-12 10 3-8-12Z" />
+                <circle class="banner-witch-face" cx="79" cy="32" r="8" />
+                <path class="banner-witch-hat" d="m65 27 31-5-14-4-7-12-3 14Z" />
+                <path class="banner-witch-brim" d="m59 28 42-4" />
+                <path class="banner-witch-leg" d="m75 57-18 8-12-3m35 2 17 2 8-5" />
+              </svg>
+              <span class="banner-pumpkin banner-pumpkin-right">🎃</span>
+              <span class="banner-bat banner-bat-one">🦇</span>
+              <span class="banner-bat banner-bat-two">🦇</span>
+            </div>
+          } @else if (holidayTheme === 'christmas') {
+            <div class="banner-holiday-scene banner-christmas" aria-hidden="true">
+              <span class="banner-snow banner-snow-one">❄</span>
+              <span class="banner-snow banner-snow-two">✳</span>
+              <span class="banner-snow banner-snow-three">❄</span>
+              <span class="banner-tree">🎄</span>
+              <span class="banner-snow banner-snow-four">✳</span>
+            </div>
+          } @else if (holidayTheme === 'kings') {
+            <div class="banner-holiday-scene banner-kings" aria-hidden="true">
+              <span class="banner-kings-star">✦</span>
+              <span class="banner-kings-crown">👑</span>
+              <span class="banner-kings-star banner-kings-star-two">✧</span>
+            </div>
+          }
         </div>
-        <div class="brand-text">
-          <h1 class="title">JHUNAY <span>RESTO BAR</span></h1>
-        </div>
+        <span class="brand-rule" aria-hidden="true"></span>
+        <p class="brand-tagline">Tu cocina, tu equipo, tu día.</p>
+        @if (holidayLabel) {
+          <span class="holiday-badge"><span aria-hidden="true">✦</span>{{ holidayLabel }}</span>
+        }
       </header>
 
       @if (setupMessage) {
@@ -25,28 +97,212 @@
       }
       @if (errorMessage()) {
         <div class="alert error" role="alert">
-          <span class="alert-icon">⚠️</span>
+          <span class="alert-icon" aria-hidden="true">!</span>
           {{ errorMessage() }}
         </div>
       }
 
       <form (ngSubmit)="submit()" #loginForm="ngForm">
+        @if (holidayTheme === 'halloween') {
+          <div class="holiday-scene halloween-scene" aria-hidden="true">
+            <svg class="holiday-witch" viewBox="0 0 160 90">
+              <defs>
+                <linearGradient id="witch-cloak" x1="0" x2="1" y1="0" y2="1">
+                  <stop stop-color="#53345f" />
+                  <stop offset="1" stop-color="#17101f" />
+                </linearGradient>
+              </defs>
+              <path class="witch-broom" d="m63 62 87 18m-9-17 16 3-13 7 12 6-17-1" />
+              <path class="witch-cloak" d="m75 43 20 1 12 18-21-3-15 5-18-3 13-12Z" />
+              <path class="witch-limb" d="m75 57-18 8-12-3m35 2 17 2 8-5" />
+              <path class="witch-hair" d="m70 31-9 13 12-4 7 10 3-12 10 3-8-12Z" />
+              <circle class="witch-face" cx="79" cy="32" r="8" />
+              <path class="witch-hat" d="m65 27 31-5-14-4-7-12-3 14Z" />
+              <path class="witch-hat-brim" d="m59 28 42-4" />
+              <path class="witch-shimmer" d="m44 19 2 4 4 1-4 2-1 4-2-4-4-1 4-2Z" />
+              <circle class="witch-shimmer" cx="111" cy="33" r="1.5" />
+            </svg>
+            <svg class="holiday-pumpkin pumpkin-one" viewBox="0 0 64 58">
+              <defs>
+                <radialGradient id="pumpkin-left" cx="35%" cy="28%" r="74%">
+                  <stop stop-color="#ffbf52" />
+                  <stop offset=".48" stop-color="#f4771f" />
+                  <stop offset="1" stop-color="#9f3516" />
+                </radialGradient>
+              </defs>
+              <path
+                class="pumpkin-body"
+                d="M32 13C23 5 8 11 6 28 4 43 14 52 32 53c18-1 28-10 26-25C56 11 41 5 32 13Z"
+              />
+              <path
+                class="pumpkin-ridge"
+                d="M32 13c-7 10-7 28 0 40M32 13c8 10 8 28 0 40M22 13c-5 11-5 28 2 38m18-38c5 11 5 28-2 38"
+              />
+              <path class="pumpkin-stem" d="M30 14c-1-5 1-9 6-12l5 2-5 3 1 7Z" />
+              <path class="pumpkin-face" d="m16 27 8 7-9 2Zm32 0-8 7 9 2Zm-24 15 8-8 8 8-8 3Z" />
+              <path class="pumpkin-glow" d="m18 29 4 4-5 1Zm28 0-4 4 5 1Zm-19 13 5-5 5 5-5 2Z" />
+              <path class="pumpkin-highlight" d="M12 25c1-7 5-11 10-12" />
+            </svg>
+            <svg class="holiday-pumpkin pumpkin-two" viewBox="0 0 64 58">
+              <defs>
+                <radialGradient id="pumpkin-right" cx="35%" cy="28%" r="74%">
+                  <stop stop-color="#ffc65d" />
+                  <stop offset=".48" stop-color="#ec681b" />
+                  <stop offset="1" stop-color="#8f3018" />
+                </radialGradient>
+              </defs>
+              <path
+                class="pumpkin-body"
+                d="M32 13C23 5 8 11 6 28 4 43 14 52 32 53c18-1 28-10 26-25C56 11 41 5 32 13Z"
+              />
+              <path
+                class="pumpkin-ridge"
+                d="M32 13c-7 10-7 28 0 40M32 13c8 10 8 28 0 40M22 13c-5 11-5 28 2 38m18-38c5 11 5 28-2 38"
+              />
+              <path class="pumpkin-stem" d="M30 14c-1-5 1-9 6-12l5 2-5 3 1 7Z" />
+              <path class="pumpkin-face" d="m16 27 8 7-9 2Zm32 0-8 7 9 2Zm-24 15 8-8 8 8-8 3Z" />
+              <path class="pumpkin-glow" d="m18 29 4 4-5 1Zm28 0-4 4 5 1Zm-19 13 5-5 5 5-5 2Z" />
+              <path class="pumpkin-highlight" d="M12 25c1-7 5-11 10-12" />
+            </svg>
+          </div>
+        } @else if (holidayTheme === 'christmas') {
+          <div class="holiday-scene christmas-scene" aria-hidden="true">
+            <span class="snowflake snowflake-one">✳</span>
+            <span class="snowflake snowflake-two">❄</span>
+            <span class="snowflake snowflake-three">✳</span>
+            <svg class="holiday-tree" viewBox="0 0 52 72">
+              <path d="m26 3 8 17h-5l12 15h-8l14 17H5l14-17h-8l12-15h-5Z" />
+              <path class="tree-trunk" d="M22 52h8v15h-8z" />
+              <path class="tree-star" d="m26 0 2 4 4 .5-3 3 .7 4.2-3.7-2-3.7 2 .7-4.2-3-3 4-.5Z" />
+            </svg>
+          </div>
+        } @else if (holidayTheme === 'kings') {
+          <div class="holiday-scene kings-scene" aria-hidden="true">
+            <svg class="holiday-star" viewBox="0 0 50 50">
+              <path
+                d="m25 2 5.5 15.5L46 10l-7.5 15L46 40l-15.5-7.5L25 48l-5.5-15.5L4 40l7.5-15L4 10l15.5 7.5Z"
+              />
+            </svg>
+            <svg class="holiday-caravan" viewBox="0 0 180 72">
+              <path
+                d="M12 55h154m-137-1c0-9 5-14 12-14 4 0 7 2 9 5l5-14 8 14c9-3 17 0 21 9Zm50 0c0-9 5-14 12-14 4 0 7 2 9 5l5-14 8 14c9-3 17 0 21 9ZM9 62h160"
+              />
+              <circle cx="36" cy="58" r="2" />
+              <circle cx="105" cy="58" r="2" />
+            </svg>
+          </div>
+        }
+        <div class="form-intro">
+          <span class="form-icon" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </span>
+          <h2>Iniciar sesión</h2>
+          <p>Ingresa tus credenciales para continuar</p>
+        </div>
+
         <div class="form-group">
           <label for="username">Usuario</label>
           <div class="input-container">
-            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-            <input id="username" name="username" type="text" [(ngModel)]="username" required placeholder="tu.usuario" autocomplete="username" autocapitalize="none" />
+            <svg
+              class="input-icon"
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              [(ngModel)]="username"
+              required
+              placeholder="Ingresa tu usuario"
+              autocomplete="username"
+              autocapitalize="none"
+            />
           </div>
         </div>
 
         <div class="form-group">
           <label for="pin">Clave de Acceso</label>
           <div class="input-container">
-            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-            <input [type]="showPin() ? 'text' : 'password'" id="pin" name="pin" [(ngModel)]="pin" required 
-                   placeholder="••••••" minlength="6" maxlength="12" pattern="[A-Za-z0-9]+" autocomplete="current-password" />
-            <button type="button" class="view-toggle" (click)="togglePin()" [title]="showPin() ? 'Ocultar' : 'Mostrar'">
-              {{ showPin() ? '🙈' : '👁️' }}
+            <svg
+              class="input-icon"
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="11" width="18" height="11" rx="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <input
+              [type]="showPin() ? 'text' : 'password'"
+              id="pin"
+              name="pin"
+              [(ngModel)]="pin"
+              required
+              placeholder="Ingresa tu clave"
+              minlength="6"
+              maxlength="12"
+              pattern="[A-Za-z0-9]+"
+              autocomplete="current-password"
+            />
+            <button
+              type="button"
+              class="view-toggle"
+              (click)="togglePin()"
+              [attr.aria-label]="showPin() ? 'Ocultar clave' : 'Mostrar clave'"
+              [title]="showPin() ? 'Ocultar clave' : 'Mostrar clave'"
+            >
+              @if (showPin()) {
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="m3 3 18 18M10.6 10.6a2 2 0 0 0 2.8 2.8"></path>
+                  <path
+                    d="M9.9 5.2A10.7 10.7 0 0 1 12 5c5.5 0 9 7 9 7a14.6 14.6 0 0 1-3.2 4.1M6.2 6.2C3.9 7.8 3 12 3 12s3.5 7 9 7a9.6 9.6 0 0 0 3-.5"
+                  ></path>
+                </svg>
+              } @else {
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M2.5 12s3.5-7 9.5-7 9.5 7 9.5 7-3.5 7-9.5 7-9.5-7-9.5-7Z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              }
             </button>
           </div>
         </div>
@@ -55,12 +311,25 @@
           @if (pending()) {
             Validando...
           } @else {
-            Ingresar al Sistema <span class="arrow">→</span>
+            Ingresar al sistema
+            <svg
+              class="arrow"
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M5 12h14m-6-6 6 6-6 6"></path>
+            </svg>
           }
         </button>
       </form>
-      
+
       <footer class="login-footer">
+        <span class="footer-divider" aria-hidden="true"></span>
         <p>Pedidos, servicio y caja en un solo lugar.</p>
       </footer>
     </div>

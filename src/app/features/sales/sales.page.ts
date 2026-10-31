@@ -7,7 +7,6 @@ import { TablePaginationComponent, TablePaginationState } from '../../shared/tab
 import { roundCurrencyForDisplay } from '../../shared/currency';
 
 type SalesTab = 'ventas' | 'ingresos' | 'egresos' | 'apertura' | 'cierre';
-type ExpensePeriod = 'day' | 'week' | 'month';
 type IncomePeriod = 'day' | 'week' | 'month';
 type ExpenseAmountSort = 'none' | 'ascending' | 'descending';
 type ClosureSortKey = 'closed_at' | 'opening_amount' | 'expected_cash' | 'counted_cash' | 'difference' | 'transfer' | 'total' | 'responsible';
@@ -301,8 +300,7 @@ export class SalesPage implements OnDestroy, OnInit {
   protected readonly deletingExpense = signal<ExpenseRecord | null>(null);
   protected readonly confirmingExpenseDelete = signal(false);
   protected readonly expenseDate = signal(localDateValue(new Date()));
-  protected readonly expensePeriod = signal<ExpensePeriod>('day');
-  protected readonly newExpensePeriod = signal<ExpenseRecord['expense_period']>('day');
+  protected readonly newExpensePaymentMethod = signal<'efectivo' | 'transferencia'>('efectivo');
   protected expenseAmountValue = 0;
   protected expenseDescription = '';
   protected expenseCategory: ExpenseCategory = 'insumos';
@@ -310,7 +308,7 @@ export class SalesPage implements OnDestroy, OnInit {
   protected editExpenseDescription = '';
   protected editExpenseCategory = 'insumos';
   protected editExpenseDate = localDateValue(new Date());
-  protected editExpensePeriod: ExpenseRecord['expense_period'] = 'day';
+  protected editExpensePaymentMethod: 'efectivo' | 'transferencia' = 'efectivo';
   protected readonly totalExpenses = computed(() => this.expenses().reduce((total, expense) => total + expense.amount, 0));
 
   protected readonly openClosure = signal<CashClosure | null>(null);
@@ -899,6 +897,15 @@ export class SalesPage implements OnDestroy, OnInit {
         && (candidate.unitIndexes[item.id]?.includes(unitIndex) ?? false));
   }
 
+  protected hasSplitUnitsAvailable(group: DraftPaymentGroup): boolean {
+    return this.detailItems().some((item) =>
+      this.splitUnitIndexes(item.quantity).some((unitIndex) =>
+        this.splitUnitSelected(group, item.id, unitIndex)
+        || !this.splitUnitUnavailable(group, item, unitIndex),
+      ),
+    );
+  }
+
   protected splitUnitStatus(group: DraftPaymentGroup, item: OrderItemDetail, unitIndex: number): string {
     if (this.splitUnitSelected(group, item.id, unitIndex)) return 'Asignada a esta persona';
     if (unitIndex < this.savedItemQuantity(item.id)) return 'Ya pagada';
@@ -1104,13 +1111,7 @@ export class SalesPage implements OnDestroy, OnInit {
     this.expenseError.set('');
     try {
       const { start, end } = this.expenseDateRange();
-      const periods: ExpenseRecord['expense_period'][] =
-        this.expensePeriod() === 'month'
-          ? ['day', 'week', 'month']
-          : this.expensePeriod() === 'week'
-            ? ['day', 'week']
-            : ['day'];
-      this.expenses.set(await this.salesService.listExpenses(start, end, periods));
+      this.expenses.set(await this.salesService.listExpenses(start, end, ['day']));
     } catch (error) {
       this.expenseError.set(error instanceof Error ? error.message : 'No se pudieron cargar los egresos.');
     } finally {
@@ -1118,31 +1119,15 @@ export class SalesPage implements OnDestroy, OnInit {
     }
   }
 
-  protected selectExpensePeriod(period: ExpensePeriod): void {
-    const date = new Date();
-    this.expenseDate.set(localDateValue(date));
-    this.expensePeriod.set(period);
-    void this.loadExpenses();
-  }
-
   protected onExpenseDateChange(date: string): void {
     this.expenseDate.set(date);
-    this.expensePeriod.set('day');
     void this.loadExpenses();
   }
 
   protected expensePeriodLabel(): string {
-    switch (this.expensePeriod()) {
-      case 'week': return 'Esta semana';
-      case 'month': return 'Este mes';
-      default: return this.expenseDate() === localDateValue(new Date())
-        ? 'Hoy'
-        : this.formatDate(`${this.expenseDate()}T12:00:00`);
-    }
-  }
-
-  protected isExpenseToday(): boolean {
-    return this.expenseDate() === localDateValue(new Date());
+    return this.expenseDate() === localDateValue(new Date())
+      ? 'Hoy'
+      : this.formatDate(`${this.expenseDate()}T12:00:00`);
   }
 
   private expenseDateRange(): { start: string; end: string } {
@@ -1153,18 +1138,7 @@ export class SalesPage implements OnDestroy, OnInit {
 
     const start = new Date(selectedDate);
     const end = new Date(selectedDate);
-
-    if (this.expensePeriod() === 'month') {
-      start.setDate(1);
-      end.setMonth(end.getMonth() + 1, 1);
-    } else if (this.expensePeriod() === 'week') {
-      start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
-      end.setTime(start.getTime());
-      end.setDate(end.getDate() + 7);
-    } else {
-      end.setTime(start.getTime());
-      end.setDate(end.getDate() + 1);
-    }
+    end.setDate(end.getDate() + 1);
 
     return localDateRange(start, end);
   }
@@ -1208,12 +1182,12 @@ export class SalesPage implements OnDestroy, OnInit {
         this.expenseDescription,
         this.expenseCategory,
         this.expenseDate(),
-        this.newExpensePeriod(),
+        this.newExpensePaymentMethod(),
       );
       this.expenseAmountValue = 0;
       this.expenseDescription = '';
       this.expenseCategory = 'insumos';
-      this.newExpensePeriod.set('day');
+      this.newExpensePaymentMethod.set('efectivo');
       await Promise.all([this.loadExpenses(), this.loadCashRegister()]);
     } catch (error) {
       this.expenseError.set(error instanceof Error ? error.message : 'No se pudo registrar el egreso.');
@@ -1253,7 +1227,7 @@ export class SalesPage implements OnDestroy, OnInit {
     this.editExpenseDescription = expense.description;
     this.editExpenseCategory = expense.category;
     this.editExpenseDate = businessDateValue(new Date(expense.created_at));
-    this.editExpensePeriod = expense.expense_period;
+    this.editExpensePaymentMethod = expense.payment_method === 'transferencia' ? 'transferencia' : 'efectivo';
     this.expenseError.set('');
     this.editingExpense.set(expense);
   }
@@ -1280,7 +1254,7 @@ export class SalesPage implements OnDestroy, OnInit {
         description,
         this.editExpenseCategory,
         this.editExpenseDate,
-        this.editExpensePeriod,
+        this.editExpensePaymentMethod,
       );
       this.editingExpense.set(null);
       await Promise.all([this.loadExpenses(), this.loadCashRegister()]);

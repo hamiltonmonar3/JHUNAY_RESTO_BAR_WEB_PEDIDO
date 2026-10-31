@@ -1,26 +1,71 @@
 <section class="sales-page">
-  <header class="module-heading sales-heading">
-    <div class="sales-heading-copy"><h1>Ventas</h1><p>Consulta pagos, egresos y el cierre de caja diario.</p></div>
+  <header
+    class="module-heading sales-heading"
+    [class.refresh-only]="activeTab() !== 'ventas' && activeTab() !== 'ingresos'"
+  >
+    <div class="sales-heading-copy">
+      <h1>Ventas</h1>
+      <p>Consulta pagos, egresos y el cierre de caja diario.</p>
+    </div>
     <div class="heading-actions sales-heading-actions">
       @if (activeTab() === 'ventas' || activeTab() === 'ingresos') {
-        <form class="sales-toolbar" (ngSubmit)="activeTab() === 'ventas' ? loadSales() : loadAdditionalIncome()">
-          <label for="sales-date">{{ activeTab() === 'ventas' ? 'Fecha de venta' : 'Fecha de ingresos' }}</label>
-          <input id="sales-date" name="salesDate" type="date" [ngModel]="selectedDate()" (ngModelChange)="selectedDate.set($event)" />
-          <button class="primary-button" type="submit" [disabled]="activeTab() === 'ventas' ? loading() : additionalIncomeLoading()">Consultar</button>
-          <button class="quiet-button" type="button"
+        <form
+          class="sales-toolbar"
+          (ngSubmit)="activeTab() === 'ventas' ? loadSales() : loadAdditionalIncome()"
+        >
+          <label for="sales-date">{{
+            activeTab() === 'ventas' ? 'Fecha de venta' : 'Fecha de ingresos'
+          }}</label>
+          <input
+            id="sales-date"
+            name="salesDate"
+            type="date"
+            [ngModel]="selectedDate()"
+            (ngModelChange)="selectedDate.set($event)"
+          />
+          <button
+            class="primary-button"
+            type="submit"
+            [disabled]="activeTab() === 'ventas' ? loading() : additionalIncomeLoading()"
+          >
+            Consultar
+          </button>
+          <button
+            class="quiet-button"
+            type="button"
             (click)="activeTab() === 'ingresos' ? loadAdditionalIncome() : loadSales()"
-            [disabled]="activeTab() === 'ingresos' ? additionalIncomeLoading() : loading() || refreshingServedOrders()"
-            [attr.aria-label]="activeTab() === 'ingresos' ? 'Actualizar ingresos adicionales' : 'Actualizar ventas'"
-            [title]="activeTab() === 'ingresos' ? 'Actualizar ingresos adicionales' : 'Actualizar ventas'">
-            {{ (activeTab() === 'ingresos' ? additionalIncomeLoading() : loading() || refreshingServedOrders()) ? '…' : '↻' }}
+            [disabled]="
+              activeTab() === 'ingresos'
+                ? additionalIncomeLoading()
+                : loading() || refreshingServedOrders()
+            "
+            [attr.aria-label]="
+              activeTab() === 'ingresos' ? 'Actualizar ingresos adicionales' : 'Actualizar ventas'
+            "
+            [title]="
+              activeTab() === 'ingresos' ? 'Actualizar ingresos adicionales' : 'Actualizar ventas'
+            "
+          >
+            {{
+              (
+                activeTab() === 'ingresos'
+                  ? additionalIncomeLoading()
+                  : loading() || refreshingServedOrders()
+              )
+                ? '…'
+                : '↻'
+            }}
           </button>
         </form>
       } @else {
-        <button class="quiet-button" type="button"
+        <button
+          class="quiet-button"
+          type="button"
           (click)="loadSales()"
           [disabled]="loading() || refreshingServedOrders()"
           aria-label="Actualizar ventas"
-          title="Actualizar ventas">
+          title="Actualizar ventas"
+        >
           {{ loading() || refreshingServedOrders() ? '…' : '↻' }}
         </button>
       }
@@ -28,140 +73,370 @@
   </header>
 
   <div class="admin-tabs sales-tabs" role="tablist" aria-label="Secciones de caja">
-    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'ventas'" [class.active]="activeTab() === 'ventas'" (click)="activeTab.set('ventas')"><span class="tab-icon" aria-hidden="true">💳</span>Ventas</button>
-    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'ingresos'" [class.active]="activeTab() === 'ingresos'" (click)="openAdditionalIncomeTab()"><span class="tab-icon" aria-hidden="true">💰</span>Ingresos + <span class="tab-count">{{ additionalIncomeLoading() ? '…' : additionalIncomeEntries().length }}</span></button>
-    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'egresos'" [class.active]="activeTab() === 'egresos'" (click)="activeTab.set('egresos')"><span class="tab-icon" aria-hidden="true">🧾</span>Egresos <span class="tab-count">{{ expenses().length }}</span></button>
-    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'apertura'" [class.active]="activeTab() === 'apertura'" (click)="activeTab.set('apertura'); loadCashRegister()"><span class="tab-icon" aria-hidden="true">🔓</span>Apertura</button>
-    <button type="button" role="tab" [attr.aria-selected]="activeTab() === 'cierre'" [class.active]="activeTab() === 'cierre'" (click)="activeTab.set('cierre'); loadCashRegister()"><span class="tab-icon" aria-hidden="true">🧮</span>Cierre de caja @if (openClosure()) { <span class="open-dot" aria-hidden="true"></span> }</button>
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="activeTab() === 'ventas'"
+      [class.active]="activeTab() === 'ventas'"
+      (click)="activeTab.set('ventas')"
+    >
+      <span class="tab-icon" aria-hidden="true">💳</span>Ventas
+    </button>
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="activeTab() === 'ingresos'"
+      [class.active]="activeTab() === 'ingresos'"
+      (click)="openAdditionalIncomeTab()"
+    >
+      <span class="tab-icon" aria-hidden="true">💰</span>Ingresos
+      <span class="tab-count">{{
+        additionalIncomeLoading() ? '…' : additionalIncomeEntries().length
+      }}</span>
+    </button>
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="activeTab() === 'egresos'"
+      [class.active]="activeTab() === 'egresos'"
+      (click)="activeTab.set('egresos')"
+    >
+      <span class="tab-icon" aria-hidden="true">🧾</span>Egresos
+      <span class="tab-count">{{ expenses().length }}</span>
+    </button>
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="activeTab() === 'apertura'"
+      [class.active]="activeTab() === 'apertura'"
+      (click)="activeTab.set('apertura'); loadCashRegister()"
+    >
+      <span class="tab-icon" aria-hidden="true">🔓</span>Apertura
+    </button>
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="activeTab() === 'cierre'"
+      [class.active]="activeTab() === 'cierre'"
+      (click)="activeTab.set('cierre'); loadCashRegister()"
+    >
+      <span class="tab-icon" aria-hidden="true">🧮</span>Cierre de caja
+      @if (openClosure()) {
+        <span class="open-dot" aria-hidden="true"></span>
+      }
+    </button>
   </div>
 
   @if (activeTab() === 'ventas') {
-  @if (errorMessage()) { <div class="error-banner" role="alert">{{ errorMessage() }}</div> }
-  @if (closureError()) { <div class="error-banner" role="alert">No se pudo verificar la caja: {{ closureError() }}</div> }
-  @if (paymentMessage()) { <div class="success-banner" role="status">{{ paymentMessage() }}</div> }
-
-  <div class="sales-metrics">
-    <article class="metric-sales">
-      <span class="metric-label">Ventas cobradas</span>
-      <div class="metric-value-row"><span class="metric-icon" aria-hidden="true">▤</span><strong>{{ loading() ? '…' : formatCurrency(totalSales()) }}</strong></div>
-      <small>{{ paidOrders().length }} pedidos pagados</small>
-      <svg class="metric-sparkline" viewBox="0 0 240 32" preserveAspectRatio="none" aria-hidden="true"><path d="M0 25 C28 22 32 27 58 19 S91 26 119 16 150 22 176 13 210 18 240 5" /></svg>
-    </article>
-    <article class="metric-average">
-      <span class="metric-label">Promedio por pedido</span>
-      <div class="metric-value-row"><span class="metric-icon" aria-hidden="true">▦</span><strong>{{ loading() ? '…' : formatCurrency(averageSale()) }}</strong></div>
-      <small>En la fecha seleccionada</small>
-      <svg class="metric-sparkline" viewBox="0 0 240 32" preserveAspectRatio="none" aria-hidden="true"><path d="M0 14 C32 17 36 21 66 18 S104 16 129 20 168 17 190 18 220 16 240 15" /></svg>
-    </article>
-    <article class="metric-accent metric-pending">
-      <span class="metric-label">Por cobrar</span>
-      <div class="metric-value-row"><span class="metric-icon" aria-hidden="true">◷</span><strong>{{ servedOrders().length }}</strong><span class="pending-ring" aria-hidden="true"></span></div>
-      <small>Pedidos servidos</small>
-    </article>
-  </div>
-
-  <section class="sales-section">
-    <div class="section-title">
-      <div><p class="eyebrow">PENDIENTES DE COBRO</p><h2>Pedidos servidos pendientes de cobro</h2></div>
-      <button class="detail-button" type="button" (click)="refreshServedOrders()" [disabled]="refreshingServedOrders()">
-        {{ refreshingServedOrders() ? 'Actualizando…' : 'Actualizar pedidos' }}
-      </button>
-    </div>
-    @if (loading()) {
-      <div class="empty-state">Cargando pedidos por cobrar…</div>
-    } @else if (servedOrders().length === 0) {
-      <div class="empty-state sales-empty-state"><span class="sales-empty-icon" aria-hidden="true">✓</span><span>No hay pedidos servidos pendientes de cobro.</span></div>
-    } @else {
-      @if (!closureLoading() && !closureError() && !hasOpenCashRegisterToday()) {
-        <div class="error-banner" role="alert">{{ cashRegisterRequiredMessage() }}</div>
-      }
-      <div class="table-scroll pending-orders-scroll"><table class="pending-orders-table">
-        <thead><tr><th class="pending-order-heading">Pedido</th><th class="pending-owner-heading">Atendido por</th><th class="pending-location-heading">Mesa</th><th class="pending-time-heading">Hora</th><th class="numeric pending-total-heading">Total</th><th class="pending-actions-heading actions-heading">Acciones</th></tr></thead>
-        <tbody>
-          @for (order of servedOrdersPagination.visible(servedOrders()); track order.id) {
-            <tr>
-              <td class="order-number pending-order-number">
-                Pedido {{ servedOrderNumber(order) }}
-              </td>
-              <td class="pending-order-owner">{{ servedOrderOwnerName(order) }}</td>
-              <td><span class="pending-location" [class.pending-location--takeout]="!order.table_id">{{ locationLabel(order) }}</span></td>
-              <td class="pending-order-time"><strong>{{ servedOrderTime(order.created_at) }}</strong><small>{{ servedOrderDate(order.created_at) }}</small></td>
-              <td class="numeric amount pending-order-total">{{ formatCurrency(order.total_amount) }}</td>
-              <td class="pending-actions-cell"><div class="pending-order-actions">
-                  <button class="pending-view-button" type="button" (click)="showServedDetails(order)" aria-label="Ver desglose del pedido" title="Ver desglose">
-                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12s3.3-6 9.5-6 9.5 6 9.5 6-3.3 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
-                    <span>Ver detalle</span>
-                  </button>
-                  @if (canCollect()) {
-                    <button class="pending-collect-button" type="button" [disabled]="payingOrderId() !== null || !hasOpenCashRegisterToday()" (click)="openPayment(order)" aria-label="Cobrar pedido" [title]="hasOpenCashRegisterToday() ? 'Cobrar pedido' : 'Abre la caja antes de cobrar'">
-                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18m-9 4h.01"/></svg>
-                      <span>{{ payingOrderId() === order.id ? 'Cargando…' : 'Cobrar' }}</span>
-                    </button>
-                  }
-                </div>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table></div>
-      <app-table-pagination [totalItems]="servedOrders().length"
-        [page]="servedOrdersPagination.currentPage(servedOrders().length)" [pageSize]="servedOrdersPagination.pageSize()"
-        (pageChange)="servedOrdersPagination.setPage($event, servedOrders().length)"
-        (pageSizeChange)="servedOrdersPagination.setPageSize($event)" />
+    @if (errorMessage()) {
+      <div class="error-banner" role="alert">{{ errorMessage() }}</div>
     }
-  </section>
+    @if (closureError()) {
+      <div class="error-banner" role="alert">
+        No se pudo verificar la caja: {{ closureError() }}
+      </div>
+    }
+    @if (paymentMessage()) {
+      <div class="success-banner" role="status">{{ paymentMessage() }}</div>
+    }
 
-  <div class="history-grid">
-    <section class="sales-section">
-      <div class="section-title"><div><p class="eyebrow">RESUMEN</p><h2>Ventas por método</h2></div></div>
-      @if (paymentBreakdown().length === 0) {
-        <div class="empty-state compact">Sin pagos registrados en esta fecha.</div>
-      } @else {
-        <div class="method-list">
-          @for (group of paymentBreakdown(); track group.method) {
-            <article class="method-row"
-              [class.method-cash]="group.method === 'efectivo'"
-              [class.method-transfer]="group.method === 'transferencia'"
-              [class.method-card]="group.method === 'tarjeta'">
-              <span class="method-icon" aria-hidden="true">{{ paymentMethodIcon(group.method) }}</span>
-              <div class="method-row-content">
-                <div class="method-row-heading">
-                  <span>{{ salePaymentMethodLabel(group.method) }}<small>{{ group.count }} pedidos</small></span>
-                  <strong>{{ formatCurrency(group.total) }}</strong>
-                </div>
-                <div class="method-progress" role="img"
-                  [attr.aria-label]="salePaymentMethodLabel(group.method) + ': ' + paymentBreakdownPercentage(group.total) + '% de las ventas'">
-                  <span [style.width.%]="paymentBreakdownPercentage(group.total)"></span>
-                </div>
-              </div>
-            </article>
-          }
+    <div class="sales-metrics">
+      <article class="metric-sales">
+        <span class="metric-label">Ventas cobradas</span>
+        <div class="metric-value-row">
+          <span class="metric-icon" aria-hidden="true">▤</span
+          ><strong>{{ loading() ? '…' : formatCurrency(totalSales()) }}</strong>
         </div>
-      }
-      @if (paymentBreakdown().length > 0) {
-        <footer class="method-total"><span>Total métodos</span><strong>{{ formatCurrency(totalSales()) }}</strong></footer>
+        <small>{{ paidOrders().length }} pedidos pagados</small>
+        <svg
+          class="metric-sparkline"
+          viewBox="0 0 240 32"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <path d="M0 25 C28 22 32 27 58 19 S91 26 119 16 150 22 176 13 210 18 240 5" />
+        </svg>
+      </article>
+      <article class="metric-average">
+        <span class="metric-label">Promedio por pedido</span>
+        <div class="metric-value-row">
+          <span class="metric-icon" aria-hidden="true">▦</span
+          ><strong>{{ loading() ? '…' : formatCurrency(averageSale()) }}</strong>
+        </div>
+        <small>En la fecha seleccionada</small>
+        <svg
+          class="metric-sparkline"
+          viewBox="0 0 240 32"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <path d="M0 14 C32 17 36 21 66 18 S104 16 129 20 168 17 190 18 220 16 240 15" />
+        </svg>
+      </article>
+      <article class="metric-accent metric-pending">
+        <span class="metric-label">Por cobrar</span>
+        <div class="metric-value-row">
+          <span class="metric-icon" aria-hidden="true">◷</span
+          ><strong>{{ servedOrders().length }}</strong
+          ><span class="pending-ring" aria-hidden="true"></span>
+        </div>
+        <small>Pedidos servidos</small>
+      </article>
+    </div>
+
+    <section class="sales-section">
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">PENDIENTES DE COBRO</p>
+          <h2>Pedidos servidos pendientes de cobro</h2>
+        </div>
+        <button
+          class="detail-button"
+          type="button"
+          (click)="refreshServedOrders()"
+          [disabled]="refreshingServedOrders()"
+        >
+          {{ refreshingServedOrders() ? 'Actualizando…' : 'Actualizar pedidos' }}
+        </button>
+      </div>
+      @if (loading()) {
+        <div class="empty-state">Cargando pedidos por cobrar…</div>
+      } @else if (servedOrders().length === 0) {
+        <div class="empty-state sales-empty-state">
+          <span class="sales-empty-icon" aria-hidden="true">✓</span
+          ><span>No hay pedidos servidos pendientes de cobro.</span>
+        </div>
+      } @else {
+        @if (!closureLoading() && !closureError() && !hasOpenCashRegisterToday()) {
+          <div class="error-banner" role="alert">{{ cashRegisterRequiredMessage() }}</div>
+        }
+        <div class="table-scroll pending-orders-scroll">
+          <table class="pending-orders-table">
+            <thead>
+              <tr>
+                <th class="pending-order-heading">Pedido</th>
+                <th class="pending-owner-heading">Atendido por</th>
+                <th class="pending-location-heading">Mesa</th>
+                <th class="pending-time-heading">Hora</th>
+                <th class="numeric pending-total-heading">Total</th>
+                <th class="pending-actions-heading actions-heading">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (order of servedOrdersPagination.visible(servedOrders()); track order.id) {
+                <tr>
+                  <td class="order-number pending-order-number">
+                    Pedido {{ servedOrderNumber(order) }}
+                  </td>
+                  <td class="pending-order-owner">{{ servedOrderOwnerName(order) }}</td>
+                  <td>
+                    <span
+                      class="pending-location"
+                      [class.pending-location--takeout]="!order.table_id"
+                      >{{ locationLabel(order) }}</span
+                    >
+                  </td>
+                  <td class="pending-order-time">
+                    <strong>{{ servedOrderTime(order.created_at) }}</strong
+                    ><small>{{ servedOrderDate(order.created_at) }}</small>
+                  </td>
+                  <td class="numeric amount pending-order-total">
+                    {{ formatCurrency(order.total_amount) }}
+                  </td>
+                  <td class="pending-actions-cell">
+                    <div class="pending-order-actions">
+                      <button
+                        class="pending-view-button"
+                        type="button"
+                        (click)="showServedDetails(order)"
+                        aria-label="Ver desglose del pedido"
+                        title="Ver desglose"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path d="M2.5 12s3.3-6 9.5-6 9.5 6 9.5 6-3.3 6-9.5 6-9.5-6-9.5-6Z" />
+                          <circle cx="12" cy="12" r="2.5" />
+                        </svg>
+                        <span>Ver detalle</span>
+                      </button>
+                      @if (canCollect()) {
+                        <button
+                          class="pending-collect-button"
+                          type="button"
+                          [disabled]="payingOrderId() !== null || !hasOpenCashRegisterToday()"
+                          (click)="openPayment(order)"
+                          aria-label="Cobrar pedido"
+                          [title]="
+                            hasOpenCashRegisterToday()
+                              ? 'Cobrar pedido'
+                              : 'Abre la caja antes de cobrar'
+                          "
+                        >
+                          <svg
+                            aria-hidden="true"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          >
+                            <rect x="3" y="6" width="18" height="13" rx="2" />
+                            <path d="M3 10h18m-9 4h.01" />
+                          </svg>
+                          <span>{{ payingOrderId() === order.id ? 'Cargando…' : 'Cobrar' }}</span>
+                        </button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <app-table-pagination
+          [totalItems]="servedOrders().length"
+          [page]="servedOrdersPagination.currentPage(servedOrders().length)"
+          [pageSize]="servedOrdersPagination.pageSize()"
+          (pageChange)="servedOrdersPagination.setPage($event, servedOrders().length)"
+          (pageSizeChange)="servedOrdersPagination.setPageSize($event)"
+        />
       }
     </section>
 
-    <section class="sales-section sales-history">
-      <div class="section-title"><div><p class="eyebrow">HISTORIAL</p><h2>Historial de pagos del día</h2></div><span class="result-count">{{ paidOrders().length }} transacciones</span></div>
-      @if (paidOrders().length === 0) {
-        <div class="empty-state compact">No hay ventas pagadas en esta fecha.</div>
-      } @else {
-        <div class="table-scroll"><table><thead><tr><th>Pedido</th><th>Hora</th><th>Método</th><th class="numeric">Total</th><th class="actions-heading">Acciones</th></tr></thead><tbody>
-          @for (sale of paidOrdersPagination.visible(paidOrders()); track sale.id) {
-            <tr><td class="order-number">Pedido {{ paidOrderNumber(sale) }}</td><td>{{ formatDate(sale.paid_at) }}</td><td><span class="payment-method-cell"><span aria-hidden="true">{{ paymentMethodIcon(sale.payment_method ?? '') }}</span>{{ salePaymentMethodLabel(sale.payment_method) }}</span></td><td class="numeric amount">{{ formatCurrency(sale.total_amount) }}</td><td class="admin-actions"><button class="table-action-button table-action-view" type="button" (click)="showSaleDetails(sale)" aria-label="Ver desglose de venta" data-tooltip="Ver desglose">
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12s3.3-6 9.5-6 9.5 6 9.5 6-3.3 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
-            </button></td></tr>
-          }
-        </tbody></table></div>
-        <app-table-pagination [totalItems]="paidOrders().length"
-          [page]="paidOrdersPagination.currentPage(paidOrders().length)" [pageSize]="paidOrdersPagination.pageSize()"
-          (pageChange)="paidOrdersPagination.setPage($event, paidOrders().length)"
-          (pageSizeChange)="paidOrdersPagination.setPageSize($event)" />
-      }
-    </section>
-  </div>
+    <div class="history-grid">
+      <section class="sales-section">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">RESUMEN</p>
+            <h2>Ventas por método</h2>
+          </div>
+        </div>
+        @if (paymentBreakdown().length === 0) {
+          <div class="empty-state compact">Sin pagos registrados en esta fecha.</div>
+        } @else {
+          <div class="method-list">
+            @for (group of paymentBreakdown(); track group.method) {
+              <article
+                class="method-row"
+                [class.method-cash]="group.method === 'efectivo'"
+                [class.method-transfer]="group.method === 'transferencia'"
+                [class.method-card]="group.method === 'tarjeta'"
+              >
+                <span class="method-icon" aria-hidden="true">{{
+                  paymentMethodIcon(group.method)
+                }}</span>
+                <div class="method-row-content">
+                  <div class="method-row-heading">
+                    <span
+                      >{{ salePaymentMethodLabel(group.method)
+                      }}<small>{{ group.count }} pedidos</small></span
+                    >
+                    <strong>{{ formatCurrency(group.total) }}</strong>
+                  </div>
+                  <div
+                    class="method-progress"
+                    role="img"
+                    [attr.aria-label]="
+                      salePaymentMethodLabel(group.method) +
+                      ': ' +
+                      paymentBreakdownPercentage(group.total) +
+                      '% de las ventas'
+                    "
+                  >
+                    <span [style.width.%]="paymentBreakdownPercentage(group.total)"></span>
+                  </div>
+                </div>
+              </article>
+            }
+          </div>
+        }
+        @if (paymentBreakdown().length > 0) {
+          <footer class="method-total">
+            <span>Total métodos</span><strong>{{ formatCurrency(totalSales()) }}</strong>
+          </footer>
+        }
+      </section>
+
+      <section class="sales-section sales-history">
+        <div class="section-title">
+          <div>
+            <p class="eyebrow">HISTORIAL</p>
+            <h2>Historial de pagos del día</h2>
+          </div>
+          <span class="result-count">{{ paidOrders().length }} transacciones</span>
+        </div>
+        @if (paidOrders().length === 0) {
+          <div class="empty-state compact">No hay ventas pagadas en esta fecha.</div>
+        } @else {
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Pedido</th>
+                  <th>Hora</th>
+                  <th>Método</th>
+                  <th class="numeric">Total</th>
+                  <th class="actions-heading">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (sale of paidOrdersPagination.visible(paidOrders()); track sale.id) {
+                  <tr>
+                    <td class="order-number">Pedido {{ paidOrderNumber(sale) }}</td>
+                    <td>{{ formatDate(sale.paid_at) }}</td>
+                    <td>
+                      <span class="payment-method-cell"
+                        ><span aria-hidden="true">{{
+                          paymentMethodIcon(sale.payment_method ?? '')
+                        }}</span
+                        >{{ salePaymentMethodLabel(sale.payment_method) }}</span
+                      >
+                    </td>
+                    <td class="numeric amount">{{ formatCurrency(sale.total_amount) }}</td>
+                    <td class="admin-actions">
+                      <button
+                        class="table-action-button table-action-view"
+                        type="button"
+                        (click)="showSaleDetails(sale)"
+                        aria-label="Ver desglose de venta"
+                        data-tooltip="Ver desglose"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke-width="1.8"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path d="M2.5 12s3.3-6 9.5-6 9.5 6 9.5 6-3.3 6-9.5 6-9.5-6-9.5-6Z" />
+                          <circle cx="12" cy="12" r="2.5" />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <app-table-pagination
+            [totalItems]="paidOrders().length"
+            [page]="paidOrdersPagination.currentPage(paidOrders().length)"
+            [pageSize]="paidOrdersPagination.pageSize()"
+            (pageChange)="paidOrdersPagination.setPage($event, paidOrders().length)"
+            (pageSizeChange)="paidOrdersPagination.setPageSize($event)"
+          />
+        }
+      </section>
+    </div>
   }
 
   @if (activeTab() === 'egresos') {
@@ -180,25 +455,27 @@
       <div class="expense-period-toolbar">
         <label class="expense-calendar" for="expense-date">
           <span aria-hidden="true">▦</span>
-          <input id="expense-date" name="expenseDate" type="date" [ngModel]="expenseDate()"
-            (ngModelChange)="onExpenseDateChange($event)" />
+          <input
+            id="expense-date"
+            name="expenseDate"
+            type="date"
+            [ngModel]="expenseDate()"
+            (ngModelChange)="onExpenseDateChange($event)"
+          />
         </label>
-        <div class="expense-period-buttons" role="group" aria-label="Período de egresos">
-          <button type="button" [class.active]="expensePeriod() === 'day' && isExpenseToday()"
-            [attr.aria-pressed]="expensePeriod() === 'day' && isExpenseToday()"
-            (click)="selectExpensePeriod('day')">Hoy</button>
-          <button type="button" [class.active]="expensePeriod() === 'week'"
-            [attr.aria-pressed]="expensePeriod() === 'week'"
-            (click)="selectExpensePeriod('week')">Esta semana</button>
-          <button type="button" [class.active]="expensePeriod() === 'month'"
-            [attr.aria-pressed]="expensePeriod() === 'month'"
-            (click)="selectExpensePeriod('month')">Mensual</button>
-        </div>
       </div>
 
-      @if (expenseError()) { <div class="error-banner" role="alert">{{ expenseError() }}</div> }
-          @if (closureError()) { <div class="error-banner" role="alert">No se pudo verificar la caja: {{ closureError() }}</div> }
-      @if (!closureLoading() && !closureError() && !hasOpenCashRegisterToday()) { <div class="error-banner" role="alert">{{ cashRegisterRequiredMessage() }}</div> }
+      @if (expenseError()) {
+        <div class="error-banner" role="alert">{{ expenseError() }}</div>
+      }
+      @if (closureError()) {
+        <div class="error-banner" role="alert">
+          No se pudo verificar la caja: {{ closureError() }}
+        </div>
+      }
+      @if (!closureLoading() && !closureError() && !hasOpenCashRegisterToday()) {
+        <div class="error-banner" role="alert">{{ cashRegisterRequiredMessage() }}</div>
+      }
 
       <div class="expense-workspace">
         <section class="expense-records" aria-label="Registros de egresos">
@@ -213,34 +490,97 @@
           } @else {
             <div class="expense-table-scroll">
               <table>
-                <thead><tr>
-                  <th>Descripción</th>
-                  <th class="numeric" [attr.aria-sort]="expenseAmountSort() === 'none' ? 'none' : expenseAmountSort()">
-                    <button class="expense-sort-button" type="button" (click)="toggleExpenseAmountSort()"
-                      [attr.aria-label]="expenseAmountSort() === 'ascending' ? 'Ordenar monto de mayor a menor' : 'Ordenar monto de menor a mayor'">
-                      Monto @if (expenseAmountSort() === 'ascending') { <span aria-hidden="true">↑</span> } @else if (expenseAmountSort() === 'descending') { <span aria-hidden="true">↓</span> } @else { <span aria-hidden="true">↕</span> }
-                    </button>
-                  </th>
-                  <th>Categoría</th><th>Método</th><th>Tipo de egreso</th><th>Fecha</th><th>Registrado por</th>@if (isAdmin()) { <th class="actions-heading">Acciones</th> }
-                </tr></thead>
+                <thead>
+                  <tr>
+                    <th>Descripción</th>
+                    <th
+                      class="numeric"
+                      [attr.aria-sort]="
+                        expenseAmountSort() === 'none' ? 'none' : expenseAmountSort()
+                      "
+                    >
+                      <button
+                        class="expense-sort-button"
+                        type="button"
+                        (click)="toggleExpenseAmountSort()"
+                        [attr.aria-label]="
+                          expenseAmountSort() === 'ascending'
+                            ? 'Ordenar monto de mayor a menor'
+                            : 'Ordenar monto de menor a mayor'
+                        "
+                      >
+                        Monto
+                        @if (expenseAmountSort() === 'ascending') {
+                          <span aria-hidden="true">↑</span>
+                        } @else if (expenseAmountSort() === 'descending') {
+                          <span aria-hidden="true">↓</span>
+                        } @else {
+                          <span aria-hidden="true">↕</span>
+                        }
+                      </button>
+                    </th>
+                    <th>Categoría</th>
+                    <th>Tipo de operación</th>
+                    <th>Fecha</th>
+                    <th>Registrado por</th>
+                    @if (isAdmin()) {
+                      <th class="actions-heading">Acciones</th>
+                    }
+                  </tr>
+                </thead>
                 <tbody>
                   @for (expense of expensesPagination.visible(sortedExpenses()); track expense.id) {
                     <tr>
                       <td>{{ expense.description }}</td>
                       <td class="numeric amount">{{ formatCurrency(expense.amount) }}</td>
-                      <td><span class="expense-category">{{ expenseCategoryName(expense.category) }}</span></td>
+                      <td>
+                        <span class="expense-category">{{
+                          expenseCategoryName(expense.category)
+                        }}</span>
+                      </td>
                       <td>{{ salePaymentMethodLabel(expense.payment_method) }}</td>
-                      <td>{{ expenseTypeLabel(expense.expense_period) }}</td>
                       <td>{{ formatDate(expense.created_at) }}</td>
                       <td>{{ expenseAuthorName(expense) }}</td>
                       @if (isAdmin()) {
                         <td class="admin-actions">
                           @if (expense.category !== 'pago_persona') {
-                            <button class="table-action-button table-action-edit" type="button" (click)="openEditExpense(expense)" aria-label="Editar egreso" data-tooltip="Editar egreso">
-                              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4M4 20l4.3-1L18.7 8.6a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z"/></svg>
+                            <button
+                              class="table-action-button table-action-edit"
+                              type="button"
+                              (click)="openEditExpense(expense)"
+                              aria-label="Editar egreso"
+                              data-tooltip="Editar egreso"
+                            >
+                              <svg
+                                aria-hidden="true"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke-width="1.8"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              >
+                                <path
+                                  d="m15 5 4 4M4 20l4.3-1L18.7 8.6a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z"
+                                />
+                              </svg>
                             </button>
-                            <button class="table-action-button table-action-delete" type="button" (click)="deleteExpense(expense)" aria-label="Eliminar egreso" data-tooltip="Eliminar egreso">
-                              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg>
+                            <button
+                              class="table-action-button table-action-delete"
+                              type="button"
+                              (click)="deleteExpense(expense)"
+                              aria-label="Eliminar egreso"
+                              data-tooltip="Eliminar egreso"
+                            >
+                              <svg
+                                aria-hidden="true"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke-width="1.8"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              >
+                                <path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" />
+                              </svg>
                             </button>
                           } @else {
                             <span class="expense-locked">Vinculado a cobro</span>
@@ -252,22 +592,43 @@
                 </tbody>
               </table>
             </div>
-            <app-table-pagination [totalItems]="sortedExpenses().length"
-              [page]="expensesPagination.currentPage(sortedExpenses().length)" [pageSize]="expensesPagination.pageSize()"
+            <app-table-pagination
+              [totalItems]="sortedExpenses().length"
+              [page]="expensesPagination.currentPage(sortedExpenses().length)"
+              [pageSize]="expensesPagination.pageSize()"
               (pageChange)="expensesPagination.setPage($event, sortedExpenses().length)"
-              (pageSizeChange)="expensesPagination.setPageSize($event)" />
+              (pageSizeChange)="expensesPagination.setPageSize($event)"
+            />
           }
         </section>
 
         <aside class="expense-entry">
           <h3>Nuevo registro de egreso</h3>
-          <p class="expense-entry-date">Fecha del egreso: <strong>{{ formatDate(expenseDate() + 'T12:00:00') }}</strong></p>
+          <p class="expense-entry-date">
+            Fecha del egreso: <strong>{{ formatDate(expenseDate() + 'T12:00:00') }}</strong>
+          </p>
           <form (ngSubmit)="recordExpense()">
-            <label>Monto<input name="expenseAmount" type="number" min="0.01" step="0.01" required
-              [(ngModel)]="expenseAmountValue" placeholder="$ 0,00" /></label>
-            <label>Descripción<input name="expenseDescription" type="text" required maxlength="200"
-              [(ngModel)]="expenseDescription" placeholder="Descripción del gasto" /></label>
-            <label>Categoría
+            <label
+              >Monto<input
+                name="expenseAmount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+                [(ngModel)]="expenseAmountValue"
+                placeholder="$ 0,00"
+            /></label>
+            <label
+              >Descripción<input
+                name="expenseDescription"
+                type="text"
+                required
+                maxlength="200"
+                [(ngModel)]="expenseDescription"
+                placeholder="Descripción del gasto"
+            /></label>
+            <label
+              >Categoría
               <select name="expenseCategory" required [(ngModel)]="expenseCategory">
                 <option value="insumos">Insumos</option>
                 <option value="personal">Personal</option>
@@ -277,15 +638,23 @@
                 <option value="apertura_caja">Apertura de Caja</option>
               </select>
             </label>
-            <label>Frecuencia del egreso
-              <select name="newExpensePeriod" required [ngModel]="newExpensePeriod()"
-                (ngModelChange)="newExpensePeriod.set($event)">
-                <option value="day">Diario</option>
-                <option value="week">Semanal</option>
-                <option value="month">Mensual</option>
+            <label
+              >Tipo de operación
+              <select
+                name="newExpensePaymentMethod"
+                required
+                [ngModel]="newExpensePaymentMethod()"
+                (ngModelChange)="newExpensePaymentMethod.set($event)"
+              >
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
               </select>
             </label>
-            <button class="primary-button" type="submit" [disabled]="savingExpense() || !hasOpenCashRegisterToday()">
+            <button
+              class="primary-button"
+              type="submit"
+              [disabled]="savingExpense() || !hasOpenCashRegisterToday()"
+            >
               {{ savingExpense() ? 'Guardando…' : '+ Registrar egreso' }}
             </button>
           </form>
@@ -297,52 +666,138 @@
   @if (activeTab() === 'ingresos') {
     <section class="sales-section">
       <div class="section-title">
-        <div><p class="eyebrow">DESGLOSE</p><h2>Ingresos adicionales</h2></div>
+        <div>
+          <p class="eyebrow">DESGLOSE</p>
+          <h2>Ingresos adicionales</h2>
+        </div>
         <span class="result-count">{{ additionalIncomeEntries().length }} movimientos</span>
       </div>
-      @if (additionalIncomeError()) { <div class="error-banner" role="alert">{{ additionalIncomeError() }}</div> }
-      @if (closureError()) { <div class="error-banner" role="alert">No se pudo verificar la caja: {{ closureError() }}</div> }
-      @if (additionalIncomeActionError()) { <div class="error-banner" role="alert">{{ additionalIncomeActionError() }}</div> }
-      @if (additionalIncomeActionSuccess()) { <div class="success-banner" role="status">{{ additionalIncomeActionSuccess() }}</div> }
+      @if (additionalIncomeError()) {
+        <div class="error-banner" role="alert">{{ additionalIncomeError() }}</div>
+      }
+      @if (closureError()) {
+        <div class="error-banner" role="alert">
+          No se pudo verificar la caja: {{ closureError() }}
+        </div>
+      }
+      @if (additionalIncomeActionError()) {
+        <div class="error-banner" role="alert">{{ additionalIncomeActionError() }}</div>
+      }
+      @if (additionalIncomeActionSuccess()) {
+        <div class="success-banner" role="status">{{ additionalIncomeActionSuccess() }}</div>
+      }
       <div class="closure-status additional-income-summary">
         <article class="income-summary-card income-summary-card--cash">
-          <span class="income-summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18m-9 4h.01"/></svg></span>
-          <span class="income-summary-label">Efectivo</span><strong>{{ formatCurrency(additionalIncomeCashTotal()) }}</strong>
+          <span class="income-summary-icon" aria-hidden="true"
+            ><svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="6" width="18" height="13" rx="2" />
+              <path d="M3 10h18m-9 4h.01" /></svg
+          ></span>
+          <span class="income-summary-label">Efectivo</span
+          ><strong>{{ formatCurrency(additionalIncomeCashTotal()) }}</strong>
         </article>
         <article class="income-summary-card income-summary-card--transfer">
-          <span class="income-summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h15m0 0-3-3m3 3-3 3M20 16H5m0 0 3-3m-3 3 3 3"/></svg></span>
-          <span class="income-summary-label">Transferencias</span><strong>{{ formatCurrency(additionalIncomeTransferTotal()) }}</strong>
+          <span class="income-summary-icon" aria-hidden="true"
+            ><svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M4 8h15m0 0-3-3m3 3-3 3M20 16H5m0 0 3-3m-3 3 3 3" /></svg
+          ></span>
+          <span class="income-summary-label">Transferencias</span
+          ><strong>{{ formatCurrency(additionalIncomeTransferTotal()) }}</strong>
         </article>
         <article class="income-summary-card income-summary-card--total">
-          <span class="income-summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18m5-14H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
-          <span class="income-summary-label">Total adicional</span><strong>{{ formatCurrency(additionalIncomeTotal()) }}</strong>
+          <span class="income-summary-icon" aria-hidden="true"
+            ><svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M12 3v18m5-14H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg
+          ></span>
+          <span class="income-summary-label">Total adicional</span
+          ><strong>{{ formatCurrency(additionalIncomeTotal()) }}</strong>
         </article>
         <article class="income-summary-card income-summary-card--count">
-          <span class="income-summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8l4 4v12H4V4h4Zm0 0v5h8V4m-8 9h8m-8 4h8"/></svg></span>
-          <span class="income-summary-label">Movimientos</span><strong>{{ additionalIncomeLoading() ? '…' : additionalIncomeEntries().length }}</strong>
+          <span class="income-summary-icon" aria-hidden="true"
+            ><svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M8 4h8l4 4v12H4V4h4Zm0 0v5h8V4m-8 9h8m-8 4h8" /></svg
+          ></span>
+          <span class="income-summary-label">Movimientos</span
+          ><strong>{{ additionalIncomeLoading() ? '…' : additionalIncomeEntries().length }}</strong>
         </article>
       </div>
       <div class="expense-period-toolbar">
         <label class="expense-calendar" for="additional-income-date">
           <span aria-hidden="true">▦</span>
-          <input id="additional-income-date" name="additionalIncomeDate" type="date"
-            [ngModel]="additionalIncomeDate()" (ngModelChange)="onAdditionalIncomeDateChange($event)" />
+          <input
+            id="additional-income-date"
+            name="additionalIncomeDate"
+            type="date"
+            [ngModel]="additionalIncomeDate()"
+            (ngModelChange)="onAdditionalIncomeDateChange($event)"
+          />
         </label>
-        <div class="expense-period-buttons" role="group" aria-label="Período de ingresos adicionales">
-          <button type="button" [class.active]="additionalIncomePeriod() === 'day' && isAdditionalIncomeToday()"
+        <div
+          class="expense-period-buttons"
+          role="group"
+          aria-label="Período de ingresos adicionales"
+        >
+          <button
+            type="button"
+            [class.active]="additionalIncomePeriod() === 'day' && isAdditionalIncomeToday()"
             [attr.aria-pressed]="additionalIncomePeriod() === 'day' && isAdditionalIncomeToday()"
-            (click)="selectAdditionalIncomePeriod('day')">Hoy</button>
-          <button type="button" [class.active]="additionalIncomePeriod() === 'week'"
+            (click)="selectAdditionalIncomePeriod('day')"
+          >
+            Hoy
+          </button>
+          <button
+            type="button"
+            [class.active]="additionalIncomePeriod() === 'week'"
             [attr.aria-pressed]="additionalIncomePeriod() === 'week'"
-            (click)="selectAdditionalIncomePeriod('week')">Esta semana</button>
-          <button type="button" [class.active]="additionalIncomePeriod() === 'month'"
+            (click)="selectAdditionalIncomePeriod('week')"
+          >
+            Esta semana
+          </button>
+          <button
+            type="button"
+            [class.active]="additionalIncomePeriod() === 'month'"
             [attr.aria-pressed]="additionalIncomePeriod() === 'month'"
-            (click)="selectAdditionalIncomePeriod('month')">Mensual</button>
+            (click)="selectAdditionalIncomePeriod('month')"
+          >
+            Mensual
+          </button>
         </div>
       </div>
       <form class="additional-income-form" (ngSubmit)="recordAdditionalIncome()">
         <div class="additional-income-form-heading">
-          <div><p class="eyebrow">REGISTRO MANUAL</p><h3>Agregar ingreso adicional</h3><small>Período: {{ additionalIncomePeriodLabel() }}</small></div>
+          <div>
+            <p class="eyebrow">REGISTRO MANUAL</p>
+            <h3>Agregar ingreso adicional</h3>
+            <small>Período: {{ additionalIncomePeriodLabel() }}</small>
+          </div>
           @if (additionalIncomeRecordPeriod() === 'day' && hasOpenCashRegisterToday()) {
             <span class="additional-income-cash-status">Caja abierta</span>
           } @else if (additionalIncomeRecordPeriod() === 'day') {
@@ -350,54 +805,136 @@
           }
         </div>
         <div class="additional-income-fields">
-          <label>Descripción<input name="additionalIncomeDescription" type="text" required maxlength="200"
-            [(ngModel)]="additionalIncomeDescription" placeholder="Motivo del ingreso" /></label>
-          <label>Ingreso en efectivo<input name="additionalCashIncome" type="text" inputmode="decimal"
-            [value]="additionalCashIncomeInput()" (input)="updateAdditionalIncome($event, 'efectivo')" placeholder="0.00" /></label>
-          <label>Ingreso por transferencia<input name="additionalTransferIncome" type="text" inputmode="decimal"
-            [value]="additionalTransferIncomeInput()" (input)="updateAdditionalIncome($event, 'transferencia')" placeholder="0.00" /></label>
-          <button class="secondary-button" type="submit"
-            [disabled]="closureBusy() || !canRecordAdditionalIncome() || isAdditionalIncomeFutureDate()">
+          <label
+            >Descripción<input
+              name="additionalIncomeDescription"
+              type="text"
+              required
+              maxlength="200"
+              [(ngModel)]="additionalIncomeDescription"
+              placeholder="Motivo del ingreso"
+          /></label>
+          <label
+            >Ingreso en efectivo<input
+              name="additionalCashIncome"
+              type="text"
+              inputmode="decimal"
+              [value]="additionalCashIncomeInput()"
+              (input)="updateAdditionalIncome($event, 'efectivo')"
+              placeholder="0.00"
+          /></label>
+          <label
+            >Ingreso por transferencia<input
+              name="additionalTransferIncome"
+              type="text"
+              inputmode="decimal"
+              [value]="additionalTransferIncomeInput()"
+              (input)="updateAdditionalIncome($event, 'transferencia')"
+              placeholder="0.00"
+          /></label>
+          <button
+            class="secondary-button"
+            type="submit"
+            [disabled]="
+              closureBusy() || !canRecordAdditionalIncome() || isAdditionalIncomeFutureDate()
+            "
+          >
             {{ closureBusy() ? 'Registrando…' : 'Registrar ingresos' }}
           </button>
         </div>
-        @if (!closureLoading() && !closureError() && !hasOpenCashRegisterToday()) { <p class="additional-income-hint">{{ cashRegisterRequiredMessage() }}</p> }
-        @if (additionalIncomeRecordPeriod() === 'day' && isAdditionalIncomeFutureDate()) { <p class="additional-income-hint">No se pueden registrar ingresos con una fecha futura.</p> }
+        @if (!closureLoading() && !closureError() && !hasOpenCashRegisterToday()) {
+          <p class="additional-income-hint">{{ cashRegisterRequiredMessage() }}</p>
+        }
+        @if (additionalIncomeRecordPeriod() === 'day' && isAdditionalIncomeFutureDate()) {
+          <p class="additional-income-hint">
+            No se pueden registrar ingresos con una fecha futura.
+          </p>
+        }
       </form>
       @if (additionalIncomeLoading()) {
         <div class="empty-state">Cargando ingresos adicionales…</div>
       } @else if (additionalIncomeEntries().length === 0) {
         <div class="empty-state">No hay ingresos adicionales en esta fecha.</div>
       } @else {
-        <div class="table-scroll"><table>
-          <thead><tr><th>Fecha</th><th>Origen</th><th>Detalle</th><th>Período</th><th>Método</th><th class="numeric">Monto</th><th class="actions-heading">Acciones</th></tr></thead>
-          <tbody>
-            @for (entry of additionalIncomePagination.visible(additionalIncomeEntries()); track entry.id) {
+        <div class="table-scroll">
+          <table>
+            <thead>
               <tr>
-                <td>{{ formatDate(entry.created_at) }}</td>
-                <td>{{ additionalIncomeSourceLabel(entry.source) }}</td>
-                <td>{{ entry.description }}</td>
-                <td>{{ additionalIncomeTypeLabel(entry.expense_period) }}</td>
-                <td>{{ salePaymentMethodLabel(entry.payment_method) }}</td>
-                <td class="numeric amount">{{ formatCurrency(entry.amount) }}</td>
-                <td class="admin-actions">
-                  @if (entry.source === 'manual') {
-                    <button class="table-action-button table-action-edit" type="button" (click)="openEditAdditionalIncome(entry)" aria-label="Editar ingreso adicional" data-tooltip="Editar ingreso">
-                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5 4 4M4 20l4.3-1L18.7 8.6a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z"/></svg>
-                    </button>
-                    <button class="table-action-button table-action-delete" type="button" (click)="requestDeleteAdditionalIncome(entry)" aria-label="Eliminar ingreso adicional" data-tooltip="Eliminar ingreso">
-                      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg>
-                    </button>
-                  }
-                </td>
+                <th>Fecha</th>
+                <th>Origen</th>
+                <th>Detalle</th>
+                <th>Período</th>
+                <th>Método</th>
+                <th class="numeric">Monto</th>
+                <th class="actions-heading">Acciones</th>
               </tr>
-            }
-          </tbody>
-        </table></div>
-        <app-table-pagination [totalItems]="additionalIncomeEntries().length"
-          [page]="additionalIncomePagination.currentPage(additionalIncomeEntries().length)" [pageSize]="additionalIncomePagination.pageSize()"
-          (pageChange)="additionalIncomePagination.setPage($event, additionalIncomeEntries().length)"
-          (pageSizeChange)="additionalIncomePagination.setPageSize($event)" />
+            </thead>
+            <tbody>
+              @for (
+                entry of additionalIncomePagination.visible(additionalIncomeEntries());
+                track entry.id
+              ) {
+                <tr>
+                  <td>{{ formatDate(entry.created_at) }}</td>
+                  <td>{{ additionalIncomeSourceLabel(entry.source) }}</td>
+                  <td>{{ entry.description }}</td>
+                  <td>{{ additionalIncomeTypeLabel(entry.expense_period) }}</td>
+                  <td>{{ salePaymentMethodLabel(entry.payment_method) }}</td>
+                  <td class="numeric amount">{{ formatCurrency(entry.amount) }}</td>
+                  <td class="admin-actions">
+                    @if (entry.source === 'manual') {
+                      <button
+                        class="table-action-button table-action-edit"
+                        type="button"
+                        (click)="openEditAdditionalIncome(entry)"
+                        aria-label="Editar ingreso adicional"
+                        data-tooltip="Editar ingreso"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke-width="1.8"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path d="m15 5 4 4M4 20l4.3-1L18.7 8.6a2.1 2.1 0 0 0-3-3L5.3 16 4 20Z" />
+                        </svg>
+                      </button>
+                      <button
+                        class="table-action-button table-action-delete"
+                        type="button"
+                        (click)="requestDeleteAdditionalIncome(entry)"
+                        aria-label="Eliminar ingreso adicional"
+                        data-tooltip="Eliminar ingreso"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke-width="1.8"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" />
+                        </svg>
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <app-table-pagination
+          [totalItems]="additionalIncomeEntries().length"
+          [page]="additionalIncomePagination.currentPage(additionalIncomeEntries().length)"
+          [pageSize]="additionalIncomePagination.pageSize()"
+          (pageChange)="
+            additionalIncomePagination.setPage($event, additionalIncomeEntries().length)
+          "
+          (pageSizeChange)="additionalIncomePagination.setPageSize($event)"
+        />
       }
     </section>
   }
@@ -405,50 +942,84 @@
   @if (activeTab() === 'apertura') {
     <section class="sales-section closure-panel">
       <div class="section-title closure-title">
-        <div><p class="eyebrow">CAJA COMPARTIDA</p><h2>Apertura de caja</h2></div>
-        <span class="closure-timestamp">Verifica el fondo físico antes de iniciar operaciones.</span>
+        <div>
+          <p class="eyebrow">CAJA COMPARTIDA</p>
+          <h2>Apertura de caja</h2>
+        </div>
+        <span class="closure-timestamp"
+          >Verifica el fondo físico antes de iniciar operaciones.</span
+        >
       </div>
-      @if (closureError()) { <div class="error-banner" role="alert">{{ closureError() }}</div> }
+      @if (closureError()) {
+        <div class="error-banner" role="alert">{{ closureError() }}</div>
+      }
       @if (closureLoading()) {
         <div class="empty-state">Consultando estado de la caja…</div>
       } @else if (openClosure()) {
         <div class="closure-already-open">
           <span class="closure-open-indicator" aria-hidden="true">✓</span>
           <div>
-            <strong>{{ openingAlreadyDoneToday() ? 'La caja ya está abierta hoy' : 'La caja anterior sigue abierta' }}</strong>
-            <span>Fondo de apertura: {{ formatCurrency(openClosure()!.opening_amount) }} · {{ formatDate(openClosure()!.opened_at) }}</span>
+            <strong>{{
+              openingAlreadyDoneToday()
+                ? 'La caja ya está abierta hoy'
+                : 'La caja anterior sigue abierta'
+            }}</strong>
+            <span
+              >Fondo de apertura: {{ formatCurrency(openClosure()!.opening_amount) }} ·
+              {{ formatDate(openClosure()!.opened_at) }}</span
+            >
             @if (!openingAlreadyDoneToday()) {
               <span>Cierra esta caja antes de realizar la apertura de hoy.</span>
             }
           </div>
-          <button class="detail-button" type="button" (click)="activeTab.set('cierre')">Ir a cierre de caja</button>
+          <button class="detail-button" type="button" (click)="activeTab.set('cierre')">
+            Ir a cierre de caja
+          </button>
         </div>
       } @else if (openingAlreadyDoneToday()) {
         <div class="closure-already-open">
           <span class="closure-open-indicator" aria-hidden="true">✓</span>
           <div>
             <strong>La apertura de caja de hoy ya fue realizada</strong>
-            <span>Solo se permite una apertura diaria. Podrás abrir la caja nuevamente mañana.</span>
+            <span
+              >Solo se permite una apertura diaria. Podrás abrir la caja nuevamente mañana.</span
+            >
           </div>
         </div>
       } @else {
         <form class="opening-form" (ngSubmit)="openRegister()">
           <section class="opening-amount-section">
             <h3>Apertura de caja</h3>
-            <label>Ingresar fondo de apertura
+            <label
+              >Ingresar fondo de apertura
               <span class="opening-currency-input">
                 <span aria-hidden="true">$</span>
-                <input name="openingAmount" type="number" min="0" step="0.01" required
-                  [value]="openingAmountValue()" (input)="updateOpeningAmount($event)" />
+                <input
+                  name="openingAmount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  [value]="openingAmountValue()"
+                  (input)="updateOpeningAmount($event)"
+                />
               </span>
               <small>Este valor se sumará a las ventas en efectivo del día.</small>
             </label>
           </section>
           <section class="opening-count-section">
             <h3>Confirmar efectivo de fondo</h3>
-            <label>Monto en efectivo contado
-              <input name="openingCountedCash" type="text" inputmode="decimal" required
-                [value]="openingCountedCashInput()" (input)="updateOpeningCountedCash($event)" placeholder="0.00" />
+            <label
+              >Monto en efectivo contado
+              <input
+                name="openingCountedCash"
+                type="text"
+                inputmode="decimal"
+                required
+                [value]="openingCountedCashInput()"
+                (input)="updateOpeningCountedCash($event)"
+                placeholder="0.00"
+              />
               <small>Verifica físicamente el efectivo antes de confirmar.</small>
             </label>
           </section>
@@ -456,17 +1027,31 @@
             <div class="opening-confirmation-summary">
               <span>Resumen de apertura</span>
               <strong>Fondo ingresado: {{ formatCurrency(openingAmountValue()) }}</strong>
-              <strong>Diferencia de efectivo: {{ openingDifference() === null ? '—' : formatCurrency(openingDifference()!) }}</strong>
+              <strong
+                >Diferencia de efectivo:
+                {{
+                  openingDifference() === null ? '—' : formatCurrency(openingDifference()!)
+                }}</strong
+              >
             </div>
-            <div class="opening-verification" [class.verified]="openingDifference() === 0"
-              [class.unverified]="openingDifference() !== 0">
+            <div
+              class="opening-verification"
+              [class.verified]="openingDifference() === 0"
+              [class.unverified]="openingDifference() !== 0"
+            >
               <span>{{ openingDifference() === 0 ? '✓' : '!' }}</span>
-              <strong>{{ openingDifference() === 0 ? 'Fondo verificado' : 'Verificación pendiente' }}</strong>
+              <strong>{{
+                openingDifference() === 0 ? 'Fondo verificado' : 'Verificación pendiente'
+              }}</strong>
               @if (openingDifference() !== 0) {
                 <small>El efectivo contado debe coincidir con el fondo ingresado.</small>
               }
             </div>
-            <button class="primary-button" type="submit" [disabled]="closureBusy() || openingDifference() !== 0">
+            <button
+              class="primary-button"
+              type="submit"
+              [disabled]="closureBusy() || openingDifference() !== 0"
+            >
               {{ closureBusy() ? 'Iniciando…' : 'Iniciar operaciones' }}
             </button>
           </div>
@@ -478,15 +1063,30 @@
   @if (activeTab() === 'cierre') {
     <section class="sales-section closure-panel">
       <div class="section-title closure-title">
-        <div><p class="eyebrow">CAJA COMPARTIDA</p><h2>Cierre de Caja y Análisis</h2></div>
+        <div>
+          <p class="eyebrow">CAJA COMPARTIDA</p>
+          <h2>Cierre de Caja y Análisis</h2>
+        </div>
         <div class="closure-title-actions">
           <span class="closure-timestamp">Control de efectivo y métodos de pago</span>
-          <button class="quiet-button closure-refresh" type="button" (click)="loadCashRegister()"
-            [disabled]="closureLoading()" aria-label="Actualizar estado de caja" title="Actualizar estado de caja">↻</button>
+          <button
+            class="quiet-button closure-refresh"
+            type="button"
+            (click)="loadCashRegister()"
+            [disabled]="closureLoading()"
+            aria-label="Actualizar estado de caja"
+            title="Actualizar estado de caja"
+          >
+            ↻
+          </button>
         </div>
       </div>
-      @if (closureError()) { <div class="error-banner" role="alert">{{ closureError() }}</div> }
-      @if (closureSuccess()) { <div class="success-banner" role="status">{{ closureSuccess() }}</div> }
+      @if (closureError()) {
+        <div class="error-banner" role="alert">{{ closureError() }}</div>
+      }
+      @if (closureSuccess()) {
+        <div class="success-banner" role="status">{{ closureSuccess() }}</div>
+      }
       @if (closureLoading()) {
         <div class="empty-state">Consultando estado de la caja…</div>
       } @else if (!openClosure()) {
@@ -496,12 +1096,16 @@
             <strong>La caja está cerrada</strong>
             <span>Registra el fondo y verifica el efectivo desde la pestaña Apertura.</span>
           </div>
-          <button class="detail-button" type="button" (click)="activeTab.set('apertura')">Ir a apertura</button>
+          <button class="detail-button" type="button" (click)="activeTab.set('apertura')">
+            Ir a apertura
+          </button>
         </div>
       } @else {
         <div class="closure-overview">
           <section class="closure-summary-card" aria-label="Resumen de efectivo esperado">
-            <div class="closure-card-heading"><span>CAJA COMPARTIDA</span><strong>Resumen de Flujo de Efectivo</strong></div>
+            <div class="closure-card-heading">
+              <span>CAJA COMPARTIDA</span><strong>Resumen de Flujo de Efectivo</strong>
+            </div>
             <div class="closure-cash-summary">
               <article class="closure-opening">
                 <span class="closure-opening-label">
@@ -513,20 +1117,47 @@
                   Apertura
                 </span>
                 <strong>{{ formatCurrency(openClosure()!.opening_amount) }}</strong>
-                <small>{{ formatDate(openClosure()!.opened_at) }} · {{ closureAuthorName(openClosure()!) }}</small>
+                <small
+                  >{{ formatDate(openClosure()!.opened_at) }} ·
+                  {{ closureAuthorName(openClosure()!) }}</small
+                >
               </article>
               <div class="closure-cash-movements">
-                <p><span><i class="movement-dot opening-dot"></i>Fondo inicial (Apertura)</span><strong>{{ formatCurrency(openClosure()!.opening_amount) }}</strong></p>
-                <p><span><i class="movement-dot sales-dot"></i>Ventas en efectivo</span><strong>+ {{ formatCurrency(closureCashSales()) }}</strong></p>
+                <p>
+                  <span><i class="movement-dot opening-dot"></i>Fondo inicial (Apertura)</span
+                  ><strong>{{ formatCurrency(openClosure()!.opening_amount) }}</strong>
+                </p>
+                <p>
+                  <span><i class="movement-dot sales-dot"></i>Ventas en efectivo</span
+                  ><strong>+ {{ formatCurrency(closureCashSales()) }}</strong>
+                </p>
                 @if (closureAdditionalCashIncome() > 0) {
-                  <p><span><i class="movement-dot sales-dot"></i>Ingresos adicionales en efectivo</span><strong>+ {{ formatCurrency(closureAdditionalCashIncome()) }}</strong></p>
+                  <p>
+                    <span
+                      ><i class="movement-dot sales-dot"></i>Ingresos adicionales en efectivo</span
+                    ><strong>+ {{ formatCurrency(closureAdditionalCashIncome()) }}</strong>
+                  </p>
                 }
-                <p><span><i class="movement-dot expenses-dot"></i>Egresos en efectivo</span><strong>− {{ formatCurrency(closureCashExpenseTotal()) }}</strong></p>
+                <p>
+                  <span><i class="movement-dot expenses-dot"></i>Egresos en efectivo</span
+                  ><strong>− {{ formatCurrency(closureCashExpenseTotal()) }}</strong>
+                </p>
               </div>
               <div class="closure-expected">
                 <span>EFECTIVO ESPERADO</span>
                 <strong>{{ formatCurrency(expectedClosureCash()) }}</strong>
               </div>
+            </div>
+            <div class="closure-transfer-expenses">
+              <span
+                ><i class="movement-dot expenses-dot" aria-hidden="true"></i>Egresos en
+                transferencia</span
+              >
+              <strong>− {{ formatCurrency(closureTransferExpenseTotal()) }}</strong>
+              <small
+                >Se descuentan del acumulado de transferencias del día; no afectan el efectivo
+                esperado.</small
+              >
             </div>
           </section>
 
@@ -536,7 +1167,13 @@
               <p class="closure-no-payments">Aún no hay pagos registrados.</p>
             }
             <table>
-              <thead><tr><th>Método</th><th class="numeric">Total</th><th class="numeric">Movimientos</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Método</th>
+                  <th class="numeric">Total</th>
+                  <th class="numeric">Movimientos</th>
+                </tr>
+              </thead>
               <tbody>
                 @for (method of closurePaymentSummary(); track method.method) {
                   <tr>
@@ -558,17 +1195,26 @@
         </div>
         @if (closurePreOpeningPaidOrders().length > 0) {
           <div class="error-banner" role="alert">
-            Hay {{ closurePreOpeningPaidOrders().length }} pedido(s), por {{ formatCurrency(closurePreOpeningSalesTotal()) }},
-            cobrados antes de abrir esta caja. No están incluidos en el arqueo de esta caja; verifica el efectivo contado
-            al momento de apertura para evitar duplicar o excluir ese importe.
+            Hay {{ closurePreOpeningPaidOrders().length }} pedido(s), por
+            {{ formatCurrency(closurePreOpeningSalesTotal()) }}, cobrados antes de abrir esta caja.
+            No están incluidos en el arqueo de esta caja; verifica el efectivo contado al momento de
+            apertura para evitar duplicar o excluir ese importe.
           </div>
         }
 
         <form class="closure-count-form" (ngSubmit)="closeRegister()">
-          <label class="closure-count-input closure-control-card">Arqueo de efectivo
+          <label class="closure-count-input closure-control-card"
+            >Arqueo de efectivo
             <span>Monto en efectivo contado</span>
-            <input name="countedCash" type="text" inputmode="decimal" required
-              [value]="countedCashInput()" (input)="updateCountedCash($event)" placeholder="Ingresar efectivo contado" />
+            <input
+              name="countedCash"
+              type="text"
+              inputmode="decimal"
+              required
+              [value]="countedCashInput()"
+              (input)="updateCountedCash($event)"
+              placeholder="Ingresar efectivo contado"
+            />
           </label>
           <section class="closure-comparison-card" aria-label="Módulo de comparación">
             <h3>Módulo de Comparación</h3>
@@ -581,33 +1227,53 @@
                 <span>Esperado</span>
                 <strong>{{ formatCurrency(expectedClosureCash()) }}</strong>
               </article>
-              <article class="closure-comparison-difference"
+              <article
+                class="closure-comparison-difference"
                 [class.balanced]="cashDifference() === 0"
                 [class.shortage]="cashDifference() !== null && cashDifference()! < 0"
-                [class.surplus]="cashDifference() !== null && cashDifference()! > 0">
+                [class.surplus]="cashDifference() !== null && cashDifference()! > 0"
+              >
                 <span>Diferencia</span>
-                <strong>{{ cashDifference() === null ? formatCurrency(0) : formatCurrency(cashDifference()!) }}</strong>
+                <strong>{{
+                  cashDifference() === null ? formatCurrency(0) : formatCurrency(cashDifference()!)
+                }}</strong>
               </article>
             </div>
           </section>
-          <label class="closure-notes closure-control-card">Notas del cierre
-            <textarea name="closingNotes" maxlength="200" [(ngModel)]="closingNotes" placeholder="Notas"></textarea>
+          <label class="closure-notes closure-control-card"
+            >Notas del cierre
+            <textarea
+              name="closingNotes"
+              maxlength="200"
+              [(ngModel)]="closingNotes"
+              placeholder="Notas"
+            ></textarea>
           </label>
-          <button class="primary-button closure-submit" type="submit"
-            [disabled]="closureBusy() || countedCashValue() === null">
+          <button
+            class="primary-button closure-submit"
+            type="submit"
+            [disabled]="closureBusy() || countedCashValue() === null"
+          >
             {{ closureBusy() ? 'Cerrando…' : 'Cerrar caja' }}
           </button>
         </form>
       }
 
       <div class="section-title closure-history-title">
-        <div><p class="eyebrow">HISTORIAL</p><h2>Cierres anteriores</h2></div>
+        <div>
+          <p class="eyebrow">HISTORIAL</p>
+          <h2>Cierres anteriores</h2>
+        </div>
         @if (closureHistory().length > 0) {
           <label class="expense-calendar closure-history-search">
             <span aria-hidden="true">⌕</span>
-            <input type="search" aria-label="Buscar en el historial de cierres"
+            <input
+              type="search"
+              aria-label="Buscar en el historial de cierres"
               placeholder="Buscar por fecha, responsable o monto"
-              [ngModel]="closureHistorySearch()" (ngModelChange)="updateClosureHistorySearch($event)" />
+              [ngModel]="closureHistorySearch()"
+              (ngModelChange)="updateClosureHistorySearch($event)"
+            />
           </label>
         }
       </div>
@@ -615,29 +1281,125 @@
         <div class="empty-state compact">Aún no hay cierres registrados.</div>
       } @else {
         @if (filteredClosureHistory().length === 0) {
-          <div class="empty-state compact">No se encontraron cierres que coincidan con la búsqueda.</div>
+          <div class="empty-state compact">
+            No se encontraron cierres que coincidan con la búsqueda.
+          </div>
         } @else {
-        <div class="table-scroll"><table>
-          <thead><tr>
-            <th [attr.aria-sort]="closureSortAria('closed_at')"><button class="expense-sort-button" type="button" (click)="toggleClosureSort('closed_at')">Cerrado <span aria-hidden="true">{{ closureSortIndicator('closed_at') }}</span></button></th>
-            <th [attr.aria-sort]="closureSortAria('opening_amount')"><button class="expense-sort-button" type="button" (click)="toggleClosureSort('opening_amount')">Apertura <span aria-hidden="true">{{ closureSortIndicator('opening_amount') }}</span></button></th>
-            <th class="numeric" [attr.aria-sort]="closureSortAria('expected_cash')"><button class="expense-sort-button" type="button" (click)="toggleClosureSort('expected_cash')">Esperado <span aria-hidden="true">{{ closureSortIndicator('expected_cash') }}</span></button></th>
-            <th class="numeric" [attr.aria-sort]="closureSortAria('counted_cash')"><button class="expense-sort-button" type="button" (click)="toggleClosureSort('counted_cash')">Contado <span aria-hidden="true">{{ closureSortIndicator('counted_cash') }}</span></button></th>
-            <th class="numeric" [attr.aria-sort]="closureSortAria('difference')"><button class="expense-sort-button" type="button" (click)="toggleClosureSort('difference')">Diferencia <span aria-hidden="true">{{ closureSortIndicator('difference') }}</span></button></th>
-            <th class="numeric" [attr.aria-sort]="closureSortAria('transfer')"><button class="expense-sort-button" type="button" (click)="toggleClosureSort('transfer')">Transferencia <span aria-hidden="true">{{ closureSortIndicator('transfer') }}</span></button></th>
-            <th class="numeric" [attr.aria-sort]="closureSortAria('total')"><button class="expense-sort-button" type="button" (click)="toggleClosureSort('total')">Total <span aria-hidden="true">{{ closureSortIndicator('total') }}</span></button></th>
-            <th [attr.aria-sort]="closureSortAria('responsible')"><button class="expense-sort-button" type="button" (click)="toggleClosureSort('responsible')">Responsable <span aria-hidden="true">{{ closureSortIndicator('responsible') }}</span></button></th>
-          </tr></thead>
-          <tbody>
-            @for (closure of closureHistoryPagination.visible(filteredClosureHistory()); track closure.id) {
-              <tr><td>{{ closure.closed_at ? formatDate(closure.closed_at) : '—' }}</td><td>{{ formatCurrency(closure.opening_amount) }}</td><td class="numeric amount">{{ formatCurrency(closure.expected_cash) }}</td><td class="numeric amount">{{ formatCurrency(closure.counted_cash) }}</td><td class="numeric" [class.amount]="closureDifference(closure) === 0">{{ formatCurrency(closureDifference(closure)) }}</td><td class="numeric amount">{{ formatCurrency(closure.total_other_sales) }}</td><td class="numeric amount">{{ formatCurrency(closureTotalWithTransfer(closure)) }}</td><td>{{ closureAuthorName(closure) }}</td></tr>
-            }
-          </tbody>
-        </table></div>
-        <app-table-pagination [totalItems]="filteredClosureHistory().length"
-          [page]="closureHistoryPagination.currentPage(filteredClosureHistory().length)" [pageSize]="closureHistoryPagination.pageSize()"
-          (pageChange)="closureHistoryPagination.setPage($event, filteredClosureHistory().length)"
-          (pageSizeChange)="closureHistoryPagination.setPageSize($event)" />
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th [attr.aria-sort]="closureSortAria('closed_at')">
+                    <button
+                      class="expense-sort-button"
+                      type="button"
+                      (click)="toggleClosureSort('closed_at')"
+                    >
+                      Cerrado
+                      <span aria-hidden="true">{{ closureSortIndicator('closed_at') }}</span>
+                    </button>
+                  </th>
+                  <th [attr.aria-sort]="closureSortAria('opening_amount')">
+                    <button
+                      class="expense-sort-button"
+                      type="button"
+                      (click)="toggleClosureSort('opening_amount')"
+                    >
+                      Apertura
+                      <span aria-hidden="true">{{ closureSortIndicator('opening_amount') }}</span>
+                    </button>
+                  </th>
+                  <th class="numeric" [attr.aria-sort]="closureSortAria('expected_cash')">
+                    <button
+                      class="expense-sort-button"
+                      type="button"
+                      (click)="toggleClosureSort('expected_cash')"
+                    >
+                      Esperado
+                      <span aria-hidden="true">{{ closureSortIndicator('expected_cash') }}</span>
+                    </button>
+                  </th>
+                  <th class="numeric" [attr.aria-sort]="closureSortAria('counted_cash')">
+                    <button
+                      class="expense-sort-button"
+                      type="button"
+                      (click)="toggleClosureSort('counted_cash')"
+                    >
+                      Contado
+                      <span aria-hidden="true">{{ closureSortIndicator('counted_cash') }}</span>
+                    </button>
+                  </th>
+                  <th class="numeric" [attr.aria-sort]="closureSortAria('difference')">
+                    <button
+                      class="expense-sort-button"
+                      type="button"
+                      (click)="toggleClosureSort('difference')"
+                    >
+                      Diferencia
+                      <span aria-hidden="true">{{ closureSortIndicator('difference') }}</span>
+                    </button>
+                  </th>
+                  <th class="numeric" [attr.aria-sort]="closureSortAria('transfer')">
+                    <button
+                      class="expense-sort-button"
+                      type="button"
+                      (click)="toggleClosureSort('transfer')"
+                    >
+                      Transferencia
+                      <span aria-hidden="true">{{ closureSortIndicator('transfer') }}</span>
+                    </button>
+                  </th>
+                  <th class="numeric" [attr.aria-sort]="closureSortAria('total')">
+                    <button
+                      class="expense-sort-button"
+                      type="button"
+                      (click)="toggleClosureSort('total')"
+                    >
+                      Total <span aria-hidden="true">{{ closureSortIndicator('total') }}</span>
+                    </button>
+                  </th>
+                  <th [attr.aria-sort]="closureSortAria('responsible')">
+                    <button
+                      class="expense-sort-button"
+                      type="button"
+                      (click)="toggleClosureSort('responsible')"
+                    >
+                      Responsable
+                      <span aria-hidden="true">{{ closureSortIndicator('responsible') }}</span>
+                    </button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (
+                  closure of closureHistoryPagination.visible(filteredClosureHistory());
+                  track closure.id
+                ) {
+                  <tr>
+                    <td>{{ closure.closed_at ? formatDate(closure.closed_at) : '—' }}</td>
+                    <td>{{ formatCurrency(closure.opening_amount) }}</td>
+                    <td class="numeric amount">{{ formatCurrency(closure.expected_cash) }}</td>
+                    <td class="numeric amount">{{ formatCurrency(closure.counted_cash) }}</td>
+                    <td class="numeric" [class.amount]="closureDifference(closure) === 0">
+                      {{ formatCurrency(closureDifference(closure)) }}
+                    </td>
+                    <td class="numeric amount">{{ formatCurrency(closure.total_other_sales) }}</td>
+                    <td class="numeric amount">
+                      {{ formatCurrency(closureTotalWithTransfer(closure)) }}
+                    </td>
+                    <td>{{ closureAuthorName(closure) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <app-table-pagination
+            [totalItems]="filteredClosureHistory().length"
+            [page]="closureHistoryPagination.currentPage(filteredClosureHistory().length)"
+            [pageSize]="closureHistoryPagination.pageSize()"
+            (pageChange)="closureHistoryPagination.setPage($event, filteredClosureHistory().length)"
+            (pageSizeChange)="closureHistoryPagination.setPageSize($event)"
+          />
         }
       }
     </section>
@@ -646,28 +1408,60 @@
 
 @if (showCloseConfirm()) {
   <div class="closure-confirm-backdrop" (click)="cancelCloseRegister()">
-    <section class="closure-confirm-modal" role="alertdialog" aria-modal="true"
-      aria-labelledby="closure-confirm-title" aria-describedby="closure-confirm-description"
-      (click)="$event.stopPropagation()">
+    <section
+      class="closure-confirm-modal"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="closure-confirm-title"
+      aria-describedby="closure-confirm-description"
+      (click)="$event.stopPropagation()"
+    >
       <span class="closure-confirm-icon" aria-hidden="true">?</span>
       <h2 id="closure-confirm-title">Confirmar cierre de caja</h2>
       <p id="closure-confirm-description">¿Confirmas el cierre con el efectivo contado?</p>
       <dl class="closure-confirm-values">
-        <div><dt>Efectivo esperado</dt><dd>{{ formatCurrency(expectedClosureCash()) }}</dd></div>
+        <div>
+          <dt>Efectivo esperado</dt>
+          <dd>{{ formatCurrency(expectedClosureCash()) }}</dd>
+        </div>
         @if (closureAdditionalCashIncome() > 0) {
-          <div><dt>Ingreso adicional en efectivo</dt><dd>{{ formatCurrency(closureAdditionalCashIncome()) }}</dd></div>
+          <div>
+            <dt>Ingreso adicional en efectivo</dt>
+            <dd>{{ formatCurrency(closureAdditionalCashIncome()) }}</dd>
+          </div>
         }
         @if (closureAdditionalTransferIncome() > 0) {
-          <div><dt>Ingreso adicional por transferencia</dt><dd>{{ formatCurrency(closureAdditionalTransferIncome()) }}</dd></div>
+          <div>
+            <dt>Ingreso adicional por transferencia</dt>
+            <dd>{{ formatCurrency(closureAdditionalTransferIncome()) }}</dd>
+          </div>
         }
-        <div><dt>Efectivo contado</dt><dd>{{ formatCurrency(countedCashValue() ?? 0) }}</dd></div>
+        <div>
+          <dt>Efectivo contado</dt>
+          <dd>{{ formatCurrency(countedCashValue() ?? 0) }}</dd>
+        </div>
         @if (cashDifference() !== null && cashDifference() !== 0) {
-          <div><dt>{{ cashDifference()! > 0 ? 'Sobrante' : 'Faltante' }}</dt><dd>{{ formatCurrency(cashDifference()!) }}</dd></div>
+          <div>
+            <dt>{{ cashDifference()! > 0 ? 'Sobrante' : 'Faltante' }}</dt>
+            <dd>{{ formatCurrency(cashDifference()!) }}</dd>
+          </div>
         }
       </dl>
       <div class="closure-confirm-actions">
-        <button class="secondary-button" type="button" (click)="cancelCloseRegister()" [disabled]="closureBusy()">Cancelar</button>
-        <button class="primary-button" type="button" (click)="confirmCloseRegister()" [disabled]="closureBusy()">
+        <button
+          class="secondary-button"
+          type="button"
+          (click)="cancelCloseRegister()"
+          [disabled]="closureBusy()"
+        >
+          Cancelar
+        </button>
+        <button
+          class="primary-button"
+          type="button"
+          (click)="confirmCloseRegister()"
+          [disabled]="closureBusy()"
+        >
           {{ closureBusy() ? 'Cerrando…' : 'Confirmar cierre' }}
         </button>
       </div>
@@ -677,21 +1471,54 @@
 
 @if (editingExpense(); as expense) {
   <div class="modal-backdrop admin-backdrop" (click)="closeEditExpense()">
-    <section class="admin-modal expense-edit-modal" role="dialog" aria-modal="true"
-      [attr.aria-labelledby]="'expense-edit-title-' + expense.id" (click)="$event.stopPropagation()">
+    <section
+      class="admin-modal expense-edit-modal"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="'expense-edit-title-' + expense.id"
+      (click)="$event.stopPropagation()"
+    >
       <header class="modal-heading">
         <div><h2 [id]="'expense-edit-title-' + expense.id">Editar egreso</h2></div>
-        <button class="quiet-button close-top" type="button" (click)="closeEditExpense()" aria-label="Cerrar" [disabled]="savingExpenseEdit()">×</button>
+        <button
+          class="quiet-button close-top"
+          type="button"
+          (click)="closeEditExpense()"
+          aria-label="Cerrar"
+          [disabled]="savingExpenseEdit()"
+        >
+          ×
+        </button>
       </header>
-      @if (expenseError()) { <div class="error-banner" role="alert">{{ expenseError() }}</div> }
+      @if (expenseError()) {
+        <div class="error-banner" role="alert">{{ expenseError() }}</div>
+      }
       <form class="admin-form expense-edit-form" (ngSubmit)="saveExpenseEdit()">
         <div class="expense-edit-row">
-          <label>Monto<input name="editExpenseAmount" type="number" min="0.01" step="0.01" required [(ngModel)]="editExpenseAmount" /></label>
-          <label>Fecha<input name="editExpenseDate" type="date" required [(ngModel)]="editExpenseDate" /></label>
+          <label
+            >Monto<input
+              name="editExpenseAmount"
+              type="number"
+              min="0.01"
+              step="0.01"
+              required
+              [(ngModel)]="editExpenseAmount"
+          /></label>
+          <label
+            >Fecha<input name="editExpenseDate" type="date" required [(ngModel)]="editExpenseDate"
+          /></label>
         </div>
         <div class="expense-edit-row">
-          <label>Descripción<input name="editExpenseDescription" type="text" required maxlength="200" [(ngModel)]="editExpenseDescription" /></label>
-          <label>Categoría
+          <label
+            >Descripción<input
+              name="editExpenseDescription"
+              type="text"
+              required
+              maxlength="200"
+              [(ngModel)]="editExpenseDescription"
+          /></label>
+          <label
+            >Categoría
             <select name="editExpenseCategory" required [(ngModel)]="editExpenseCategory">
               <option value="insumos">Insumos</option>
               <option value="personal">Personal</option>
@@ -702,15 +1529,22 @@
             </select>
           </label>
         </div>
-        <label class="expense-period-field">Tipo de egreso
-          <select name="editExpensePeriod" required [(ngModel)]="editExpensePeriod">
-            <option value="day">Diario</option>
-            <option value="week">Semanal</option>
-            <option value="month">Mensual</option>
+        <label class="expense-period-field"
+          >Tipo de operación
+          <select name="editExpensePaymentMethod" required [(ngModel)]="editExpensePaymentMethod">
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
           </select>
         </label>
         <footer class="modal-footer">
-          <button class="secondary-button" type="button" (click)="closeEditExpense()" [disabled]="savingExpenseEdit()">Cancelar</button>
+          <button
+            class="secondary-button"
+            type="button"
+            (click)="closeEditExpense()"
+            [disabled]="savingExpenseEdit()"
+          >
+            Cancelar
+          </button>
           <button class="primary-button" type="submit" [disabled]="savingExpenseEdit()">
             {{ savingExpenseEdit() ? 'Guardando…' : 'Guardar cambios' }}
           </button>
@@ -722,16 +1556,37 @@
 
 @if (deletingExpense(); as expense) {
   <div class="closure-confirm-backdrop expense-delete-backdrop" (click)="cancelDeleteExpense()">
-    <section class="closure-confirm-modal expense-delete-modal" role="alertdialog" aria-modal="true"
-      aria-labelledby="expense-delete-title" aria-describedby="expense-delete-description"
-      (click)="$event.stopPropagation()">
+    <section
+      class="closure-confirm-modal expense-delete-modal"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="expense-delete-title"
+      aria-describedby="expense-delete-description"
+      (click)="$event.stopPropagation()"
+    >
       <span class="closure-confirm-icon" aria-hidden="true">!</span>
       <h2 id="expense-delete-title">Eliminar egreso</h2>
-      <p id="expense-delete-description">¿Seguro que quieres eliminar “{{ expense.description }}”? Esta acción no se puede deshacer.</p>
-      @if (expenseError()) { <div class="error-banner" role="alert">{{ expenseError() }}</div> }
+      <p id="expense-delete-description">
+        ¿Seguro que quieres eliminar “{{ expense.description }}”? Esta acción no se puede deshacer.
+      </p>
+      @if (expenseError()) {
+        <div class="error-banner" role="alert">{{ expenseError() }}</div>
+      }
       <div class="closure-confirm-actions">
-        <button class="secondary-button" type="button" (click)="cancelDeleteExpense()" [disabled]="confirmingExpenseDelete()">Cancelar</button>
-        <button class="primary-button" type="button" (click)="confirmDeleteExpense()" [disabled]="confirmingExpenseDelete()">
+        <button
+          class="secondary-button"
+          type="button"
+          (click)="cancelDeleteExpense()"
+          [disabled]="confirmingExpenseDelete()"
+        >
+          Cancelar
+        </button>
+        <button
+          class="primary-button"
+          type="button"
+          (click)="confirmDeleteExpense()"
+          [disabled]="confirmingExpenseDelete()"
+        >
           {{ confirmingExpenseDelete() ? 'Eliminando…' : 'Sí, eliminar' }}
         </button>
       </div>
@@ -741,28 +1596,68 @@
 
 @if (editingAdditionalIncome(); as income) {
   <div class="modal-backdrop admin-backdrop" (click)="closeEditAdditionalIncome()">
-    <section class="admin-modal expense-edit-modal" role="dialog" aria-modal="true"
-      [attr.aria-labelledby]="'additional-income-edit-title-' + income.id" (click)="$event.stopPropagation()">
+    <section
+      class="admin-modal expense-edit-modal"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="'additional-income-edit-title-' + income.id"
+      (click)="$event.stopPropagation()"
+    >
       <header class="modal-heading">
-        <div><h2 [id]="'additional-income-edit-title-' + income.id">Editar ingreso adicional</h2></div>
-        <button class="quiet-button close-top" type="button" (click)="closeEditAdditionalIncome()"
-          aria-label="Cerrar" [disabled]="savingAdditionalIncomeEdit()">×</button>
+        <div>
+          <h2 [id]="'additional-income-edit-title-' + income.id">Editar ingreso adicional</h2>
+        </div>
+        <button
+          class="quiet-button close-top"
+          type="button"
+          (click)="closeEditAdditionalIncome()"
+          aria-label="Cerrar"
+          [disabled]="savingAdditionalIncomeEdit()"
+        >
+          ×
+        </button>
       </header>
-      @if (additionalIncomeActionError()) { <div class="error-banner" role="alert">{{ additionalIncomeActionError() }}</div> }
+      @if (additionalIncomeActionError()) {
+        <div class="error-banner" role="alert">{{ additionalIncomeActionError() }}</div>
+      }
       <form class="admin-form expense-edit-form" (ngSubmit)="saveAdditionalIncomeEdit()">
-        <label>Monto<input name="editAdditionalIncomeAmount" type="number" min="0.01" step="0.01" required
-          [(ngModel)]="editAdditionalIncomeAmount" /></label>
-        <label>Descripción<input name="editAdditionalIncomeDescription" type="text" required maxlength="200"
-          [(ngModel)]="editAdditionalIncomeDescription" /></label>
-        <label>Método de pago
-          <select name="editAdditionalIncomePaymentMethod" required [(ngModel)]="editAdditionalIncomePaymentMethod">
+        <label
+          >Monto<input
+            name="editAdditionalIncomeAmount"
+            type="number"
+            min="0.01"
+            step="0.01"
+            required
+            [(ngModel)]="editAdditionalIncomeAmount"
+        /></label>
+        <label
+          >Descripción<input
+            name="editAdditionalIncomeDescription"
+            type="text"
+            required
+            maxlength="200"
+            [(ngModel)]="editAdditionalIncomeDescription"
+        /></label>
+        <label
+          >Método de pago
+          <select
+            name="editAdditionalIncomePaymentMethod"
+            required
+            [(ngModel)]="editAdditionalIncomePaymentMethod"
+          >
             <option value="efectivo">Efectivo</option>
             <option value="transferencia">Transferencia</option>
           </select>
         </label>
         <footer class="modal-footer">
-          <button class="secondary-button" type="button" (click)="closeEditAdditionalIncome()"
-            [disabled]="savingAdditionalIncomeEdit()">Cancelar</button>
+          <button
+            class="secondary-button"
+            type="button"
+            (click)="closeEditAdditionalIncome()"
+            [disabled]="savingAdditionalIncomeEdit()"
+          >
+            Cancelar
+          </button>
           <button class="primary-button" type="submit" [disabled]="savingAdditionalIncomeEdit()">
             {{ savingAdditionalIncomeEdit() ? 'Guardando…' : 'Guardar cambios' }}
           </button>
@@ -773,20 +1668,42 @@
 }
 
 @if (deletingAdditionalIncome(); as income) {
-  <div class="closure-confirm-backdrop expense-delete-backdrop" (click)="cancelDeleteAdditionalIncome()">
-    <section class="closure-confirm-modal expense-delete-modal" role="alertdialog" aria-modal="true"
-      aria-labelledby="additional-income-delete-title" aria-describedby="additional-income-delete-description"
-      (click)="$event.stopPropagation()">
+  <div
+    class="closure-confirm-backdrop expense-delete-backdrop"
+    (click)="cancelDeleteAdditionalIncome()"
+  >
+    <section
+      class="closure-confirm-modal expense-delete-modal"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="additional-income-delete-title"
+      aria-describedby="additional-income-delete-description"
+      (click)="$event.stopPropagation()"
+    >
       <span class="closure-confirm-icon" aria-hidden="true">!</span>
       <h2 id="additional-income-delete-title">Eliminar ingreso adicional</h2>
-      <p id="additional-income-delete-description">¿Seguro que quieres eliminar “{{ income.description }}” por
-        {{ formatCurrency(income.amount) }}? Esta acción no se puede deshacer.</p>
-      @if (additionalIncomeActionError()) { <div class="error-banner" role="alert">{{ additionalIncomeActionError() }}</div> }
+      <p id="additional-income-delete-description">
+        ¿Seguro que quieres eliminar “{{ income.description }}” por
+        {{ formatCurrency(income.amount) }}? Esta acción no se puede deshacer.
+      </p>
+      @if (additionalIncomeActionError()) {
+        <div class="error-banner" role="alert">{{ additionalIncomeActionError() }}</div>
+      }
       <div class="closure-confirm-actions">
-        <button class="secondary-button" type="button" (click)="cancelDeleteAdditionalIncome()"
-          [disabled]="confirmingAdditionalIncomeDelete()">Cancelar</button>
-        <button class="primary-button" type="button" (click)="confirmDeleteAdditionalIncome()"
-          [disabled]="confirmingAdditionalIncomeDelete()">
+        <button
+          class="secondary-button"
+          type="button"
+          (click)="cancelDeleteAdditionalIncome()"
+          [disabled]="confirmingAdditionalIncomeDelete()"
+        >
+          Cancelar
+        </button>
+        <button
+          class="primary-button"
+          type="button"
+          (click)="confirmDeleteAdditionalIncome()"
+          [disabled]="confirmingAdditionalIncomeDelete()"
+        >
           {{ confirmingAdditionalIncomeDelete() ? 'Eliminando…' : 'Sí, eliminar' }}
         </button>
       </div>
@@ -796,59 +1713,118 @@
 
 @if (selectedDetail(); as order) {
   <div class="modal-backdrop detail-backdrop" (click)="closeDetails()">
-    <section class="order-detail-modal" [class.payment-active]="order.status === 'Servido' && paymentMode()" role="dialog" aria-modal="true" [attr.aria-labelledby]="'sale-detail-title-' + order.id" (click)="onDetailModalClick($event)">
+    <section
+      class="order-detail-modal"
+      [class.payment-active]="order.status === 'Servido' && paymentMode()"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-labelledby]="'sale-detail-title-' + order.id"
+      (click)="onDetailModalClick($event)"
+    >
       <header class="modal-heading detail-heading">
         <div class="detail-title-content">
           <div class="detail-title-row">
-            <h2 [id]="'sale-detail-title-' + order.id">Pedido #{{ order.orderNumber ?? order.id }}</h2>
-            <span class="status-pill sale-detail-status" [class.status-servido]="order.status === 'Servido'" [class.status-pagado]="order.status === 'Pagado'">
+            <h2 [id]="'sale-detail-title-' + order.id">
+              Pedido #{{ order.orderNumber ?? order.id }}
+            </h2>
+            <span
+              class="status-pill sale-detail-status"
+              [class.status-servido]="order.status === 'Servido'"
+              [class.status-pagado]="order.status === 'Pagado'"
+            >
               {{ order.status }}
             </span>
           </div>
         </div>
-        <button class="quiet-button close-top" type="button" (click)="closeDetails()" aria-label="Cerrar detalle" [disabled]="paymentCorrectionSaving()">×</button>
+        <button
+          class="quiet-button close-top"
+          type="button"
+          (click)="closeDetails()"
+          aria-label="Cerrar detalle"
+          [disabled]="paymentCorrectionSaving()"
+        >
+          ×
+        </button>
       </header>
       <div class="detail-meta">
         <span><span aria-hidden="true">◷</span>{{ formatDate(order.date) }}</span>
         <span><span aria-hidden="true">▦</span>{{ order.location }}</span>
         <span><span aria-hidden="true">♙</span>Mesero · {{ order.waiter }}</span>
-        @if (order.paymentMethod) { <span><span aria-hidden="true">▤</span>Método: {{ salePaymentMethodLabel(order.paymentMethod) }}</span> }
+        @if (order.paymentMethod) {
+          <span
+            ><span aria-hidden="true">▤</span>Método:
+            {{ salePaymentMethodLabel(order.paymentMethod) }}</span
+          >
+        }
       </div>
       @if (detailLoading()) {
         <div class="empty-state">Cargando desglose…</div>
       } @else if (detailError()) {
         <div class="error-banner" role="alert">{{ detailError() }}</div>
-      } @else if (detailItems().length === 0
-        && !(order.status === 'Servido' && paymentMode())
-        && savedPaymentGroups().length === 0) {
+      } @else if (
+        detailItems().length === 0 &&
+        !(order.status === 'Servido' && paymentMode()) &&
+        savedPaymentGroups().length === 0
+      ) {
         <div class="empty-state">Este pedido no tiene productos detallados.</div>
-      } @else if (!(order.status === 'Servido' && paymentMode())
-        && savedPaymentGroups().length === 0) {
+      } @else if (
+        !(order.status === 'Servido' && paymentMode()) && savedPaymentGroups().length === 0
+      ) {
         <div class="detail-items">
-          <div class="detail-line detail-line-heading"><span>Producto</span><span>Cant.</span><span>Precio</span><span>Subtotal</span></div>
+          <div class="detail-line detail-line-heading">
+            <span>Producto</span><span>Cant.</span><span>Precio</span><span>Subtotal</span>
+          </div>
           @for (item of detailItems(); track item.id) {
-            <div class="detail-line"><span class="detail-product">{{ productName(item) }}@if (item.notes) { <small>{{ item.notes }}</small> }</span><span>{{ item.quantity }}</span><span>{{ formatCurrency(item.unit_price) }}</span><strong>{{ formatCurrency(item.subtotal) }}</strong></div>
+            <div class="detail-line">
+              <span class="detail-product"
+                >{{ productName(item) }}
+                @if (item.notes) {
+                  <small>{{ item.notes }}</small>
+                }</span
+              ><span>{{ item.quantity }}</span
+              ><span>{{ formatCurrency(item.unit_price) }}</span
+              ><strong>{{ formatCurrency(item.subtotal) }}</strong>
+            </div>
           }
         </div>
       }
-      @if (paymentDetailError()) { <div class="error-banner" role="alert">{{ paymentDetailError() }}</div> }
+      @if (paymentDetailError()) {
+        <div class="error-banner" role="alert">{{ paymentDetailError() }}</div>
+      }
       @if (savedPaymentGroups().length > 0) {
         <section class="saved-payment-groups" aria-label="Desglose de pagos por persona">
           <header class="saved-payment-heading">
             <h3>{{ order.status === 'Pagado' ? 'Pagos por persona' : 'Pagos registrados' }}</h3>
-            <div><strong>Total cobrado: {{ formatCurrency(savedPaymentTotal()) }}</strong>@if (order.status === 'Servido') { <span>Restante: {{ formatCurrency(remainingPaymentTotal()) }}</span> }</div>
+            <div>
+              <strong>Total cobrado: {{ formatCurrency(savedPaymentTotal()) }}</strong>
+              @if (order.status === 'Servido') {
+                <span>Restante: {{ formatCurrency(remainingPaymentTotal()) }}</span>
+              }
+            </div>
           </header>
           @for (group of savedPaymentGroups(); track group.id) {
             <article class="saved-payment-group">
-              <header><strong>{{ group.payer_name || 'Parte de la cuenta' }}</strong><strong>{{ formatCurrency(group.group_amount) }}</strong></header>
+              <header>
+                <strong>{{ group.payer_name || 'Parte de la cuenta' }}</strong
+                ><strong>{{ formatCurrency(group.group_amount) }}</strong>
+              </header>
               <ul>
                 @for (item of group.order_payment_group_items; track $index) {
-                  <li>{{ item.quantity }} × {{ savedGroupItemName(item) }} <span>{{ formatCurrency(item.subtotal) }}</span></li>
+                  <li>
+                    {{ item.quantity }} × {{ savedGroupItemName(item) }}
+                    <span>{{ formatCurrency(item.subtotal) }}</span>
+                  </li>
                 }
               </ul>
               <p>
                 @for (tender of group.order_payment_tenders; track $index) {
-                  <span>{{ paymentMethodLabel(tender.payment_method) }}: {{ formatCurrency(tender.amount) }}@if (!$last) { · } </span>
+                  <span
+                    >{{ paymentMethodLabel(tender.payment_method) }}:
+                    {{ formatCurrency(tender.amount) }}
+                    @if (!$last) {
+                      ·
+                    }
+                  </span>
                 }
               </p>
             </article>
@@ -857,82 +1833,179 @@
       }
       @if (order.status === 'Pagado' && isAdmin()) {
         @if (paymentCorrectionMode()) {
-          <form class="split-payment-panel payment-correction-panel" (ngSubmit)="savePaymentCorrection()">
+          <form
+            class="split-payment-panel payment-correction-panel"
+            (ngSubmit)="savePaymentCorrection()"
+          >
             <header class="split-payment-heading">
-              <div><h3>Corregir cobro</h3><p>El total del pedido no cambia; distribuye el cobro entre los métodos correctos.</p></div>
+              <div>
+                <h3>Corregir cobro</h3>
+                <p>
+                  El total del pedido no cambia; distribuye el cobro entre los métodos correctos.
+                </p>
+              </div>
             </header>
             <div class="split-tenders">
               @for (tender of correctionTenders(); track tender.id) {
                 <div class="split-tender">
-                  <label>Método
-                    <select [name]="'correction-method-' + tender.id" [ngModel]="tender.payment_method"
-                      (ngModelChange)="updateCorrectionTenderMethod(tender.id, $event)">
+                  <label
+                    >Método
+                    <select
+                      [name]="'correction-method-' + tender.id"
+                      [ngModel]="tender.payment_method"
+                      (ngModelChange)="updateCorrectionTenderMethod(tender.id, $event)"
+                    >
                       @for (method of paymentMethods; track method) {
                         <option [value]="method">{{ paymentMethodLabel(method) }}</option>
                       }
                     </select>
                   </label>
-                  <label>Monto
-                    <input [name]="'correction-amount-' + tender.id" type="number" min="0.01" step="0.01" required
-                      [ngModel]="tender.amount" (ngModelChange)="updateCorrectionTenderAmount(tender.id, $event)" />
+                  <label
+                    >Monto
+                    <input
+                      [name]="'correction-amount-' + tender.id"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      required
+                      [ngModel]="tender.amount"
+                      (ngModelChange)="updateCorrectionTenderAmount(tender.id, $event)"
+                    />
                   </label>
                   @if (correctionTenders().length > 1) {
-                    <button class="remove-split-button" type="button" (click)="removeCorrectionTender(tender.id)"
-                      [attr.aria-label]="'Quitar método ' + paymentMethodLabel(tender.payment_method)">×</button>
+                    <button
+                      class="remove-split-button"
+                      type="button"
+                      (click)="removeCorrectionTender(tender.id)"
+                      [attr.aria-label]="
+                        'Quitar método ' + paymentMethodLabel(tender.payment_method)
+                      "
+                    >
+                      ×
+                    </button>
                   }
                 </div>
               }
             </div>
             @if (correctionTenders().length < 3) {
-              <button class="detail-button" type="button" (click)="addCorrectionTender()">+ Agregar método</button>
+              <button class="detail-button" type="button" (click)="addCorrectionTender()">
+                + Agregar método
+              </button>
             }
-            <div class="split-balance correction-total" [class.correction-invalid]="correctionTenderTotal() !== order.totalAmount">
-              <span>Total del pedido: <strong>{{ formatCurrency(order.totalAmount) }}</strong></span>
-              <span>Distribución: <strong>{{ formatCurrency(correctionTenderTotal()) }}</strong></span>
+            <div
+              class="split-balance correction-total"
+              [class.correction-invalid]="correctionTenderTotal() !== order.totalAmount"
+            >
+              <span
+                >Total del pedido: <strong>{{ formatCurrency(order.totalAmount) }}</strong></span
+              >
+              <span
+                >Distribución: <strong>{{ formatCurrency(correctionTenderTotal()) }}</strong></span
+              >
             </div>
-            <label class="correction-reason">Motivo de la corrección
-              <textarea name="paymentCorrectionReason" rows="2" maxlength="300" required
-                [(ngModel)]="paymentCorrectionReason" placeholder="Describe por qué se corrige este cobro"></textarea>
+            <label class="correction-reason"
+              >Motivo de la corrección
+              <textarea
+                name="paymentCorrectionReason"
+                rows="2"
+                maxlength="300"
+                required
+                [(ngModel)]="paymentCorrectionReason"
+                placeholder="Describe por qué se corrige este cobro"
+              ></textarea>
             </label>
-            <p class="correction-audit-note">Se guardará el método anterior, el nuevo y el motivo para auditoría. Los cierres ya realizados no se modificarán.</p>
+            <p class="correction-audit-note">
+              Se guardará el método anterior, el nuevo y el motivo para auditoría. Los cierres ya
+              realizados no se modificarán.
+            </p>
             @if (savedPaymentGroups().length > 0) {
-              <p class="correction-audit-note">En pagos divididos, los métodos corregidos se asignan a los grupos existentes sin cambiar sus productos ni montos.</p>
+              <p class="correction-audit-note">
+                En pagos divididos, los métodos corregidos se asignan a los grupos existentes sin
+                cambiar sus productos ni montos.
+              </p>
             }
-            @if (paymentCorrectionError()) { <div class="error-banner" role="alert">{{ paymentCorrectionError() }}</div> }
-            @if (paymentCorrectionValidation()) { <p class="split-validation" role="status">{{ paymentCorrectionValidation() }}</p> }
+            @if (paymentCorrectionError()) {
+              <div class="error-banner" role="alert">{{ paymentCorrectionError() }}</div>
+            }
+            @if (paymentCorrectionValidation()) {
+              <p class="split-validation" role="status">{{ paymentCorrectionValidation() }}</p>
+            }
             <footer class="split-payment-footer">
-              <button class="secondary-button" type="button" (click)="cancelPaymentCorrection()" [disabled]="paymentCorrectionSaving()">Cancelar</button>
-              <button class="primary-button" type="submit" [disabled]="paymentCorrectionSaving() || !!paymentCorrectionValidation()">
+              <button
+                class="secondary-button"
+                type="button"
+                (click)="cancelPaymentCorrection()"
+                [disabled]="paymentCorrectionSaving()"
+              >
+                Cancelar
+              </button>
+              <button
+                class="primary-button"
+                type="submit"
+                [disabled]="paymentCorrectionSaving() || !!paymentCorrectionValidation()"
+              >
                 {{ paymentCorrectionSaving() ? 'Guardando…' : 'Guardar corrección' }}
               </button>
             </footer>
           </form>
         } @else {
           <div class="payment-correction-action">
-            <button class="detail-button" type="button" (click)="startPaymentCorrection()">Corregir cobro</button>
+            <button class="detail-button" type="button" (click)="startPaymentCorrection()">
+              Corregir cobro
+            </button>
           </div>
         }
       }
       @if (order.status === 'Servido' && paymentMode()) {
-        <section class="split-payment-panel" [attr.aria-label]="splitPaymentMode() ? 'Dividir cuenta por persona' : 'Cobrar cuenta completa'">
+        <section
+          class="split-payment-panel"
+          [attr.aria-label]="
+            splitPaymentMode() ? 'Dividir cuenta por persona' : 'Cobrar cuenta completa'
+          "
+        >
           <header class="split-payment-heading">
             <div>
               <h3>{{ splitPaymentMode() ? 'Dividir cuenta' : 'Cobrar todo' }}</h3>
-              <p>{{ splitPaymentMode() ? 'Registra cada división para pasar a la siguiente persona.' : 'Registra el pago completo; puedes combinar formas de pago.' }}</p>
+              <p>
+                {{
+                  splitPaymentMode()
+                    ? 'Registra cada división para pasar a la siguiente persona.'
+                    : 'Registra el pago completo; puedes combinar formas de pago.'
+                }}
+              </p>
             </div>
-            @if (splitPaymentMode()) { <button class="secondary-button" type="button" (click)="addPaymentGroup()">+ Agregar persona</button> }
+            @if (splitPaymentMode()) {
+              <button class="secondary-button" type="button" (click)="addPaymentGroup()">
+                + Agregar persona
+              </button>
+            }
           </header>
 
           @if (splitPaymentMode()) {
             <section class="split-account-summary" aria-label="Resumen general de la cuenta">
               <h4>Resumen general de la cuenta</h4>
               <div class="split-account-totals">
-                <span><i aria-hidden="true">▤</i>Total de la cuenta: <strong>{{ formatCurrency(order.totalAmount) }}</strong></span>
-                <span><i aria-hidden="true">✓</i>Total pagado: <strong>{{ formatCurrency(savedPaymentTotal()) }}</strong></span>
-                <span><i aria-hidden="true">◷</i>Pendiente de pago: <strong>{{ formatCurrency(remainingPaymentTotal()) }}</strong></span>
+                <span
+                  ><i aria-hidden="true">▤</i>Total de la cuenta:
+                  <strong>{{ formatCurrency(order.totalAmount) }}</strong></span
+                >
+                <span
+                  ><i aria-hidden="true">✓</i>Total pagado:
+                  <strong>{{ formatCurrency(savedPaymentTotal()) }}</strong></span
+                >
+                <span
+                  ><i aria-hidden="true">◷</i>Pendiente de pago:
+                  <strong>{{ formatCurrency(remainingPaymentTotal()) }}</strong></span
+                >
               </div>
-              <div class="split-account-progress" role="progressbar" aria-label="Porcentaje de la cuenta pagado"
-                [attr.aria-valuenow]="paymentProgressPercentage()" aria-valuemin="0" aria-valuemax="100">
+              <div
+                class="split-account-progress"
+                role="progressbar"
+                aria-label="Porcentaje de la cuenta pagado"
+                [attr.aria-valuenow]="paymentProgressPercentage()"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              >
                 <span [style.width.%]="paymentProgressPercentage()"></span>
               </div>
             </section>
@@ -942,21 +2015,35 @@
             <article class="split-group">
               <header class="split-group-header">
                 @if (splitPaymentMode()) {
-                  <label>Persona {{ groupIndex + 1 }}
-                    <input [name]="'payer-' + group.id" type="text" maxlength="80"
+                  <label
+                    >Persona {{ groupIndex + 1 }}
+                    <input
+                      [name]="'payer-' + group.id"
+                      type="text"
+                      maxlength="80"
                       [ngModel]="group.payer_name"
-                      (ngModelChange)="paymentGroups.update(groups => groups.map(g => g.id === group.id ? { ...g, payer_name: $event } : g))"
-                      placeholder="Nombre cliente (opcional)" />
+                      (ngModelChange)="paymentGroups.update((groups) => groups.map((g) => (g.id === group.id ? { ...g, payer_name: $event } : g)))"
+                      placeholder="Nombre cliente (opcional)"
+                    />
                   </label>
                   <strong>Parte: {{ formatCurrency(paymentGroupTotal(group)) }}</strong>
                   @if (paymentGroupTotal(group) > 0 && paymentGroupRemaining(group) === 0) {
                     <span class="split-group-complete"><i aria-hidden="true">✓</i>Completo</span>
                   }
                 } @else {
-                  <strong class="whole-payment-total">Total a cobrar: {{ formatCurrency(paymentGroupTotal(group)) }}</strong>
+                  <strong class="whole-payment-total"
+                    >Total a cobrar: {{ formatCurrency(paymentGroupTotal(group)) }}</strong
+                  >
                 }
                 @if (splitPaymentMode() && paymentGroups().length > 1) {
-                  <button class="remove-split-button" type="button" (click)="removePaymentGroup(group.id)" aria-label="Quitar persona">Quitar</button>
+                  <button
+                    class="remove-split-button"
+                    type="button"
+                    (click)="removePaymentGroup(group.id)"
+                    aria-label="Quitar persona"
+                  >
+                    Quitar
+                  </button>
                 }
               </header>
 
@@ -964,11 +2051,18 @@
                 @if (splitPaymentMode()) {
                   <div class="split-item-picker">
                     <label class="split-item-picker-label">Platos</label>
-                    <button class="split-item-picker-trigger" type="button" aria-haspopup="true"
+                    <button
+                      class="split-item-picker-trigger"
+                      type="button"
+                      aria-haspopup="true"
                       [attr.aria-expanded]="openSplitItemPicker() === group.id"
-                      [attr.aria-label]="'Seleccionar platos para ' + (group.payer_name.trim() || 'Persona ' + (groupIndex + 1))"
+                      [attr.aria-label]="
+                        'Seleccionar platos para ' +
+                        (group.payer_name.trim() || 'Persona ' + (groupIndex + 1))
+                      "
                       (click)="toggleSplitItemPicker(group.id)"
-                      (keydown.escape)="openSplitItemPicker.set(null)">
+                      (keydown.escape)="openSplitItemPicker.set(null)"
+                    >
                       <span class="product-symbol" aria-hidden="true">◉</span>
                       <span class="split-item-picker-placeholder">Buscar platos del pedido</span>
                       <span class="split-item-picker-count">
@@ -977,24 +2071,47 @@
                       <span class="split-item-picker-chevron" aria-hidden="true">▼</span>
                     </button>
                     @if (openSplitItemPicker() === group.id) {
-                      <div class="split-item-picker-menu" role="group" aria-label="Platos disponibles">
+                      <div
+                        class="split-item-picker-menu"
+                        role="group"
+                        aria-label="Platos disponibles"
+                      >
                         @for (item of detailItems(); track item.id) {
-                        @for (unitIndex of splitUnitIndexes(item.quantity); track unitIndex) {
-                          <label class="split-item-option">
-                            <input type="checkbox"
-                              [checked]="splitUnitSelected(group, item.id, unitIndex)"
-                              [disabled]="splitUnitUnavailable(group, item, unitIndex)"
-                              (change)="toggleSplitUnit(group.id, item.id, unitIndex, $event)" />
-                            <span class="product-symbol" aria-hidden="true">◉</span>
-                            <span class="split-picker-copy">
-                              <strong>{{ productName(item) }}</strong>
-                              <small>Unidad {{ unitIndex + 1 }} · {{ splitUnitStatus(group, item, unitIndex) }}</small>
-                            </span>
-                            <small class="split-picker-price">{{ formatCurrency(item.unit_price) }}</small>
-                          </label>
-                        }
+                          @for (unitIndex of splitUnitIndexes(item.quantity); track unitIndex) {
+                            @if (
+                              splitUnitSelected(group, item.id, unitIndex) ||
+                              !splitUnitUnavailable(group, item, unitIndex)
+                            ) {
+                              <label class="split-item-option">
+                                <input
+                                  type="checkbox"
+                                  [checked]="splitUnitSelected(group, item.id, unitIndex)"
+                                  [disabled]="splitUnitUnavailable(group, item, unitIndex)"
+                                  (change)="toggleSplitUnit(group.id, item.id, unitIndex, $event)"
+                                />
+                                <span class="product-symbol" aria-hidden="true">◉</span>
+                                <span class="split-picker-copy">
+                                  <strong>{{ productName(item) }}</strong>
+                                  <small
+                                    >Unidad {{ unitIndex + 1 }} ·
+                                    {{ splitUnitStatus(group, item, unitIndex) }}</small
+                                  >
+                                </span>
+                                <small class="split-picker-price">{{
+                                  formatCurrency(item.unit_price)
+                                }}</small>
+                              </label>
+                            }
+                          }
                         } @empty {
-                          <p class="split-item-picker-empty">No hay platos disponibles para asignar.</p>
+                          <p class="split-item-picker-empty">
+                            No hay platos disponibles para asignar.
+                          </p>
+                        }
+                        @if (!hasSplitUnitsAvailable(group)) {
+                          <p class="split-item-picker-empty">
+                            No quedan unidades disponibles para esta persona.
+                          </p>
                         }
                       </div>
                     }
@@ -1003,18 +2120,35 @@
                     @if ((group.quantities[item.id] ?? 0) > 0) {
                       <div class="split-item">
                         <span class="split-item-title">
-                            <strong>{{ productName(item) }}</strong>
-                            <span class="split-item-price">{{ formatCurrency(item.unit_price) }}</span>
-                            <small>Asignadas: {{ group.quantities[item.id] ?? 0 }}</small>
+                          <strong>{{ productName(item) }}</strong>
+                          <span class="split-item-price">{{
+                            formatCurrency(item.unit_price)
+                          }}</span>
+                          <small>Asignadas: {{ group.quantities[item.id] ?? 0 }}</small>
                         </span>
                         <span class="split-quantity-control">
-                          <button type="button" [disabled]="(group.quantities[item.id] ?? 0) === 0"
+                          <button
+                            type="button"
+                            [disabled]="(group.quantities[item.id] ?? 0) === 0"
                             [attr.aria-label]="'Quitar una unidad de ' + productName(item)"
-                            (click)="changeSplitQuantity(group.id, item.id, -1)">−</button>
-                          <output [attr.aria-label]="'Unidades asignadas: ' + (group.quantities[item.id] ?? 0)">{{ group.quantities[item.id] ?? 0 }}</output>
-                          <button type="button" [disabled]="splitItemRemaining(item) === 0"
+                            (click)="changeSplitQuantity(group.id, item.id, -1)"
+                          >
+                            −
+                          </button>
+                          <output
+                            [attr.aria-label]="
+                              'Unidades asignadas: ' + (group.quantities[item.id] ?? 0)
+                            "
+                            >{{ group.quantities[item.id] ?? 0 }}</output
+                          >
+                          <button
+                            type="button"
+                            [disabled]="splitItemRemaining(item) === 0"
                             [attr.aria-label]="'Asignar una unidad más de ' + productName(item)"
-                            (click)="changeSplitQuantity(group.id, item.id, 1)">+</button>
+                            (click)="changeSplitQuantity(group.id, item.id, 1)"
+                          >
+                            +
+                          </button>
                         </span>
                       </div>
                     }
@@ -1025,11 +2159,17 @@
                       <span>
                         <span class="split-item-title">
                           <strong>{{ productName(item) }}</strong>
-                          <span class="split-item-price">{{ formatCurrency(item.unit_price) }}</span>
+                          <span class="split-item-price">{{
+                            formatCurrency(item.unit_price)
+                          }}</span>
                         </span>
-                        @if (!splitPaymentMode()) { <small><span>Pendientes por cobrar</span></small> }
+                        @if (!splitPaymentMode()) {
+                          <small><span>Pendientes por cobrar</span></small>
+                        }
                       </span>
-                      <strong class="whole-payment-quantity">× {{ group.quantities[item.id] ?? 0 }}</strong>
+                      <strong class="whole-payment-quantity"
+                        >× {{ group.quantities[item.id] ?? 0 }}</strong
+                      >
                     </div>
                   }
                 }
@@ -1037,51 +2177,112 @@
 
               @if (!splitPaymentMode() || paymentGroupTotal(group) > 0) {
                 <div class="split-tenders">
-                <div class="split-tenders-heading"><strong>Formas de pago</strong><button class="detail-button" type="button" (click)="addPaymentTender(group.id)" [disabled]="group.tenders.length >= 2">+ Agregar método</button></div>
-                @for (tender of group.tenders; track tender.id) {
-                  <div class="split-tender">
-                    <label>Método
-                      <select [name]="'method-' + group.id + '-' + tender.id" [ngModel]="tender.payment_method"
-                        (ngModelChange)="updateTenderMethod(group.id, tender.id, $event)">
-                        <option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option>
-                      </select>
-                    </label>
-                    <label>Monto
-                      <input [name]="'amount-' + group.id + '-' + tender.id" type="number" min="0" step="0.01"
-                        [ngModel]="tender.amount" (ngModelChange)="updateTenderAmount(group.id, tender.id, $event)" />
-                      @if (tender.payment_method === 'efectivo' && paymentChange(group) > 0) {
-                        <small class="cash-change">Cambio: {{ formatCurrency(paymentChange(group)) }}</small>
-                      }
-                    </label>
-                    @if (group.tenders.length > 1) {
-                      <button class="remove-split-button" type="button" (click)="removePaymentTender(group.id, tender.id)" aria-label="Quitar forma de pago">×</button>
-                    }
+                  <div class="split-tenders-heading">
+                    <strong>Formas de pago</strong
+                    ><button
+                      class="detail-button"
+                      type="button"
+                      (click)="addPaymentTender(group.id)"
+                      [disabled]="group.tenders.length >= 2"
+                    >
+                      + Agregar método
+                    </button>
                   </div>
-                }
-                <div class="split-balance">
-                  <span>Aplicado: {{ formatCurrency(paymentGroupTenderTotal(group)) }} / {{ formatCurrency(paymentGroupTotal(group)) }}</span>
-                  <strong>Restante: {{ formatCurrency(paymentGroupRemaining(group)) }}</strong>
-                </div>
+                  @for (tender of group.tenders; track tender.id) {
+                    <div class="split-tender">
+                      <label
+                        >Método
+                        <select
+                          [name]="'method-' + group.id + '-' + tender.id"
+                          [ngModel]="tender.payment_method"
+                          (ngModelChange)="updateTenderMethod(group.id, tender.id, $event)"
+                        >
+                          <option value="efectivo">Efectivo</option>
+                          <option value="transferencia">Transferencia</option>
+                        </select>
+                      </label>
+                      <label
+                        >Monto
+                        <input
+                          [name]="'amount-' + group.id + '-' + tender.id"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          [ngModel]="tender.amount"
+                          (ngModelChange)="updateTenderAmount(group.id, tender.id, $event)"
+                        />
+                        @if (tender.payment_method === 'efectivo' && paymentChange(group) > 0) {
+                          <small class="cash-change"
+                            >Cambio: {{ formatCurrency(paymentChange(group)) }}</small
+                          >
+                        }
+                      </label>
+                      @if (group.tenders.length > 1) {
+                        <button
+                          class="remove-split-button"
+                          type="button"
+                          (click)="removePaymentTender(group.id, tender.id)"
+                          aria-label="Quitar forma de pago"
+                        >
+                          ×
+                        </button>
+                      }
+                    </div>
+                  }
+                  <div class="split-balance">
+                    <span
+                      >Aplicado: {{ formatCurrency(paymentGroupTenderTotal(group)) }} /
+                      {{ formatCurrency(paymentGroupTotal(group)) }}</span
+                    >
+                    <strong>Restante: {{ formatCurrency(paymentGroupRemaining(group)) }}</strong>
+                  </div>
                 </div>
               }
               @if (splitPaymentMode() && paymentGroupTotal(group) > 0) {
-                @if (splitGroupValidation(group)) { <p class="split-validation" role="status">{{ splitGroupValidation(group) }}</p> }
-                <button class="primary-button split-partial-payment" type="button"
-                  [disabled]="paymentSaving() || !!splitGroupValidation(group) || !hasOpenCashRegisterToday()"
-                  (click)="paySplitGroup(group.id)">
+                @if (splitGroupValidation(group)) {
+                  <p class="split-validation" role="status">{{ splitGroupValidation(group) }}</p>
+                }
+                <button
+                  class="primary-button split-partial-payment"
+                  type="button"
+                  [disabled]="
+                    paymentSaving() || !!splitGroupValidation(group) || !hasOpenCashRegisterToday()
+                  "
+                  (click)="paySplitGroup(group.id)"
+                >
                   {{ paymentSaving() ? 'Registrando…' : 'Registrar pago de esta persona' }}
                 </button>
               }
             </article>
           }
 
-          @if (splitPaymentMode() && splitPaymentNotice()) { <p class="split-progress-message" role="status">{{ splitPaymentNotice() }}</p> }
-          @if (!splitPaymentMode() && splitPaymentValidation()) { <p class="split-validation" role="status">{{ splitPaymentValidation() }}</p> }
-          @if (paymentError()) { <div class="error-banner" role="alert">{{ paymentError() }}</div> }
+          @if (splitPaymentMode() && splitPaymentNotice()) {
+            <p class="split-progress-message" role="status">{{ splitPaymentNotice() }}</p>
+          }
+          @if (!splitPaymentMode() && splitPaymentValidation()) {
+            <p class="split-validation" role="status">{{ splitPaymentValidation() }}</p>
+          }
+          @if (paymentError()) {
+            <div class="error-banner" role="alert">{{ paymentError() }}</div>
+          }
           <footer class="split-payment-footer">
-            <button class="secondary-button" type="button" (click)="closeDetails()" [disabled]="paymentSaving()">Cancelar</button>
+            <button
+              class="secondary-button"
+              type="button"
+              (click)="closeDetails()"
+              [disabled]="paymentSaving()"
+            >
+              Cancelar
+            </button>
             @if (!splitPaymentMode()) {
-              <button class="primary-button" type="button" (click)="submitSplitPayment()" [disabled]="paymentSaving() || !!splitPaymentValidation() || !hasOpenCashRegisterToday()">
+              <button
+                class="primary-button"
+                type="button"
+                (click)="submitSplitPayment()"
+                [disabled]="
+                  paymentSaving() || !!splitPaymentValidation() || !hasOpenCashRegisterToday()
+                "
+              >
                 {{ paymentSaving() ? 'Registrando…' : 'Confirmar cobro total' }}
               </button>
             }
@@ -1090,8 +2291,18 @@
       } @else if (order.status === 'Servido') {
         @if (!paymentDetailError()) {
           <div class="payment-options" aria-label="Opciones de cobro">
-            <button class="whole-payment-option" type="button" (click)="startWholePayment()" [disabled]="!hasOpenCashRegisterToday()">
-              <svg class="payment-option-icon cash-option-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <button
+              class="whole-payment-option"
+              type="button"
+              (click)="startWholePayment()"
+              [disabled]="!hasOpenCashRegisterToday()"
+            >
+              <svg
+                class="payment-option-icon cash-option-icon"
+                viewBox="0 0 48 48"
+                fill="none"
+                aria-hidden="true"
+              >
                 <path d="m7 15 26-8 3 9" />
                 <path d="m6 21 27-8 3 9" />
                 <rect x="8" y="18" width="31" height="21" rx="3" transform="rotate(-10 8 18)" />
@@ -1102,11 +2313,23 @@
               <span class="payment-option-copy">
                 <strong>Cobrar Todo</strong>
                 <span>Pago directo en una sola cuenta</span>
-                <span class="payment-option-balance">Saldo pendiente: {{ formatCurrency(remainingPaymentTotal()) }}</span>
+                <span class="payment-option-balance"
+                  >Saldo pendiente: {{ formatCurrency(remainingPaymentTotal()) }}</span
+                >
               </span>
             </button>
-            <button class="split-payment-option" type="button" (click)="startSplitPayment()" [disabled]="!hasOpenCashRegisterToday()">
-              <svg class="payment-option-icon split-option-icon" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <button
+              class="split-payment-option"
+              type="button"
+              (click)="startSplitPayment()"
+              [disabled]="!hasOpenCashRegisterToday()"
+            >
+              <svg
+                class="payment-option-icon split-option-icon"
+                viewBox="0 0 48 48"
+                fill="none"
+                aria-hidden="true"
+              >
                 <path d="M7 8v12m5-12v12M7 14h5M9.5 20v19" />
                 <path d="M38 8c-4 4-5 9-5 14h7c0-5-1-10-5-14Zm-1.5 14v17" />
                 <path d="M15 24a11 11 0 1 1 22 0" />
@@ -1123,9 +2346,10 @@
           </div>
         }
       }
-      @if (!(order.status === 'Servido' && paymentMode())
-        && savedPaymentGroups().length === 0) {
-        <footer class="detail-total"><span>Total del pedido</span><strong>{{ formatCurrency(order.totalAmount) }}</strong></footer>
+      @if (!(order.status === 'Servido' && paymentMode()) && savedPaymentGroups().length === 0) {
+        <footer class="detail-total">
+          <span>Total del pedido</span><strong>{{ formatCurrency(order.totalAmount) }}</strong>
+        </footer>
       }
     </section>
   </div>
